@@ -1,0 +1,11 @@
+{
+  "name": "wasm-instr-lib",
+  "version": "1.0.0",
+  "description": "assemblyscript wasm instrumentation library",
+  "author": "Aaron Munsters",
+  "license": "ISC",
+  "devDependencies": {
+    "@assemblyscript/wasi-shim": "^0.1.0",
+    "assemblyscript": "^0.27.14"
+  }
+}
