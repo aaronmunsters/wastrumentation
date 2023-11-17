@@ -1,0 +1,3 @@
+[submodule "wasabi"]
+	path = wasabi
+	url = git@github.com:danleh/wasabi.git
