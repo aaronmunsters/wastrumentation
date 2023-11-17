@@ -376,7 +376,7 @@ function generate_lib_for(signatures: Signature[]): string {
 const lib = generate_lib([
     new Signature(["i32"], ["i32", "i32"]),
 ]);
-console.log(lib);
+await Deno.writeTextFile("src_generated/lib.ts", lib);
     
 // ================================= //
 // ================================= //

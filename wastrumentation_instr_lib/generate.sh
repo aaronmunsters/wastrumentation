@@ -1,31 +1,31 @@
 # Code-gen the AssemblyScript library
 mkdir -p   \
     dist/  \
-    src/
+    src_generated/
 
 # check if modules installed
 if [[ ! -e node_modules ]]; then
     npm i
 fi
 
-deno run ./generate_for_signatures.ts > src/lib.ts
-cp analysis.ts src/analysis.ts
+deno run --allow-write=./src_generated/ ./generate_for_signatures.ts
+cp analysis.ts src_generated/analysis.ts
 
 # Compile the AssemblyScript library to WebAssembly optimized
-npx asc src/lib.ts --textFile dist/wastrumentation_stack.wat -O \
+npx asc src_generated/lib.ts --textFile dist/wastrumentation_stack.wat -O \
     --runtime minimal \
     --config ./node_modules/@assemblyscript/wasi-shim/asconfig.json \
     --noExportMemory
-npx asc src/lib.ts -o dist/wastrumentation_stack.wasm -O \
+npx asc src_generated/lib.ts -o dist/wastrumentation_stack.wasm -O \
     --runtime minimal \
     --config ./node_modules/@assemblyscript/wasi-shim/asconfig.json \
     --noExportMemory
 
 # Compile the analysis
-npx asc src/analysis.ts --textFile dist/analysis.wat -O \
+npx asc src_generated/analysis.ts --textFile dist/analysis.wat -O \
     --runtime minimal \
     --config ./node_modules/@assemblyscript/wasi-shim/asconfig.json
-npx asc src/analysis.ts -o dist/analysis.wasm -O \
+npx asc src_generated/analysis.ts -o dist/analysis.wasm -O \
     --runtime minimal \
     --config ./node_modules/@assemblyscript/wasi-shim/asconfig.json
 
