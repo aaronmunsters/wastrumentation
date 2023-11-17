@@ -1,10 +1,13 @@
+use wasabi_wasm::Element;
 use wasabi_wasm::Function;
 use wasabi_wasm::FunctionType;
 use wasabi_wasm::Idx;
 use wasabi_wasm::Instr;
 use wasabi_wasm::Instr::*;
+use wasabi_wasm::Limits;
 use wasabi_wasm::LocalOp;
 use wasabi_wasm::Module;
+use wasabi_wasm::Table;
 use wasabi_wasm::Val;
 use wasabi_wasm::ValType;
 
@@ -32,6 +35,9 @@ pub fn instrument(module: &mut Module) {
 
     // 1. GENERATE IMPORTS FOR INSTRUMENTATION STACK LIBRARY
     let stack_library = StackLibrary::from_module(module, &pre_instrumentation_function_indices);
+
+    // 2. Generate function instrumentation functionality
+    let mut apply_table_funs = vec![];
 
     for function_index in pre_instrumentation_function_indices {
         let target_function_type = module.function(function_index).type_;
@@ -74,24 +80,9 @@ pub fn instrument(module: &mut Module) {
             vec![signature_buffer_pointer_type],
             apply_instructions,
         );
-        let apply_table_index = module
-            .tables
-            .first_mut()
-            .unwrap()
-            .elements
-            .first_mut()
-            .unwrap()
-            .functions
-            .len();
-        module
-            .tables
-            .first_mut()
-            .unwrap()
-            .elements
-            .first_mut()
-            .unwrap()
-            .functions
-            .push(apply_index);
+
+        let apply_table_index = apply_table_funs.len();
+        apply_table_funs.push(apply_index);
 
         // 3. Change the original function to call into apply
         let original_function = module.function_mut(function_index);
@@ -132,6 +123,19 @@ pub fn instrument(module: &mut Module) {
         instrumented_body.extend_from_slice(&[call_free, End]);
         original_function.code_mut().unwrap().body = instrumented_body;
     }
+
+    module.tables.push(Table {
+        limits: Limits {
+            initial_size: apply_table_funs.len() as u32,
+            max_size: None,
+        },
+        import: None,
+        elements: vec![Element {
+            offset: vec![Const(Val::I32(0)), End],
+            functions: apply_table_funs,
+        }],
+        export: vec![],
+    });
 
     // 2. Generate 'call_base'
     let call_base_idx = module.add_function(
