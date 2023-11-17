@@ -54,8 +54,8 @@ cargo run --package wastrumentation_cli -- \
 )
 
 #### 4 .
-wasm-merge -n --rename-export-conflicts --enable-multimemory --debuginfo --emit-text \
+wasm-merge -n --rename-export-conflicts --enable-multimemory --debuginfo \
     ${SCRIPT_OUTPUT_INSTRUMENTED_WASM} instrumented_input \
     wastrumentation_instr_lib/dist/wastrumentation_stack.wasm wastrumentation_stack \
     wastrumentation_instr_lib/dist/analysis.wasm analysis \
-    -o "merged.wat"
+    -o "merged.wasm"
