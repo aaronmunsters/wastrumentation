@@ -37,6 +37,7 @@ pub fn instrument(module: &mut Module) {
     let stack_library = StackLibrary::from_module(module, &pre_instrumentation_function_indices);
 
     // 2. Generate function instrumentation functionality
+    let apply_table_index = module.tables.len();
     let mut apply_table_funs = vec![];
 
     for function_index in pre_instrumentation_function_indices {
@@ -124,10 +125,11 @@ pub fn instrument(module: &mut Module) {
         original_function.code_mut().unwrap().body = instrumented_body;
     }
 
+    let apply_count = apply_table_funs.len() as u32;
     module.tables.push(Table {
         limits: Limits {
-            initial_size: apply_table_funs.len() as u32,
-            max_size: None,
+            initial_size: apply_count,
+            max_size: Some(apply_count),
         },
         import: None,
         elements: vec![Element {
@@ -144,7 +146,10 @@ pub fn instrument(module: &mut Module) {
         vec![
             Local(LocalOp::Get, (1 as usize).into()),
             Local(LocalOp::Get, (0 as usize).into()),
-            CallIndirect(FunctionType::new(&[ValType::I32], &[]), (0 as usize).into()),
+            CallIndirect(
+                FunctionType::new(&[ValType::I32], &[]),
+                apply_table_index.into(),
+            ),
             End,
         ],
     );
