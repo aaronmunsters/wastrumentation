@@ -1,4 +1,4 @@
 [workspace]
 
 resolver = "2"
-members = ["wastrumentation", "wastrumentation_cli"]
+members = ["wastrumentation", "wastrumentation_cli", "wasp-compiler"]

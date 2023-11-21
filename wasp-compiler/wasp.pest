@@ -1,0 +1,61 @@
+// This definition allows for implicit whitespaces, a new line makes no difference
+WHITESPACE = _{ " " | "\r" | "\n" | "\t" }
+
+// This definition allows for implicit comments
+COMMENT = _{ "#|" ~ (!"|#" ~ ANY)* ~ "|#" }
+
+// Input grammar
+wasp_input = { SOI ~ wasp ~ EOI }
+wasp       = { "(" ~ "aspect" ~ ("(" ~ advice_definition ~ ")")* ~ ")" }
+
+// Guest language block, currently hardcoded AssemblyScript
+GUEST_BLOCK = { ">>>GUEST>>>" ~ (!"<<<GUEST<<<" ~ ANY)* ~ "<<<GUEST<<<" }
+
+// Advice definitions
+advice_definition = { advice_global | advice_trap }
+advice_global     = { "global" ~ GUEST_BLOCK }
+advice_trap       = { "advice" ~ trap_signature }
+
+// The definition of identifiers
+identifier = @{ ASCII_ALPHA+ }
+
+// Advice traps
+trap_signature = {
+    trap_apply /* | more | trap | targets | here | ... */
+}
+
+// TRAP APPLY
+trap_apply           = { "apply" ~ apply_hook_signature ~ GUEST_BLOCK }
+apply_hook_signature = {
+    apply_gen_hook
+  | apply_gen_intro
+  | apply_gen_inter
+  | apply_spe_intro
+  | apply_spe_inter
+}
+
+// [🐇], [🔍], [🙆‍]
+apply_gen_hook = {
+    apply_formal_wasm_f ~ "(" ~ identifier ~ "Args" ~ ")" ~ "(" ~ identifier ~ "Results" ~ ")"
+}
+// [🐌], [🔍], [🙆‍]
+apply_gen_intro = {
+    apply_formal_wasm_f ~ "(" ~ identifier ~ "DynArgs" ~ ")" ~ "(" ~ identifier ~ "DynResults" ~ ")"
+}
+// [🐌], [📝], [🙆‍]
+apply_gen_inter = {
+    apply_formal_wasm_f ~ "(" ~ identifier ~ "DynMutArgs" ~ ")" ~ "(" ~ identifier ~ "DynMutResults" ~ ")"
+}
+// [🐇], [🔍], [🪖]
+apply_spe_intro = {
+    apply_formal_wasm_f ~ "(" ~ apply_formal_arguments ~ ")" ~ "(" ~ apply_formal_arguments ~ ")"
+}
+
+// [🐇], [📝], [🪖]
+apply_spe_inter = {
+    apply_formal_wasm_f ~ "(" ~ "Mut" ~ apply_formal_arguments ~ ")" ~ "(" ~ "Mut" ~ apply_formal_arguments ~ ")"
+}
+
+apply_formal_wasm_f    = { "(" ~ identifier ~ "WasmFunction" ~ ")" }
+apply_formal_arguments = { ("(" ~ identifier ~ wasm_type ~ ")")+ }
+wasm_type              = { "I32" | "F32" | "I64" | "F64" }
