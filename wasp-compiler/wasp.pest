@@ -48,14 +48,16 @@ apply_gen_inter = {
 }
 // [🐇], [🔍], [🪖]
 apply_spe_intro = {
-    apply_formal_wasm_f ~ "(" ~ apply_formal_arguments ~ ")" ~ "(" ~ apply_formal_arguments ~ ")"
+    apply_formal_wasm_f ~ "(" ~ apply_formal_argument+ ~ ")" ~ "(" ~ apply_formal_result+ ~ ")"
 }
 
 // [🐇], [📝], [🪖]
 apply_spe_inter = {
-    apply_formal_wasm_f ~ "(" ~ "Mut" ~ apply_formal_arguments ~ ")" ~ "(" ~ "Mut" ~ apply_formal_arguments ~ ")"
+    apply_formal_wasm_f ~ "(" ~ "Mut" ~ apply_formal_argument+ ~ ")" ~ "(" ~ "Mut" ~ apply_formal_result+ ~ ")"
 }
 
-apply_formal_wasm_f    = { "(" ~ identifier ~ "WasmFunction" ~ ")" }
-apply_formal_arguments = { ("(" ~ identifier ~ wasm_type ~ ")")+ }
-wasm_type              = { "I32" | "F32" | "I64" | "F64" }
+apply_formal_wasm_f   = { "(" ~ identifier ~ "WasmFunction" ~ ")" }
+apply_formal_argument = { typed_argument }
+apply_formal_result   = { typed_argument }
+typed_argument        = { "(" ~ identifier ~ wasm_type ~ ")" }
+wasm_type             = { "I32" | "F32" | "I64" | "F64" }
