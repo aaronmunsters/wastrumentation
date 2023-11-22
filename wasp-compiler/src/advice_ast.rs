@@ -15,7 +15,7 @@ pub struct WaspInput {
 
 #[derive(Debug, PartialEq, Eq, FromPest)]
 #[pest_ast(rule(Rule::wasp))]
-pub struct Wasp(Vec<AdviceDefinition>);
+pub struct Wasp(pub Vec<AdviceDefinition>);
 
 #[derive(Debug, PartialEq, Eq, FromPest)]
 #[pest_ast(rule(Rule::advice_definition))]
@@ -30,7 +30,7 @@ pub struct AdviceGlobal(#[pest_ast(inner(with(span_into_string)))] pub String);
 
 #[derive(Debug, PartialEq, Eq, FromPest)]
 #[pest_ast(rule(Rule::advice_trap))]
-pub struct AdviceTrap(TrapSignature);
+pub struct AdviceTrap(pub TrapSignature);
 
 #[derive(Debug, PartialEq, Eq, FromPest)]
 #[pest_ast(rule(Rule::trap_signature))]
@@ -84,19 +84,19 @@ pub struct ApplyFormalWasmF(#[pest_ast(inner(with(span_into_string)))] pub Strin
 
 #[derive(Debug, PartialEq, Eq, FromPest)]
 #[pest_ast(rule(Rule::apply_formal_argument))]
-pub struct ApplyFormalArgument(TypedArgument);
+pub struct ApplyFormalArgument(pub TypedArgument);
 
 #[derive(Debug, PartialEq, Eq, FromPest)]
 #[pest_ast(rule(Rule::apply_formal_result))]
-pub struct ApplyFormalResult(TypedArgument);
+pub struct ApplyFormalResult(pub TypedArgument);
 
 #[derive(Debug, PartialEq, Eq, FromPest)]
 #[pest_ast(rule(Rule::typed_argument))]
 pub struct TypedArgument {
     #[pest_ast(inner(with(span_into_string)))]
-    identifier: String,
+    pub identifier: String,
     #[pest_ast(inner(with(span_into_string)))]
-    type_identifier: String,
+    pub type_identifier: String,
 }
 
 #[derive(Debug, PartialEq, Eq, FromPest)]
