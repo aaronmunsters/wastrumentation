@@ -10,7 +10,7 @@ fn span_into_string(span: Span) -> String {
 #[pest_ast(rule(Rule::wasp_input))]
 pub struct WaspInput {
     pub records: Wasp,
-    _eoi: EOI,
+    _eoi: EndOfInput,
 }
 
 #[derive(Debug, PartialEq, Eq, FromPest)]
@@ -49,11 +49,11 @@ pub struct TrapApply {
 #[derive(Debug, PartialEq, Eq, FromPest)]
 #[pest_ast(rule(Rule::apply_hook_signature))]
 pub enum ApplyHookSignature {
-    ApplyGenHook(ApplyGenHook),
-    ApplyGenIntro(ApplyGenIntro),
-    ApplyGenInter(ApplyGenInter),
-    ApplySpeIntro(ApplySpeIntro),
-    ApplySpeInter(ApplySpeInter),
+    GenHook(ApplyGenHook),
+    GenIntro(ApplyGenIntro),
+    GenInter(ApplyGenInter),
+    SpeIntro(ApplySpeIntro),
+    SpeInter(ApplySpeInter),
 }
 
 #[derive(Debug, PartialEq, Eq, FromPest)]
@@ -125,7 +125,7 @@ pub struct TypedArgument {
 
 #[derive(Debug, PartialEq, Eq, FromPest)]
 #[pest_ast(rule(Rule::EOI))]
-struct EOI;
+struct EndOfInput;
 
 #[cfg(test)]
 mod tests {
@@ -150,7 +150,7 @@ mod tests {
             records: Wasp(vec![AdviceDefinition::AdviceGlobal(AdviceGlobal(
                 r#">>>GUEST>>> console.log("Hello world!") <<<GUEST<<<"#.into(),
             ))]),
-            _eoi: EOI,
+            _eoi: EndOfInput,
         };
         let mut parse_tree = WaspParser::parse(
             Rule::wasp_input,
@@ -167,7 +167,7 @@ mod tests {
         let expected = WaspInput {
             records: Wasp(vec![AdviceDefinition::AdviceTrap(AdviceTrap(
                 TrapSignature::TrapApply(TrapApply {
-                    apply_hook_signature: ApplyHookSignature::ApplyGenHook(ApplyGenHook {
+                    apply_hook_signature: ApplyHookSignature::GenHook(ApplyGenHook {
                         apply_formal_wasm_f: ApplyFormalWasmF(String::from("func")),
                         args_identifier: String::from("args"),
                         res_identifier: String::from("results"),
@@ -175,7 +175,7 @@ mod tests {
                     body: String::from(">>>GUEST>>>global_function_count++;<<<GUEST<<<"),
                 }),
             ))]),
-            _eoi: EOI,
+            _eoi: EndOfInput,
         };
         let mut parse_tree = WaspParser::parse(
             Rule::wasp_input,
@@ -195,7 +195,7 @@ mod tests {
         let expected = WaspInput {
             records: Wasp(vec![AdviceDefinition::AdviceTrap(AdviceTrap(
                 TrapSignature::TrapApply(TrapApply {
-                    apply_hook_signature: ApplyHookSignature::ApplySpeIntro(ApplySpeIntro {
+                    apply_hook_signature: ApplyHookSignature::SpeIntro(ApplySpeIntro {
                         apply_formal_wasm_f: ApplyFormalWasmF("func".into()),
                         formal_arguments_arguments: vec![
                             ApplyFormalArgument(TypedArgument {
@@ -221,7 +221,7 @@ mod tests {
                     body: ">>>GUEST>>>[🐇], [🔍], [🪖]<<<GUEST<<<".into(),
                 }),
             ))]),
-            _eoi: EOI,
+            _eoi: EndOfInput,
         };
 
         let mut parse_tree = WaspParser::parse(
@@ -242,7 +242,7 @@ mod tests {
         let expected = WaspInput {
             records: Wasp(vec![
                 AdviceDefinition::AdviceTrap(AdviceTrap(TrapSignature::TrapApply(TrapApply {
-                    apply_hook_signature: ApplyHookSignature::ApplyGenHook(ApplyGenHook {
+                    apply_hook_signature: ApplyHookSignature::GenHook(ApplyGenHook {
                         apply_formal_wasm_f: ApplyFormalWasmF(String::from("func")),
                         args_identifier: String::from("args"),
                         res_identifier: String::from("results"),
@@ -250,7 +250,7 @@ mod tests {
                     body: String::from(">>>GUEST>>>[🐇], [🔍], [🙆‍]<<<GUEST<<<"),
                 }))),
                 AdviceDefinition::AdviceTrap(AdviceTrap(TrapSignature::TrapApply(TrapApply {
-                    apply_hook_signature: ApplyHookSignature::ApplyGenIntro(ApplyGenIntro {
+                    apply_hook_signature: ApplyHookSignature::GenIntro(ApplyGenIntro {
                         apply_formal_wasm_f: ApplyFormalWasmF(String::from("func")),
                         args_identifier: String::from("args"),
                         res_identifier: String::from("results"),
@@ -258,7 +258,7 @@ mod tests {
                     body: String::from(">>>GUEST>>>[🐌], [🔍], [🙆‍]<<<GUEST<<<"),
                 }))),
                 AdviceDefinition::AdviceTrap(AdviceTrap(TrapSignature::TrapApply(TrapApply {
-                    apply_hook_signature: ApplyHookSignature::ApplyGenInter(ApplyGenInter {
+                    apply_hook_signature: ApplyHookSignature::GenInter(ApplyGenInter {
                         apply_formal_wasm_f: ApplyFormalWasmF(String::from("func")),
                         args_identifier: String::from("args"),
                         res_identifier: String::from("results"),
@@ -266,7 +266,7 @@ mod tests {
                     body: String::from(">>>GUEST>>>[🐌], [📝], [🙆‍]<<<GUEST<<<"),
                 }))),
                 AdviceDefinition::AdviceTrap(AdviceTrap(TrapSignature::TrapApply(TrapApply {
-                    apply_hook_signature: ApplyHookSignature::ApplySpeIntro(ApplySpeIntro {
+                    apply_hook_signature: ApplyHookSignature::SpeIntro(ApplySpeIntro {
                         apply_formal_wasm_f: ApplyFormalWasmF(String::from("func")),
                         formal_arguments_arguments: vec![
                             ApplyFormalArgument(TypedArgument {
@@ -292,7 +292,7 @@ mod tests {
                     body: String::from(">>>GUEST>>>[🐇], [🔍], [🪖]<<<GUEST<<<"),
                 }))),
                 AdviceDefinition::AdviceTrap(AdviceTrap(TrapSignature::TrapApply(TrapApply {
-                    apply_hook_signature: ApplyHookSignature::ApplySpeInter(ApplySpeInter {
+                    apply_hook_signature: ApplyHookSignature::SpeInter(ApplySpeInter {
                         apply_formal_wasm_f: ApplyFormalWasmF(String::from("func")),
                         formal_arguments_arguments: vec![
                             ApplyFormalArgument(TypedArgument {
@@ -318,7 +318,7 @@ mod tests {
                     body: String::from(">>>GUEST>>>[🐇], [📝], [🪖]<<<GUEST<<<"),
                 }))),
             ]),
-            _eoi: EOI,
+            _eoi: EndOfInput,
         };
 
         let mut parse_tree = WaspParser::parse(
