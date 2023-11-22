@@ -1,4 +1,3 @@
-use pest::Parser;
 use pest_derive::Parser;
 
 mod advice_ast;
@@ -10,6 +9,7 @@ pub struct WaspParser;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pest::Parser;
 
     fn assert_parse_ok(s: &str) {
         assert!(WaspParser::parse(Rule::wasp_input, s).is_ok())
