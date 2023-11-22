@@ -15,9 +15,7 @@ pub struct WaspInput {
 
 #[derive(Debug, PartialEq, Eq, FromPest)]
 #[pest_ast(rule(Rule::wasp))]
-pub struct Wasp {
-    pub records: Vec<AdviceDefinition>,
-}
+pub struct Wasp(Vec<AdviceDefinition>);
 
 #[derive(Debug, PartialEq, Eq, FromPest)]
 #[pest_ast(rule(Rule::advice_definition))]
@@ -32,9 +30,7 @@ pub struct AdviceGlobal(#[pest_ast(inner(with(span_into_string)))] pub String);
 
 #[derive(Debug, PartialEq, Eq, FromPest)]
 #[pest_ast(rule(Rule::advice_trap))]
-pub struct AdviceTrap {
-    pub trap_signature: TrapSignature,
-}
+pub struct AdviceTrap(TrapSignature);
 
 #[derive(Debug, PartialEq, Eq, FromPest)]
 #[pest_ast(rule(Rule::trap_signature))]
@@ -151,11 +147,9 @@ mod tests {
     #[test]
     fn aspect_global_only() -> anyhow::Result<()> {
         let expected = WaspInput {
-            records: Wasp {
-                records: vec![AdviceDefinition::AdviceGlobal(AdviceGlobal(
-                    r#">>>GUEST>>> console.log("Hello world!") <<<GUEST<<<"#.into(),
-                ))],
-            },
+            records: Wasp(vec![AdviceDefinition::AdviceGlobal(AdviceGlobal(
+                r#">>>GUEST>>> console.log("Hello world!") <<<GUEST<<<"#.into(),
+            ))]),
             _eoi: EOI,
         };
         let mut parse_tree = WaspParser::parse(
@@ -171,18 +165,16 @@ mod tests {
     #[test]
     fn aspect_trap_apply_hook() -> anyhow::Result<()> {
         let expected = WaspInput {
-            records: Wasp {
-                records: vec![AdviceDefinition::AdviceTrap(AdviceTrap {
-                    trap_signature: TrapSignature::TrapApply(TrapApply {
-                        apply_hook_signature: ApplyHookSignature::ApplyGenHook(ApplyGenHook {
-                            apply_formal_wasm_f: ApplyFormalWasmF(String::from("func")),
-                            args_identifier: String::from("args"),
-                            res_identifier: String::from("results"),
-                        }),
-                        body: String::from(">>>GUEST>>>global_function_count++;<<<GUEST<<<"),
+            records: Wasp(vec![AdviceDefinition::AdviceTrap(AdviceTrap(
+                TrapSignature::TrapApply(TrapApply {
+                    apply_hook_signature: ApplyHookSignature::ApplyGenHook(ApplyGenHook {
+                        apply_formal_wasm_f: ApplyFormalWasmF(String::from("func")),
+                        args_identifier: String::from("args"),
+                        res_identifier: String::from("results"),
                     }),
-                })],
-            },
+                    body: String::from(">>>GUEST>>>global_function_count++;<<<GUEST<<<"),
+                }),
+            ))]),
             _eoi: EOI,
         };
         let mut parse_tree = WaspParser::parse(
@@ -201,36 +193,34 @@ mod tests {
     #[test]
     fn aspect_test_apply_spe_intro() -> anyhow::Result<()> {
         let expected = WaspInput {
-            records: Wasp {
-                records: vec![AdviceDefinition::AdviceTrap(AdviceTrap {
-                    trap_signature: TrapSignature::TrapApply(TrapApply {
-                        apply_hook_signature: ApplyHookSignature::ApplySpeIntro(ApplySpeIntro {
-                            apply_formal_wasm_f: ApplyFormalWasmF("func".into()),
-                            formal_arguments_arguments: vec![
-                                ApplyFormalArgument(TypedArgument {
-                                    identifier: "a".into(),
-                                    wasm_type: "I32".into(),
-                                }),
-                                ApplyFormalArgument(TypedArgument {
-                                    identifier: "b".into(),
-                                    wasm_type: "I32".into(),
-                                }),
-                            ],
-                            formal_arguments_results: vec![
-                                ApplyFormalResult(TypedArgument {
-                                    identifier: "c".into(),
-                                    wasm_type: "F32".into(),
-                                }),
-                                ApplyFormalResult(TypedArgument {
-                                    identifier: "d".into(),
-                                    wasm_type: "F32".into(),
-                                }),
-                            ],
-                        }),
-                        body: ">>>GUEST>>>[🐇], [🔍], [🪖]<<<GUEST<<<".into(),
+            records: Wasp(vec![AdviceDefinition::AdviceTrap(AdviceTrap(
+                TrapSignature::TrapApply(TrapApply {
+                    apply_hook_signature: ApplyHookSignature::ApplySpeIntro(ApplySpeIntro {
+                        apply_formal_wasm_f: ApplyFormalWasmF("func".into()),
+                        formal_arguments_arguments: vec![
+                            ApplyFormalArgument(TypedArgument {
+                                identifier: "a".into(),
+                                wasm_type: "I32".into(),
+                            }),
+                            ApplyFormalArgument(TypedArgument {
+                                identifier: "b".into(),
+                                wasm_type: "I32".into(),
+                            }),
+                        ],
+                        formal_arguments_results: vec![
+                            ApplyFormalResult(TypedArgument {
+                                identifier: "c".into(),
+                                wasm_type: "F32".into(),
+                            }),
+                            ApplyFormalResult(TypedArgument {
+                                identifier: "d".into(),
+                                wasm_type: "F32".into(),
+                            }),
+                        ],
                     }),
-                })],
-            },
+                    body: ">>>GUEST>>>[🐇], [🔍], [🪖]<<<GUEST<<<".into(),
+                }),
+            ))]),
             _eoi: EOI,
         };
 
@@ -250,104 +240,84 @@ mod tests {
     #[test]
     fn aspect_trap_applies() -> anyhow::Result<()> {
         let expected = WaspInput {
-            records: Wasp {
-                records: vec![
-                    AdviceDefinition::AdviceTrap(AdviceTrap {
-                        trap_signature: TrapSignature::TrapApply(TrapApply {
-                            apply_hook_signature: ApplyHookSignature::ApplyGenHook(ApplyGenHook {
-                                apply_formal_wasm_f: ApplyFormalWasmF(String::from("func")),
-                                args_identifier: String::from("args"),
-                                res_identifier: String::from("results"),
+            records: Wasp(vec![
+                AdviceDefinition::AdviceTrap(AdviceTrap(TrapSignature::TrapApply(TrapApply {
+                    apply_hook_signature: ApplyHookSignature::ApplyGenHook(ApplyGenHook {
+                        apply_formal_wasm_f: ApplyFormalWasmF(String::from("func")),
+                        args_identifier: String::from("args"),
+                        res_identifier: String::from("results"),
+                    }),
+                    body: String::from(">>>GUEST>>>[🐇], [🔍], [🙆‍]<<<GUEST<<<"),
+                }))),
+                AdviceDefinition::AdviceTrap(AdviceTrap(TrapSignature::TrapApply(TrapApply {
+                    apply_hook_signature: ApplyHookSignature::ApplyGenIntro(ApplyGenIntro {
+                        apply_formal_wasm_f: ApplyFormalWasmF(String::from("func")),
+                        args_identifier: String::from("args"),
+                        res_identifier: String::from("results"),
+                    }),
+                    body: String::from(">>>GUEST>>>[🐌], [🔍], [🙆‍]<<<GUEST<<<"),
+                }))),
+                AdviceDefinition::AdviceTrap(AdviceTrap(TrapSignature::TrapApply(TrapApply {
+                    apply_hook_signature: ApplyHookSignature::ApplyGenInter(ApplyGenInter {
+                        apply_formal_wasm_f: ApplyFormalWasmF(String::from("func")),
+                        args_identifier: String::from("args"),
+                        res_identifier: String::from("results"),
+                    }),
+                    body: String::from(">>>GUEST>>>[🐌], [📝], [🙆‍]<<<GUEST<<<"),
+                }))),
+                AdviceDefinition::AdviceTrap(AdviceTrap(TrapSignature::TrapApply(TrapApply {
+                    apply_hook_signature: ApplyHookSignature::ApplySpeIntro(ApplySpeIntro {
+                        apply_formal_wasm_f: ApplyFormalWasmF(String::from("func")),
+                        formal_arguments_arguments: vec![
+                            ApplyFormalArgument(TypedArgument {
+                                identifier: "a".into(),
+                                wasm_type: "I32".into(),
                             }),
-                            body: String::from(">>>GUEST>>>[🐇], [🔍], [🙆‍]<<<GUEST<<<"),
-                        }),
+                            ApplyFormalArgument(TypedArgument {
+                                identifier: "b".into(),
+                                wasm_type: "I32".into(),
+                            }),
+                        ],
+                        formal_arguments_results: vec![
+                            ApplyFormalResult(TypedArgument {
+                                identifier: "c".into(),
+                                wasm_type: "F32".into(),
+                            }),
+                            ApplyFormalResult(TypedArgument {
+                                identifier: "d".into(),
+                                wasm_type: "F32".into(),
+                            }),
+                        ],
                     }),
-                    AdviceDefinition::AdviceTrap(AdviceTrap {
-                        trap_signature: TrapSignature::TrapApply(TrapApply {
-                            apply_hook_signature: ApplyHookSignature::ApplyGenIntro(
-                                ApplyGenIntro {
-                                    apply_formal_wasm_f: ApplyFormalWasmF(String::from("func")),
-                                    args_identifier: String::from("args"),
-                                    res_identifier: String::from("results"),
-                                },
-                            ),
-                            body: String::from(">>>GUEST>>>[🐌], [🔍], [🙆‍]<<<GUEST<<<"),
-                        }),
+                    body: String::from(">>>GUEST>>>[🐇], [🔍], [🪖]<<<GUEST<<<"),
+                }))),
+                AdviceDefinition::AdviceTrap(AdviceTrap(TrapSignature::TrapApply(TrapApply {
+                    apply_hook_signature: ApplyHookSignature::ApplySpeInter(ApplySpeInter {
+                        apply_formal_wasm_f: ApplyFormalWasmF(String::from("func")),
+                        formal_arguments_arguments: vec![
+                            ApplyFormalArgument(TypedArgument {
+                                identifier: "a".into(),
+                                wasm_type: "I32".into(),
+                            }),
+                            ApplyFormalArgument(TypedArgument {
+                                identifier: "b".into(),
+                                wasm_type: "I32".into(),
+                            }),
+                        ],
+                        formal_arguments_results: vec![
+                            ApplyFormalResult(TypedArgument {
+                                identifier: "c".into(),
+                                wasm_type: "F32".into(),
+                            }),
+                            ApplyFormalResult(TypedArgument {
+                                identifier: "d".into(),
+                                wasm_type: "F32".into(),
+                            }),
+                        ],
                     }),
-                    AdviceDefinition::AdviceTrap(AdviceTrap {
-                        trap_signature: TrapSignature::TrapApply(TrapApply {
-                            apply_hook_signature: ApplyHookSignature::ApplyGenInter(
-                                ApplyGenInter {
-                                    apply_formal_wasm_f: ApplyFormalWasmF(String::from("func")),
-                                    args_identifier: String::from("args"),
-                                    res_identifier: String::from("results"),
-                                },
-                            ),
-                            body: String::from(">>>GUEST>>>[🐌], [📝], [🙆‍]<<<GUEST<<<"),
-                        }),
-                    }),
-                    AdviceDefinition::AdviceTrap(AdviceTrap {
-                        trap_signature: TrapSignature::TrapApply(TrapApply {
-                            apply_hook_signature: ApplyHookSignature::ApplySpeIntro(
-                                ApplySpeIntro {
-                                    apply_formal_wasm_f: ApplyFormalWasmF(String::from("func")),
-                                    formal_arguments_arguments: vec![
-                                        ApplyFormalArgument(TypedArgument {
-                                            identifier: "a".into(),
-                                            wasm_type: "I32".into(),
-                                        }),
-                                        ApplyFormalArgument(TypedArgument {
-                                            identifier: "b".into(),
-                                            wasm_type: "I32".into(),
-                                        }),
-                                    ],
-                                    formal_arguments_results: vec![
-                                        ApplyFormalResult(TypedArgument {
-                                            identifier: "c".into(),
-                                            wasm_type: "F32".into(),
-                                        }),
-                                        ApplyFormalResult(TypedArgument {
-                                            identifier: "d".into(),
-                                            wasm_type: "F32".into(),
-                                        }),
-                                    ],
-                                },
-                            ),
-                            body: String::from(">>>GUEST>>>[🐇], [🔍], [🪖]<<<GUEST<<<"),
-                        }),
-                    }),
-                    AdviceDefinition::AdviceTrap(AdviceTrap {
-                        trap_signature: TrapSignature::TrapApply(TrapApply {
-                            apply_hook_signature: ApplyHookSignature::ApplySpeInter(
-                                ApplySpeInter {
-                                    apply_formal_wasm_f: ApplyFormalWasmF(String::from("func")),
-                                    formal_arguments_arguments: vec![
-                                        ApplyFormalArgument(TypedArgument {
-                                            identifier: "a".into(),
-                                            wasm_type: "I32".into(),
-                                        }),
-                                        ApplyFormalArgument(TypedArgument {
-                                            identifier: "b".into(),
-                                            wasm_type: "I32".into(),
-                                        }),
-                                    ],
-                                    formal_arguments_results: vec![
-                                        ApplyFormalResult(TypedArgument {
-                                            identifier: "c".into(),
-                                            wasm_type: "F32".into(),
-                                        }),
-                                        ApplyFormalResult(TypedArgument {
-                                            identifier: "d".into(),
-                                            wasm_type: "F32".into(),
-                                        }),
-                                    ],
-                                },
-                            ),
-                            body: String::from(">>>GUEST>>>[🐇], [📝], [🪖]<<<GUEST<<<"),
-                        }),
-                    }),
-                ],
-            },
+                    body: String::from(">>>GUEST>>>[🐇], [📝], [🪖]<<<GUEST<<<"),
+                }))),
+            ]),
             _eoi: EOI,
         };
 
