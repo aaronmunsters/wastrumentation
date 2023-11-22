@@ -17,7 +17,8 @@ advice_global     = { "global" ~ GUEST_BLOCK }
 advice_trap       = { "advice" ~ trap_signature }
 
 // The definition of identifiers
-identifier = @{ ASCII_ALPHA+ }
+identifier      = @{ ASCII_ALPHA+ }
+type_identifier = @{ ASCII_ALPHA_UPPER ~ ASCII_ALPHANUMERIC+ }
 
 // Advice traps
 trap_signature = {
@@ -26,38 +27,16 @@ trap_signature = {
 
 // TRAP APPLY
 trap_apply           = { "apply" ~ apply_hook_signature ~ GUEST_BLOCK }
-apply_hook_signature = {
-    apply_gen_hook
-  | apply_gen_intro
-  | apply_gen_inter
-  | apply_spe_intro
-  | apply_spe_inter
-}
+apply_hook_signature = { apply_gen | apply_spe_intro | apply_spe_inter }
 
-// [🐇], [🔍], [🙆‍]
-apply_gen_hook = {
-    apply_formal_wasm_f ~ "(" ~ identifier ~ "Args" ~ ")" ~ "(" ~ identifier ~ "Results" ~ ")"
-}
-// [🐌], [🔍], [🙆‍]
-apply_gen_intro = {
-    apply_formal_wasm_f ~ "(" ~ identifier ~ "DynArgs" ~ ")" ~ "(" ~ identifier ~ "DynResults" ~ ")"
-}
-// [🐌], [📝], [🙆‍]
-apply_gen_inter = {
-    apply_formal_wasm_f ~ "(" ~ identifier ~ "DynMutArgs" ~ ")" ~ "(" ~ identifier ~ "DynMutResults" ~ ")"
-}
-// [🐇], [🔍], [🪖]
-apply_spe_intro = {
-    apply_formal_wasm_f ~ "(" ~ apply_formal_argument+ ~ ")" ~ "(" ~ apply_formal_result+ ~ ")"
-}
-
-// [🐇], [📝], [🪖]
-apply_spe_inter = {
-    apply_formal_wasm_f ~ "(" ~ "Mut" ~ apply_formal_argument+ ~ ")" ~ "(" ~ "Mut" ~ apply_formal_result+ ~ ")"
-}
+// [ 🐌 / (🐇) ], [ 🔍 / 📝 ], [ 🙆‍ ]
+apply_gen = { apply_formal_wasm_f ~ apply_formal_argument ~ apply_formal_result }
+// [ 🐇 ], [ 🔍 ], [ 🪖 ]
+apply_spe_intro = { apply_formal_wasm_f ~ "(" ~ apply_formal_argument+ ~ ")" ~ "(" ~ apply_formal_result+ ~ ")" }
+// [ 🐇 ], [ 📝 ], [ 🪖 ]
+apply_spe_inter = { apply_formal_wasm_f ~ "(" ~ "Mut" ~ apply_formal_argument+ ~ ")" ~ "(" ~ "Mut" ~ apply_formal_result+ ~ ")" }
 
 apply_formal_wasm_f   = { "(" ~ identifier ~ "WasmFunction" ~ ")" }
 apply_formal_argument = { typed_argument }
 apply_formal_result   = { typed_argument }
-typed_argument        = { "(" ~ identifier ~ wasm_type ~ ")" }
-wasm_type             = { "I32" | "F32" | "I64" | "F64" }
+typed_argument        = { "(" ~ identifier ~ type_identifier ~ ")" }
