@@ -1,6 +1,7 @@
 use pest_derive::Parser;
 
 mod advice_ast;
+mod wasp_ast;
 
 #[derive(Parser)]
 #[grammar = "wasp.pest"]
