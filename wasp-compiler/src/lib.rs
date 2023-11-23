@@ -1,11 +1,29 @@
+use advice_ast::WaspInput;
+use assemblyscript_ast::TypeScriptProgram;
+use from_pest::FromPest;
+use pest::Parser;
 use pest_derive::Parser;
+use wasp_ast::WaspRoot;
 
 mod advice_ast;
+mod assemblyscript_ast;
 mod wasp_ast;
 
 #[derive(Parser)]
 #[grammar = "wasp.pest"]
 pub struct WaspParser;
+
+impl<'a> TryFrom<&'a str> for TypeScriptProgram {
+    type Error = anyhow::Error;
+
+    fn try_from(program: &'a str) -> Result<Self, Self::Error> {
+        let mut pest_parse = WaspParser::parse(Rule::wasp_input, program)?;
+        let wasp_input = WaspInput::from_pest(&mut pest_parse)?;
+        let wasp_root = WaspRoot::try_from(wasp_input)?;
+        let typescript_program = TypeScriptProgram::from(wasp_root);
+        Ok(typescript_program)
+    }
+}
 
 #[cfg(test)]
 mod tests {
