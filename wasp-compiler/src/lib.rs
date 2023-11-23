@@ -1,13 +1,11 @@
-use advice_ast::WaspInput;
-use assemblyscript_ast::TypeScriptProgram;
+use ast::assemblyscript::TypeScriptProgram;
+use ast::pest::WaspRoot;
+use ast::wasp::WaspInput;
 use from_pest::FromPest;
 use pest::Parser;
 use pest_derive::Parser;
-use wasp_ast::WaspRoot;
 
-mod advice_ast;
-mod assemblyscript_ast;
-mod wasp_ast;
+mod ast;
 
 #[derive(Parser)]
 #[grammar = "wasp.pest"]

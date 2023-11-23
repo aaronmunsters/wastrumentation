@@ -1,4 +1,4 @@
-use crate::advice_ast::{
+use crate::ast::wasp::{
     self as pest_ast, ApplyFormalArgument, ApplyFormalResult, ApplyFormalWasmF, ApplySpeInter,
     ApplySpeIntro,
 };
@@ -331,7 +331,7 @@ impl TryFrom<Vec<pest_ast::ApplyFormalResult>> for WasmParameterVec {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{advice_ast, Rule, WaspParser};
+    use crate::{ast, Rule, WaspParser};
     use from_pest::FromPest;
     use pest::Parser;
 
@@ -361,7 +361,7 @@ mod tests {
 
     fn program_to_wasp_root(program: &str) -> anyhow::Result<WaspRoot> {
         let mut pest_parse = WaspParser::parse(Rule::wasp_input, program).unwrap();
-        let wasp_input = advice_ast::WaspInput::from_pest(&mut pest_parse).unwrap();
+        let wasp_input = ast::wasp::WaspInput::from_pest(&mut pest_parse).unwrap();
         let wasp_root = WaspRoot::try_from(wasp_input)?;
         Ok(wasp_root)
     }
