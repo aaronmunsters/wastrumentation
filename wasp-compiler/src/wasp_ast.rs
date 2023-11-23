@@ -171,6 +171,19 @@ impl TryFrom<pest_ast::ApplyGen> for ApplyGen {
                     ),
                 };
 
+        let mut parameters = HashSet::with_capacity(3);
+        parameters.insert(&parameter_apply);
+        parameters.insert(&formal_argument.identifier);
+        parameters.insert(&formal_result.identifier);
+        if parameters.len() != 3 {
+            return Err(anyhow!(
+                "Parameters must be unique, got: {}, {}, {}.",
+                &parameter_apply,
+                &formal_argument.identifier,
+                &formal_result.identifier
+            ));
+        }
+
         Ok(ApplyGen {
             generic_means,
             parameter_apply,
@@ -477,5 +490,17 @@ mod tests {
                 message
             );
         }
+    }
+    #[test]
+    fn test_errors_incorrect_parameters_duplicate() {
+        let program: String =
+            "(aspect (advice apply (a WasmFunction) (a Args) (a Results) >>>GUEST>>>🟢<<<GUEST<<<))".into();
+        assert_eq!(
+            program_to_wasp_root(&program)
+                .unwrap_err()
+                .to_string()
+                .as_str(),
+            "Parameters must be unique, got: a, a, a."
+        );
     }
 }
