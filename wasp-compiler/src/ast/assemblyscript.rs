@@ -277,18 +277,18 @@ mod tests {
 
         assert_eq!(
             typescript_program.content,
-            r#">>>GUEST>>>
+            r#"
                 console.log("Hello world!");
-            <<<GUEST<<<
+            
             export function generic_apply(f_apply: i32, argc: i32, resc: i32, sigv: i32, sigtypv: i32): void {
                 let func = new WasmFunction(f_apply, sigtypv);
                 let argsResults = new MutDynArgsResults(argc, resc, sigv, sigtypv);
                 let args = new MutDynArgs(argsResults);
                 let results = new MutDynRess(argsResults);
-                >>>GUEST>>>
+                
                  console.log(args.get<i32>(0));
                  func.apply();
-            <<<GUEST<<<
+            
             }
             "#
         );

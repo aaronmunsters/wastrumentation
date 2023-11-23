@@ -6,6 +6,15 @@ fn span_into_string(span: Span) -> String {
     span.as_str().to_string()
 }
 
+fn drop_guest_delimiter(guest_code: String) -> String {
+    guest_code
+        .strip_prefix(">>>GUEST>>>")
+        .unwrap()
+        .strip_suffix("<<<GUEST<<<")
+        .unwrap()
+        .to_string()
+}
+
 #[derive(Debug, PartialEq, Eq, FromPest)]
 #[pest_ast(rule(Rule::wasp_input))]
 pub struct WaspInput {
@@ -26,7 +35,9 @@ pub enum AdviceDefinition {
 
 #[derive(Debug, PartialEq, Eq, FromPest)]
 #[pest_ast(rule(Rule::advice_global))]
-pub struct AdviceGlobal(#[pest_ast(inner(with(span_into_string)))] pub String);
+pub struct AdviceGlobal(
+    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter)))] pub String,
+);
 
 #[derive(Debug, PartialEq, Eq, FromPest)]
 #[pest_ast(rule(Rule::advice_trap))]
@@ -42,7 +53,7 @@ pub enum TrapSignature {
 #[pest_ast(rule(Rule::trap_apply))]
 pub struct TrapApply {
     pub apply_hook_signature: ApplyHookSignature,
-    #[pest_ast(inner(with(span_into_string)))]
+    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter)))]
     pub body: String,
 }
 
@@ -124,7 +135,7 @@ mod tests {
     fn aspect_global_only() -> anyhow::Result<()> {
         let expected = WaspInput {
             records: Wasp(vec![AdviceDefinition::AdviceGlobal(AdviceGlobal(
-                r#">>>GUEST>>> console.log("Hello world!") <<<GUEST<<<"#.into(),
+                r#" console.log("Hello world!") "#.into(),
             ))]),
             _eoi: EndOfInput,
         };
@@ -154,7 +165,7 @@ mod tests {
                             type_identifier: "Results".into(),
                         }),
                     }),
-                    body: String::from(">>>GUEST>>>global_function_count++;<<<GUEST<<<"),
+                    body: String::from("global_function_count++;"),
                 }),
             ))]),
             _eoi: EndOfInput,
@@ -200,7 +211,7 @@ mod tests {
                             }),
                         ],
                     }),
-                    body: ">>>GUEST>>>[🐇], [🔍], [🪖]<<<GUEST<<<".into(),
+                    body: "[🐇], [🔍], [🪖]".into(),
                 }),
             ))]),
             _eoi: EndOfInput,
@@ -247,7 +258,7 @@ mod tests {
                             }),
                         ],
                     }),
-                    body: ">>>GUEST>>>[🐇], [🔍], [🪖]<<<GUEST<<<".into(),
+                    body: "[🐇], [🔍], [🪖]".into(),
                 }),
             ))]),
             _eoi: EndOfInput,
@@ -282,7 +293,7 @@ mod tests {
                             type_identifier: "Results".into(),
                         }),
                     }),
-                    body: String::from(">>>GUEST>>>[🐇], [🔍], [🙆‍]<<<GUEST<<<"),
+                    body: String::from("[🐇], [🔍], [🙆‍]"),
                 }))),
                 AdviceDefinition::AdviceTrap(AdviceTrap(TrapSignature::TrapApply(TrapApply {
                     apply_hook_signature: ApplyHookSignature::Gen(ApplyGen {
@@ -296,7 +307,7 @@ mod tests {
                             type_identifier: "DynResults".into(),
                         }),
                     }),
-                    body: String::from(">>>GUEST>>>[🐌], [🔍], [🙆‍]<<<GUEST<<<"),
+                    body: String::from("[🐌], [🔍], [🙆‍]"),
                 }))),
                 AdviceDefinition::AdviceTrap(AdviceTrap(TrapSignature::TrapApply(TrapApply {
                     apply_hook_signature: ApplyHookSignature::Gen(ApplyGen {
@@ -310,7 +321,7 @@ mod tests {
                             type_identifier: "MutDynResults".into(),
                         }),
                     }),
-                    body: String::from(">>>GUEST>>>[🐌], [📝], [🙆‍]<<<GUEST<<<"),
+                    body: String::from("[🐌], [📝], [🙆‍]"),
                 }))),
                 AdviceDefinition::AdviceTrap(AdviceTrap(TrapSignature::TrapApply(TrapApply {
                     apply_hook_signature: ApplyHookSignature::SpeIntro(ApplySpeIntro {
@@ -336,7 +347,7 @@ mod tests {
                             }),
                         ],
                     }),
-                    body: String::from(">>>GUEST>>>[🐇], [🔍], [🪖]<<<GUEST<<<"),
+                    body: String::from("[🐇], [🔍], [🪖]"),
                 }))),
                 AdviceDefinition::AdviceTrap(AdviceTrap(TrapSignature::TrapApply(TrapApply {
                     apply_hook_signature: ApplyHookSignature::SpeInter(ApplySpeInter {
@@ -362,7 +373,7 @@ mod tests {
                             }),
                         ],
                     }),
-                    body: String::from(">>>GUEST>>>[🐇], [📝], [🪖]<<<GUEST<<<"),
+                    body: String::from("[🐇], [📝], [🪖]"),
                 }))),
             ]),
             _eoi: EndOfInput,

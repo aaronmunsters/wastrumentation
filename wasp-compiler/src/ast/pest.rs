@@ -378,7 +378,7 @@ mod tests {
                         parameter_arguments: "args".into(),
                         parameter_results: "results".into()
                     }),
-                    body: ">>>GUEST>>>🔴<<<GUEST<<<".into()
+                    body: "🔴".into()
                 })),
                 AdviceDefinition::AdviceTrap(TrapSignature::TrapApply(TrapApply {
                     apply_hook_signature: ApplyHookSignature::Gen(ApplyGen {
@@ -387,7 +387,7 @@ mod tests {
                         parameter_arguments: "args".into(),
                         parameter_results: "results".into()
                     }),
-                    body: ">>>GUEST>>>🟠<<<GUEST<<<".into()
+                    body: "🟠".into()
                 })),
                 AdviceDefinition::AdviceTrap(TrapSignature::TrapApply(TrapApply {
                     apply_hook_signature: ApplyHookSignature::Gen(ApplyGen {
@@ -396,7 +396,7 @@ mod tests {
                         parameter_arguments: "args".into(),
                         parameter_results: "results".into()
                     }),
-                    body: ">>>GUEST>>>🟡<<<GUEST<<<".into()
+                    body: "🟡".into()
                 })),
                 AdviceDefinition::AdviceTrap(TrapSignature::TrapApply(TrapApply {
                     apply_hook_signature: ApplyHookSignature::Spe(ApplySpe {
@@ -423,7 +423,7 @@ mod tests {
                             }
                         ]
                     }),
-                    body: ">>>GUEST>>>🟢<<<GUEST<<<".into()
+                    body: "🟢".into()
                 })),
                 AdviceDefinition::AdviceTrap(TrapSignature::TrapApply(TrapApply {
                     apply_hook_signature: ApplyHookSignature::Spe(ApplySpe {
@@ -450,9 +450,9 @@ mod tests {
                             }
                         ]
                     }),
-                    body: ">>>GUEST>>>🔵<<<GUEST<<<".into()
+                    body: "🔵".into()
                 })),
-                AdviceDefinition::AdviceGlobal(">>>GUEST>>>🟣<<<GUEST<<<".into()),
+                AdviceDefinition::AdviceGlobal("🟣".into()),
             ])
         )
     }
