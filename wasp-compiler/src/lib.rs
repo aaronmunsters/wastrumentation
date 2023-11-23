@@ -1,15 +1,10 @@
 use ast::assemblyscript::TypeScriptProgram;
-use ast::pest::WaspRoot;
+use ast::pest::{Rule, WaspParser, WaspRoot};
 use ast::wasp::WaspInput;
 use from_pest::FromPest;
 use pest::Parser;
-use pest_derive::Parser;
 
 mod ast;
-
-#[derive(Parser)]
-#[grammar = "wasp.pest"]
-pub struct WaspParser;
 
 impl<'a> TryFrom<&'a str> for TypeScriptProgram {
     type Error = anyhow::Error;
