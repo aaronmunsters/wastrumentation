@@ -1,409 +1,344 @@
-use crate::Rule;
-use pest::Span;
-use pest_ast::FromPest;
+use crate::ast::pest::{
+    self as pest_ast, ApplyFormalArgument, ApplyFormalResult, ApplyFormalWasmF, ApplySpeInter,
+    ApplySpeIntro,
+};
+use anyhow::anyhow;
+use pest_derive::Parser;
+use std::collections::HashSet;
 
-fn span_into_string(span: Span) -> String {
-    span.as_str().to_string()
-}
+const ARGS_HIGHLEVEL: &str = "Args";
+const ARGS_DYNAMIC: &str = "DynArgs";
+const ARGS_DYNAMIC_MUT: &str = "MutDynArgs";
+const RESS_HIGHLEVEL: &str = "Results";
+const RESS_DYNAMIC: &str = "DynResults";
+const RESS_DYNAMIC_MUT: &str = "MutDynResults";
 
-fn drop_guest_delimiter(guest_code: String) -> String {
-    guest_code
-        .strip_prefix(">>>GUEST>>>")
-        .unwrap()
-        .strip_suffix("<<<GUEST<<<")
-        .unwrap()
-        .to_string()
-}
+const I32_STR: &str = "I32";
+const F32_STR: &str = "F32";
+const I64_STR: &str = "I64";
+const F64_STR: &str = "F64";
 
-#[derive(Debug, PartialEq, Eq, FromPest)]
-#[pest_ast(rule(Rule::wasp_input))]
-pub struct WaspInput {
-    pub records: Wasp,
-    _eoi: EndOfInput,
-}
+#[derive(Parser)]
+#[grammar = "wasp.pest"]
+pub struct WaspParser;
 
-#[derive(Debug, PartialEq, Eq, FromPest)]
-#[pest_ast(rule(Rule::wasp))]
-pub struct Wasp(pub Vec<AdviceDefinition>);
+#[derive(Debug, PartialEq, Eq)]
+pub struct WaspRoot(pub Vec<AdviceDefinition>);
 
-#[derive(Debug, PartialEq, Eq, FromPest)]
-#[pest_ast(rule(Rule::advice_definition))]
+#[derive(Debug, PartialEq, Eq)]
 pub enum AdviceDefinition {
-    AdviceGlobal(AdviceGlobal),
-    AdviceTrap(AdviceTrap),
+    AdviceGlobal(String),
+    AdviceTrap(TrapSignature),
 }
 
-#[derive(Debug, PartialEq, Eq, FromPest)]
-#[pest_ast(rule(Rule::advice_global))]
-pub struct AdviceGlobal(
-    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter)))] pub String,
-);
-
-#[derive(Debug, PartialEq, Eq, FromPest)]
-#[pest_ast(rule(Rule::advice_trap))]
-pub struct AdviceTrap(pub TrapSignature);
-
-#[derive(Debug, PartialEq, Eq, FromPest)]
-#[pest_ast(rule(Rule::trap_signature))]
+#[derive(Debug, PartialEq, Eq)]
 pub enum TrapSignature {
     TrapApply(TrapApply),
 }
 
-#[derive(Debug, PartialEq, Eq, FromPest)]
-#[pest_ast(rule(Rule::trap_apply))]
+#[derive(Debug, PartialEq, Eq)]
 pub struct TrapApply {
     pub apply_hook_signature: ApplyHookSignature,
-    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter)))]
     pub body: String,
 }
 
-#[derive(Debug, PartialEq, Eq, FromPest)]
-#[pest_ast(rule(Rule::apply_hook_signature))]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ApplyHookSignature {
     Gen(ApplyGen),
-    SpeInter(ApplySpeInter),
-    SpeIntro(ApplySpeIntro),
+    Spe(ApplySpe),
 }
 
-#[derive(Debug, PartialEq, Eq, FromPest)]
-#[pest_ast(rule(Rule::apply_gen))]
+#[derive(Debug, PartialEq, Eq)]
+pub enum GenericTarget {
+    HighLevel,
+    Dynamic,
+    MutableDynamic,
+}
+
+#[derive(Debug, PartialEq, Eq)]
 pub struct ApplyGen {
-    pub apply_formal_wasm_f: ApplyFormalWasmF,
-    pub apply_formal_argument: ApplyFormalArgument,
-    pub apply_formal_result: ApplyFormalResult,
+    pub generic_means: GenericTarget,
+    pub parameter_apply: String,
+    pub parameter_arguments: String,
+    pub parameter_results: String,
 }
 
-#[derive(Debug, PartialEq, Eq, FromPest)]
-#[pest_ast(rule(Rule::apply_spe_inter))]
-pub struct ApplySpeInter {
-    pub apply_formal_wasm_f: ApplyFormalWasmF,
-    pub formal_arguments_arguments: Vec<ApplyFormalArgument>,
-    pub formal_arguments_results: Vec<ApplyFormalResult>,
+#[derive(Debug, PartialEq, Eq)]
+pub struct ApplySpe {
+    pub mutable_signature: bool,
+    pub apply_parameter: String,
+    pub parameters_arguments: Vec<WasmParameter>,
+    pub parameters_results: Vec<WasmParameter>,
 }
 
-#[derive(Debug, PartialEq, Eq, FromPest)]
-#[pest_ast(rule(Rule::apply_spe_intro))]
-pub struct ApplySpeIntro {
-    pub apply_formal_wasm_f: ApplyFormalWasmF,
-    pub formal_arguments_arguments: Vec<ApplyFormalArgument>,
-    pub formal_arguments_results: Vec<ApplyFormalResult>,
+#[derive(Debug, PartialEq, Eq)]
+pub enum WasmType {
+    I32,
+    F32,
+    I64,
+    F64,
 }
 
-#[derive(Debug, PartialEq, Eq, FromPest)]
-#[pest_ast(rule(Rule::apply_formal_wasm_f))]
-pub struct ApplyFormalWasmF(#[pest_ast(inner(with(span_into_string)))] pub String);
-
-#[derive(Debug, PartialEq, Eq, FromPest)]
-#[pest_ast(rule(Rule::apply_formal_argument))]
-pub struct ApplyFormalArgument(pub TypedArgument);
-
-#[derive(Debug, PartialEq, Eq, FromPest)]
-#[pest_ast(rule(Rule::apply_formal_result))]
-pub struct ApplyFormalResult(pub TypedArgument);
-
-#[derive(Debug, PartialEq, Eq, FromPest)]
-#[pest_ast(rule(Rule::typed_argument))]
-pub struct TypedArgument {
-    #[pest_ast(inner(with(span_into_string)))]
+#[derive(Debug, PartialEq, Eq)]
+pub struct WasmParameter {
     pub identifier: String,
-    #[pest_ast(inner(with(span_into_string)))]
-    pub type_identifier: String,
+    pub identifier_type: WasmType,
 }
 
-#[derive(Debug, PartialEq, Eq, FromPest)]
-#[pest_ast(rule(Rule::EOI))]
-struct EndOfInput;
+impl TryFrom<pest_ast::WaspInput> for WaspRoot {
+    type Error = anyhow::Error;
+
+    fn try_from(pest_wasp_input: pest_ast::WaspInput) -> Result<Self, Self::Error> {
+        let pest_ast::Wasp(pest_advice_definitions) = pest_wasp_input.records;
+        let mut advice_definitions = Vec::with_capacity(pest_advice_definitions.len());
+        for advice_definition in pest_advice_definitions {
+            advice_definitions.push(AdviceDefinition::try_from(advice_definition)?);
+        }
+        Ok(WaspRoot(advice_definitions))
+    }
+}
+
+impl TryFrom<pest_ast::AdviceDefinition> for AdviceDefinition {
+    type Error = anyhow::Error;
+
+    fn try_from(pest_advice_definition: pest_ast::AdviceDefinition) -> Result<Self, Self::Error> {
+        match pest_advice_definition {
+            pest_ast::AdviceDefinition::AdviceGlobal(pest_ast::AdviceGlobal(definition)) => {
+                Ok(AdviceDefinition::AdviceGlobal(definition))
+            }
+            pest_ast::AdviceDefinition::AdviceTrap(pest_ast::AdviceTrap(trap_signature)) => Ok(
+                AdviceDefinition::AdviceTrap(TrapSignature::try_from(trap_signature)?),
+            ),
+        }
+    }
+}
+
+impl TryFrom<pest_ast::TrapSignature> for TrapSignature {
+    type Error = anyhow::Error;
+
+    fn try_from(pest_trap_signature: pest_ast::TrapSignature) -> Result<Self, Self::Error> {
+        match pest_trap_signature {
+            pest_ast::TrapSignature::TrapApply(pest_ast::TrapApply {
+                apply_hook_signature,
+                body,
+            }) => Ok(TrapSignature::TrapApply(TrapApply {
+                apply_hook_signature: ApplyHookSignature::try_from(apply_hook_signature)?,
+                body,
+            })),
+        }
+    }
+}
+
+impl TryFrom<pest_ast::ApplyHookSignature> for ApplyHookSignature {
+    type Error = anyhow::Error;
+
+    fn try_from(
+        pest_apply_hook_signature: pest_ast::ApplyHookSignature,
+    ) -> Result<Self, Self::Error> {
+        match pest_apply_hook_signature {
+            pest_ast::ApplyHookSignature::Gen(pest_apply_gen) => {
+                Ok(ApplyHookSignature::Gen(ApplyGen::try_from(pest_apply_gen)?))
+            }
+            pest_ast::ApplyHookSignature::SpeInter(pest_apply_spe_inter) => Ok(
+                ApplyHookSignature::Spe(ApplySpe::try_from(pest_apply_spe_inter)?),
+            ),
+            pest_ast::ApplyHookSignature::SpeIntro(pest_apply_spe_intro) => Ok(
+                ApplyHookSignature::Spe(ApplySpe::try_from(pest_apply_spe_intro)?),
+            ),
+        }
+    }
+}
+
+impl TryFrom<pest_ast::ApplyGen> for ApplyGen {
+    type Error = anyhow::Error;
+
+    fn try_from(pest_apply_gen: pest_ast::ApplyGen) -> Result<Self, Self::Error> {
+        let pest_ast::ApplyGen {
+            apply_formal_wasm_f: ApplyFormalWasmF(parameter_apply),
+            apply_formal_argument,
+            apply_formal_result,
+        } = pest_apply_gen;
+        let ApplyFormalArgument(formal_argument) = apply_formal_argument;
+        let ApplyFormalResult(formal_result) = apply_formal_result;
+        let generic_means: GenericTarget = match (
+                    formal_argument.type_identifier.as_str(),
+                    formal_result.type_identifier.as_str(),
+                ) {
+                    (ARGS_HIGHLEVEL, RESS_HIGHLEVEL) => GenericTarget::HighLevel,
+                    (ARGS_DYNAMIC, RESS_DYNAMIC) => GenericTarget::Dynamic,
+                    (ARGS_DYNAMIC_MUT, RESS_DYNAMIC_MUT) => GenericTarget::MutableDynamic,
+                    (args, ress) => return Err(
+                        anyhow!(
+                            "Formal parameters must both be either high-level, dynamic or mutably dynamic (got: args {}, for ress {}).",
+                            args,
+                            ress
+                        )
+                    ),
+                };
+
+        let mut parameters = HashSet::with_capacity(3);
+        parameters.insert(&parameter_apply);
+        parameters.insert(&formal_argument.identifier);
+        parameters.insert(&formal_result.identifier);
+        if parameters.len() != 3 {
+            return Err(anyhow!(
+                "Parameters must be unique, got: {}, {}, {}.",
+                &parameter_apply,
+                &formal_argument.identifier,
+                &formal_result.identifier
+            ));
+        }
+
+        Ok(ApplyGen {
+            generic_means,
+            parameter_apply,
+            parameter_arguments: formal_argument.identifier,
+            parameter_results: formal_result.identifier,
+        })
+    }
+}
+
+impl TryFrom<pest_ast::ApplySpeInter> for ApplySpe {
+    type Error = anyhow::Error;
+
+    fn try_from(pest_apply_spe_inter: pest_ast::ApplySpeInter) -> Result<Self, Self::Error> {
+        let ApplySpeInter {
+            apply_formal_wasm_f: ApplyFormalWasmF(apply_parameter),
+            formal_arguments_arguments,
+            formal_arguments_results,
+        } = pest_apply_spe_inter;
+        let WasmParameterVec(parameters_arguments) =
+            WasmParameterVec::try_from(formal_arguments_arguments)?;
+        let WasmParameterVec(parameters_results) =
+            WasmParameterVec::try_from(formal_arguments_results)?;
+        WasmParameterVec::distinct_arguments(&parameters_arguments, &parameters_results)?;
+        Ok(ApplySpe {
+            mutable_signature: false,
+            apply_parameter,
+            parameters_arguments,
+            parameters_results,
+        })
+    }
+}
+
+impl TryFrom<pest_ast::ApplySpeIntro> for ApplySpe {
+    type Error = anyhow::Error;
+
+    fn try_from(pest_apply_spe_intro: pest_ast::ApplySpeIntro) -> Result<Self, Self::Error> {
+        let ApplySpeIntro {
+            apply_formal_wasm_f: ApplyFormalWasmF(apply_parameter),
+            formal_arguments_arguments,
+            formal_arguments_results,
+        } = pest_apply_spe_intro;
+        let WasmParameterVec(parameters_arguments) =
+            WasmParameterVec::try_from(formal_arguments_arguments)?;
+        let WasmParameterVec(parameters_results) =
+            WasmParameterVec::try_from(formal_arguments_results)?;
+        WasmParameterVec::distinct_arguments(&parameters_arguments, &parameters_results)?;
+        Ok(ApplySpe {
+            mutable_signature: true,
+            apply_parameter,
+            parameters_arguments,
+            parameters_results,
+        })
+    }
+}
+
+struct WasmParameterVec(Vec<WasmParameter>);
+impl WasmParameterVec {
+    fn distinct_arguments(
+        parameters_1: &[WasmParameter],
+        parameters_2: &[WasmParameter],
+    ) -> anyhow::Result<()> {
+        let mut parameters: HashSet<String> = HashSet::with_capacity(parameters_1.len() - 1);
+        for parameter in parameters_1.iter().chain(parameters_2.iter()) {
+            if parameters.contains(parameter.identifier.as_str()) {
+                return Err(anyhow!(
+                    "Duplicate paramater accross arguments and results: {}.",
+                    parameter.identifier
+                ));
+            }
+            parameters.insert(parameter.identifier.to_string());
+        }
+        Ok(())
+    }
+}
+
+impl TryFrom<Vec<pest_ast::TypedArgument>> for WasmParameterVec {
+    type Error = anyhow::Error;
+
+    fn try_from(pest_typed_arguments: Vec<pest_ast::TypedArgument>) -> Result<Self, Self::Error> {
+        let mut wasm_type_vec: Vec<WasmParameter> = Vec::with_capacity(pest_typed_arguments.len());
+        let mut arguments_identifiers: HashSet<String> =
+            HashSet::with_capacity(pest_typed_arguments.len());
+        for typed_argument in pest_typed_arguments {
+            let pest_ast::TypedArgument {
+                identifier,
+                type_identifier,
+            } = typed_argument;
+            let identifier_type = match type_identifier.as_str() {
+                I32_STR => WasmType::I32,
+                F32_STR => WasmType::F32,
+                I64_STR => WasmType::I64,
+                F64_STR => WasmType::F64,
+                unsupported_type => {
+                    return Err(anyhow!(
+                    "Provided type {} unsupported, use one of following instead: {}, {}, {} & {}.",
+                    unsupported_type,
+                    I32_STR,
+                    F32_STR,
+                    I64_STR,
+                    F64_STR
+                ))
+                }
+            };
+            if arguments_identifiers.contains(&identifier) {
+                return Err(anyhow!("Duplicate parameter found: {}", &identifier));
+            }
+            arguments_identifiers.insert(identifier.clone());
+            wasm_type_vec.push(WasmParameter {
+                identifier,
+                identifier_type,
+            })
+        }
+        Ok(WasmParameterVec(wasm_type_vec))
+    }
+}
+
+impl TryFrom<Vec<pest_ast::ApplyFormalArgument>> for WasmParameterVec {
+    type Error = anyhow::Error;
+
+    fn try_from(
+        pest_apply_formal_arguments: Vec<pest_ast::ApplyFormalArgument>,
+    ) -> Result<Self, Self::Error> {
+        let typed_arguments: Vec<pest_ast::TypedArgument> = pest_apply_formal_arguments
+            .into_iter()
+            .map(|pest_apply_formal_argument| pest_apply_formal_argument.0)
+            .collect();
+        typed_arguments.try_into()
+    }
+}
+
+impl TryFrom<Vec<pest_ast::ApplyFormalResult>> for WasmParameterVec {
+    type Error = anyhow::Error;
+
+    fn try_from(
+        pest_apply_formal_results: Vec<pest_ast::ApplyFormalResult>,
+    ) -> Result<Self, Self::Error> {
+        let typed_arguments: Vec<pest_ast::TypedArgument> = pest_apply_formal_results
+            .into_iter()
+            .map(|pest_apply_formal_argument| pest_apply_formal_argument.0)
+            .collect();
+        typed_arguments.try_into()
+    }
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::WaspParser;
+    use crate::{ast, Rule, WaspParser};
     use from_pest::FromPest;
     use pest::Parser;
-
-    #[test]
-    fn aspect_global_empty() {
-        let mut parse_tree = WaspParser::parse(Rule::wasp_input, "(aspect)").unwrap();
-        let WaspInput { .. } = WaspInput::from_pest(&mut parse_tree).unwrap();
-    }
-
-    #[test]
-    fn aspect_global_only() {
-        let expected = WaspInput {
-            records: Wasp(vec![AdviceDefinition::AdviceGlobal(AdviceGlobal(
-                r#" console.log("Hello world!") "#.into(),
-            ))]),
-            _eoi: EndOfInput,
-        };
-        let mut parse_tree = WaspParser::parse(
-            Rule::wasp_input,
-            r#"
-        (aspect
-            (global >>>GUEST>>> console.log("Hello world!") <<<GUEST<<<))"#,
-        )
-        .unwrap();
-        assert_eq!(WaspInput::from_pest(&mut parse_tree).unwrap(), expected);
-    }
-
-    #[test]
-    fn aspect_trap_apply_hook() {
-        let expected = WaspInput {
-            records: Wasp(vec![AdviceDefinition::AdviceTrap(AdviceTrap(
-                TrapSignature::TrapApply(TrapApply {
-                    apply_hook_signature: ApplyHookSignature::Gen(ApplyGen {
-                        apply_formal_wasm_f: ApplyFormalWasmF(String::from("func")),
-                        apply_formal_argument: ApplyFormalArgument(TypedArgument {
-                            identifier: "args".into(),
-                            type_identifier: "Args".into(),
-                        }),
-                        apply_formal_result: ApplyFormalResult(TypedArgument {
-                            identifier: "results".into(),
-                            type_identifier: "Results".into(),
-                        }),
-                    }),
-                    body: String::from("global_function_count++;"),
-                }),
-            ))]),
-            _eoi: EndOfInput,
-        };
-        let mut parse_tree = WaspParser::parse(
-            Rule::wasp_input,
-            r#"
-    (aspect
-        (advice apply (func    WasmFunction)
-                    (args    Args)
-                    (results Results)
-                >>>GUEST>>>global_function_count++;<<<GUEST<<<))"#,
-        )
-        .unwrap();
-        assert_eq!(WaspInput::from_pest(&mut parse_tree).unwrap(), expected);
-    }
-
-    #[test]
-    fn aspect_test_apply_spe_intro() {
-        let expected = WaspInput {
-            records: Wasp(vec![AdviceDefinition::AdviceTrap(AdviceTrap(
-                TrapSignature::TrapApply(TrapApply {
-                    apply_hook_signature: ApplyHookSignature::SpeIntro(ApplySpeIntro {
-                        apply_formal_wasm_f: ApplyFormalWasmF("func".into()),
-                        formal_arguments_arguments: vec![
-                            ApplyFormalArgument(TypedArgument {
-                                identifier: "a".into(),
-                                type_identifier: "I32".into(),
-                            }),
-                            ApplyFormalArgument(TypedArgument {
-                                identifier: "b".into(),
-                                type_identifier: "I32".into(),
-                            }),
-                        ],
-                        formal_arguments_results: vec![
-                            ApplyFormalResult(TypedArgument {
-                                identifier: "c".into(),
-                                type_identifier: "F32".into(),
-                            }),
-                            ApplyFormalResult(TypedArgument {
-                                identifier: "d".into(),
-                                type_identifier: "F32".into(),
-                            }),
-                        ],
-                    }),
-                    body: "[🐇], [🔍], [🪖]".into(),
-                }),
-            ))]),
-            _eoi: EndOfInput,
-        };
-
-        let mut parse_tree = WaspParser::parse(
-            Rule::wasp_input,
-            r#"
-    (aspect
-        (advice apply (func    WasmFunction)
-                      ((a I32) (b I32))
-                      ((c F32) (d F32))
-                >>>GUEST>>>[🐇], [🔍], [🪖]<<<GUEST<<<))"#,
-        )
-        .unwrap();
-        assert_eq!(WaspInput::from_pest(&mut parse_tree).unwrap(), expected);
-    }
-
-    #[test]
-    fn aspect_test_apply_spe_inter() {
-        let expected = WaspInput {
-            records: Wasp(vec![AdviceDefinition::AdviceTrap(AdviceTrap(
-                TrapSignature::TrapApply(TrapApply {
-                    apply_hook_signature: ApplyHookSignature::SpeInter(ApplySpeInter {
-                        apply_formal_wasm_f: ApplyFormalWasmF("func".into()),
-                        formal_arguments_arguments: vec![
-                            ApplyFormalArgument(TypedArgument {
-                                identifier: "a".into(),
-                                type_identifier: "I32".into(),
-                            }),
-                            ApplyFormalArgument(TypedArgument {
-                                identifier: "b".into(),
-                                type_identifier: "I32".into(),
-                            }),
-                        ],
-                        formal_arguments_results: vec![
-                            ApplyFormalResult(TypedArgument {
-                                identifier: "c".into(),
-                                type_identifier: "F32".into(),
-                            }),
-                            ApplyFormalResult(TypedArgument {
-                                identifier: "d".into(),
-                                type_identifier: "F32".into(),
-                            }),
-                        ],
-                    }),
-                    body: "[🐇], [🔍], [🪖]".into(),
-                }),
-            ))]),
-            _eoi: EndOfInput,
-        };
-
-        let mut parse_tree = WaspParser::parse(
-            Rule::wasp_input,
-            r#"
-    (aspect
-        (advice apply (func    WasmFunction)
-                      (Mut (a I32) (b I32))
-                      (Mut (c F32) (d F32))
-                >>>GUEST>>>[🐇], [🔍], [🪖]<<<GUEST<<<))"#,
-        )
-        .unwrap();
-        assert_eq!(WaspInput::from_pest(&mut parse_tree).unwrap(), expected);
-    }
-
-    #[test]
-    fn aspect_trap_applies() {
-        let expected = WaspInput {
-            records: Wasp(vec![
-                AdviceDefinition::AdviceTrap(AdviceTrap(TrapSignature::TrapApply(TrapApply {
-                    apply_hook_signature: ApplyHookSignature::Gen(ApplyGen {
-                        apply_formal_wasm_f: ApplyFormalWasmF(String::from("func")),
-                        apply_formal_argument: ApplyFormalArgument(TypedArgument {
-                            identifier: "args".into(),
-                            type_identifier: "Args".into(),
-                        }),
-                        apply_formal_result: ApplyFormalResult(TypedArgument {
-                            identifier: "results".into(),
-                            type_identifier: "Results".into(),
-                        }),
-                    }),
-                    body: String::from("[🐇], [🔍], [🙆‍]"),
-                }))),
-                AdviceDefinition::AdviceTrap(AdviceTrap(TrapSignature::TrapApply(TrapApply {
-                    apply_hook_signature: ApplyHookSignature::Gen(ApplyGen {
-                        apply_formal_wasm_f: ApplyFormalWasmF(String::from("func")),
-                        apply_formal_argument: ApplyFormalArgument(TypedArgument {
-                            identifier: "args".into(),
-                            type_identifier: "DynArgs".into(),
-                        }),
-                        apply_formal_result: ApplyFormalResult(TypedArgument {
-                            identifier: "results".into(),
-                            type_identifier: "DynResults".into(),
-                        }),
-                    }),
-                    body: String::from("[🐌], [🔍], [🙆‍]"),
-                }))),
-                AdviceDefinition::AdviceTrap(AdviceTrap(TrapSignature::TrapApply(TrapApply {
-                    apply_hook_signature: ApplyHookSignature::Gen(ApplyGen {
-                        apply_formal_wasm_f: ApplyFormalWasmF(String::from("func")),
-                        apply_formal_argument: ApplyFormalArgument(TypedArgument {
-                            identifier: "args".into(),
-                            type_identifier: "MutDynArgs".into(),
-                        }),
-                        apply_formal_result: ApplyFormalResult(TypedArgument {
-                            identifier: "results".into(),
-                            type_identifier: "MutDynResults".into(),
-                        }),
-                    }),
-                    body: String::from("[🐌], [📝], [🙆‍]"),
-                }))),
-                AdviceDefinition::AdviceTrap(AdviceTrap(TrapSignature::TrapApply(TrapApply {
-                    apply_hook_signature: ApplyHookSignature::SpeIntro(ApplySpeIntro {
-                        apply_formal_wasm_f: ApplyFormalWasmF("func".into()),
-                        formal_arguments_arguments: vec![
-                            ApplyFormalArgument(TypedArgument {
-                                identifier: "a".into(),
-                                type_identifier: "I32".into(),
-                            }),
-                            ApplyFormalArgument(TypedArgument {
-                                identifier: "b".into(),
-                                type_identifier: "I32".into(),
-                            }),
-                        ],
-                        formal_arguments_results: vec![
-                            ApplyFormalResult(TypedArgument {
-                                identifier: "c".into(),
-                                type_identifier: "F32".into(),
-                            }),
-                            ApplyFormalResult(TypedArgument {
-                                identifier: "d".into(),
-                                type_identifier: "F32".into(),
-                            }),
-                        ],
-                    }),
-                    body: String::from("[🐇], [🔍], [🪖]"),
-                }))),
-                AdviceDefinition::AdviceTrap(AdviceTrap(TrapSignature::TrapApply(TrapApply {
-                    apply_hook_signature: ApplyHookSignature::SpeInter(ApplySpeInter {
-                        apply_formal_wasm_f: ApplyFormalWasmF("func".into()),
-                        formal_arguments_arguments: vec![
-                            ApplyFormalArgument(TypedArgument {
-                                identifier: "a".into(),
-                                type_identifier: "I32".into(),
-                            }),
-                            ApplyFormalArgument(TypedArgument {
-                                identifier: "b".into(),
-                                type_identifier: "I32".into(),
-                            }),
-                        ],
-                        formal_arguments_results: vec![
-                            ApplyFormalResult(TypedArgument {
-                                identifier: "c".into(),
-                                type_identifier: "F32".into(),
-                            }),
-                            ApplyFormalResult(TypedArgument {
-                                identifier: "d".into(),
-                                type_identifier: "F32".into(),
-                            }),
-                        ],
-                    }),
-                    body: String::from("[🐇], [📝], [🪖]"),
-                }))),
-            ]),
-            _eoi: EndOfInput,
-        };
-
-        let mut parse_tree = WaspParser::parse(
-            Rule::wasp_input,
-            r#"
-    (aspect
-        (advice apply (func    WasmFunction)
-                      (args    Args)
-                      (results Results)
-                >>>GUEST>>>[🐇], [🔍], [🙆‍]<<<GUEST<<<)
-        (advice apply (func    WasmFunction)
-                      (args    DynArgs)
-                      (results DynResults)
-                >>>GUEST>>>[🐌], [🔍], [🙆‍]<<<GUEST<<<)
-        (advice apply (func    WasmFunction)
-                      (args    MutDynArgs)
-                      (results MutDynResults)
-                >>>GUEST>>>[🐌], [📝], [🙆‍]<<<GUEST<<<)
-        (advice apply (func    WasmFunction)
-                      ((a I32) (b I32))
-                      ((c F32) (d F32))
-                >>>GUEST>>>[🐇], [🔍], [🪖]<<<GUEST<<<)
-        (advice apply (func    WasmFunction)
-                      (Mut (a I32) (b I32))
-                      (Mut (c F32) (d F32))
-                >>>GUEST>>>[🐇], [📝], [🪖]<<<GUEST<<<)
-    )"#,
-        )
-        .unwrap();
-        assert_eq!(WaspInput::from_pest(&mut parse_tree).unwrap(), expected);
-    }
 
     const CORRECT_PROGRAM: &'static str = r#"
         (aspect
@@ -429,112 +364,210 @@ mod tests {
                 >>>GUEST>>>🔵<<<GUEST<<<)
             (global >>>GUEST>>>🟣<<<GUEST<<<))"#;
 
+    fn program_to_wasp_root(program: &str) -> anyhow::Result<WaspRoot> {
+        let mut pest_parse = WaspParser::parse(Rule::wasp_input, program).unwrap();
+        let wasp_input = ast::pest::WaspInput::from_pest(&mut pest_parse).unwrap();
+        let wasp_root = WaspRoot::try_from(wasp_input)?;
+        Ok(wasp_root)
+    }
+
+    #[test]
+    fn should_convert_success_ast() {
+        assert_eq!(
+            program_to_wasp_root(CORRECT_PROGRAM).unwrap(),
+            WaspRoot(vec![
+                AdviceDefinition::AdviceTrap(TrapSignature::TrapApply(TrapApply {
+                    apply_hook_signature: ApplyHookSignature::Gen(ApplyGen {
+                        generic_means: GenericTarget::HighLevel,
+                        parameter_apply: "func".into(),
+                        parameter_arguments: "args".into(),
+                        parameter_results: "results".into()
+                    }),
+                    body: "🔴".into()
+                })),
+                AdviceDefinition::AdviceTrap(TrapSignature::TrapApply(TrapApply {
+                    apply_hook_signature: ApplyHookSignature::Gen(ApplyGen {
+                        generic_means: GenericTarget::Dynamic,
+                        parameter_apply: "func".into(),
+                        parameter_arguments: "args".into(),
+                        parameter_results: "results".into()
+                    }),
+                    body: "🟠".into()
+                })),
+                AdviceDefinition::AdviceTrap(TrapSignature::TrapApply(TrapApply {
+                    apply_hook_signature: ApplyHookSignature::Gen(ApplyGen {
+                        generic_means: GenericTarget::MutableDynamic,
+                        parameter_apply: "func".into(),
+                        parameter_arguments: "args".into(),
+                        parameter_results: "results".into()
+                    }),
+                    body: "🟡".into()
+                })),
+                AdviceDefinition::AdviceTrap(TrapSignature::TrapApply(TrapApply {
+                    apply_hook_signature: ApplyHookSignature::Spe(ApplySpe {
+                        mutable_signature: true,
+                        apply_parameter: "func".into(),
+                        parameters_arguments: vec![
+                            WasmParameter {
+                                identifier: "a".into(),
+                                identifier_type: WasmType::I32
+                            },
+                            WasmParameter {
+                                identifier: "b".into(),
+                                identifier_type: WasmType::F32
+                            }
+                        ],
+                        parameters_results: vec![
+                            WasmParameter {
+                                identifier: "c".into(),
+                                identifier_type: WasmType::I64
+                            },
+                            WasmParameter {
+                                identifier: "d".into(),
+                                identifier_type: WasmType::F64
+                            }
+                        ]
+                    }),
+                    body: "🟢".into()
+                })),
+                AdviceDefinition::AdviceTrap(TrapSignature::TrapApply(TrapApply {
+                    apply_hook_signature: ApplyHookSignature::Spe(ApplySpe {
+                        mutable_signature: false,
+                        apply_parameter: "func".into(),
+                        parameters_arguments: vec![
+                            WasmParameter {
+                                identifier: "a".into(),
+                                identifier_type: WasmType::I32
+                            },
+                            WasmParameter {
+                                identifier: "b".into(),
+                                identifier_type: WasmType::F32
+                            }
+                        ],
+                        parameters_results: vec![
+                            WasmParameter {
+                                identifier: "c".into(),
+                                identifier_type: WasmType::I64
+                            },
+                            WasmParameter {
+                                identifier: "d".into(),
+                                identifier_type: WasmType::F64
+                            }
+                        ]
+                    }),
+                    body: "🔵".into()
+                })),
+                AdviceDefinition::AdviceGlobal("🟣".into()),
+            ])
+        )
+    }
+
     #[test]
     fn test_debug() {
-        let mut parse_tree = WaspParser::parse(Rule::wasp_input, CORRECT_PROGRAM).unwrap();
-        let wasp_input = WaspInput::from_pest(&mut parse_tree).unwrap();
+        let wasp_root = program_to_wasp_root(CORRECT_PROGRAM).unwrap();
         assert_eq!(
-            format!("{wasp_input:?}"),
-            "WaspInput { \
-                records: Wasp([\
-                    AdviceTrap(AdviceTrap(TrapApply(TrapApply { \
-                        apply_hook_signature: Gen(ApplyGen { \
-                            apply_formal_wasm_f: ApplyFormalWasmF(\"func\"), \
-                            apply_formal_argument: ApplyFormalArgument(TypedArgument { \
-                                identifier: \"args\", \
-                                type_identifier: \"Args\" \
-                            }), \
-                            apply_formal_result: ApplyFormalResult(TypedArgument { \
-                                identifier: \"results\", \
-                                type_identifier: \"Results\" \
-                            }) \
-                        }), \
-                        body: \"🔴\" \
-                    }))), \
-                    AdviceTrap(AdviceTrap(TrapApply(TrapApply { \
-                        apply_hook_signature: Gen(ApplyGen { \
-                            apply_formal_wasm_f: ApplyFormalWasmF(\"func\"), \
-                            apply_formal_argument: ApplyFormalArgument(TypedArgument { \
-                                identifier: \"args\", \
-                                type_identifier: \"DynArgs\" \
-                            }), \
-                            apply_formal_result: ApplyFormalResult(TypedArgument { \
-                                identifier: \"results\", \
-                                type_identifier: \"DynResults\" \
-                            }) \
-                        }), \
-                        body: \"🟠\" \
-                    }))), \
-                    AdviceTrap(AdviceTrap(TrapApply(TrapApply { \
-                        apply_hook_signature: Gen(ApplyGen { \
-                            apply_formal_wasm_f: ApplyFormalWasmF(\"func\"), \
-                            apply_formal_argument: ApplyFormalArgument(TypedArgument { \
-                                identifier: \"args\", \
-                                type_identifier: \"MutDynArgs\" \
-                            }), \
-                            apply_formal_result: ApplyFormalResult(TypedArgument { \
-                                identifier: \"results\", \
-                                type_identifier: \"MutDynResults\" \
-                            }) \
-                        }), \
-                        body: \"🟡\" \
-                    }))), \
-                    AdviceTrap(AdviceTrap(TrapApply(TrapApply { \
-                        apply_hook_signature: SpeIntro(ApplySpeIntro { \
-                            apply_formal_wasm_f: ApplyFormalWasmF(\"func\"), \
-                            formal_arguments_arguments: [\
-                                ApplyFormalArgument(TypedArgument { \
-                                    identifier: \"a\", \
-                                    type_identifier: \"I32\" \
-                                }), \
-                                ApplyFormalArgument(TypedArgument { \
-                                    identifier: \"b\", \
-                                    type_identifier: \"F32\" \
-                                })\
+            format!("{wasp_root:?}"),
+            "WaspRoot([\
+                AdviceTrap(TrapApply(TrapApply { \
+                    apply_hook_signature: Gen(ApplyGen { \
+                        generic_means: HighLevel, \
+                        parameter_apply: \"func\", \
+                        parameter_arguments: \"args\", \
+                        parameter_results: \"results\" \
+                    }), \
+                    body: \"🔴\" \
+                })), \
+                AdviceTrap(TrapApply(TrapApply { \
+                    apply_hook_signature: Gen(ApplyGen { \
+                        generic_means: Dynamic, \
+                        parameter_apply: \"func\", \
+                        parameter_arguments: \"args\", \
+                        parameter_results: \"results\" \
+                    }), \
+                    body: \"🟠\" \
+                })), \
+                AdviceTrap(TrapApply(TrapApply { \
+                    apply_hook_signature: Gen(ApplyGen { \
+                        generic_means: MutableDynamic, \
+                        parameter_apply: \"func\", \
+                        parameter_arguments: \"args\", \
+                        parameter_results: \"results\" \
+                    }), \
+                    body: \"🟡\" \
+                })), \
+                AdviceTrap(TrapApply(TrapApply { \
+                    apply_hook_signature: Spe(ApplySpe { \
+                        mutable_signature: true, \
+                        apply_parameter: \"func\", \
+                        parameters_arguments: [\
+                            WasmParameter { identifier: \"a\", identifier_type: I32 }, \
+                            WasmParameter { identifier: \"b\", identifier_type: F32 }\
+                        ], \
+                        parameters_results: [\
+                            WasmParameter { identifier: \"c\", identifier_type: I64 }, \
+                            WasmParameter { identifier: \"d\", identifier_type: F64 }\
+                        ] \
+                    }), \
+                    body: \"🟢\" \
+                })), \
+                    AdviceTrap(TrapApply(TrapApply { \
+                        apply_hook_signature: Spe(ApplySpe { \
+                            mutable_signature: false, \
+                            apply_parameter: \"func\", \
+                            parameters_arguments: [\
+                                WasmParameter { identifier: \"a\", identifier_type: I32 }, \
+                                WasmParameter { identifier: \"b\", identifier_type: F32 }\
                             ], \
-                            formal_arguments_results: [\
-                                ApplyFormalResult(TypedArgument { \
-                                    identifier: \"c\", \
-                                    type_identifier: \"I64\" \
-                                }), \
-                                ApplyFormalResult(TypedArgument { \
-                                    identifier: \"d\", \
-                                    type_identifier: \"F64\" \
-                                })\
-                            ] \
-                        }), \
-                        body: \"🟢\" \
-                    }))), \
-                    AdviceTrap(AdviceTrap(TrapApply(TrapApply { \
-                        apply_hook_signature: SpeInter(ApplySpeInter { \
-                            apply_formal_wasm_f: ApplyFormalWasmF(\"func\"), \
-                            formal_arguments_arguments: [\
-                                ApplyFormalArgument(TypedArgument { \
-                                    identifier: \"a\", \
-                                    type_identifier: \"I32\" \
-                                }), \
-                                ApplyFormalArgument(TypedArgument { \
-                                    identifier: \"b\", \
-                                    type_identifier: \"F32\" \
-                                })\
-                            ], \
-                            formal_arguments_results: [\
-                                ApplyFormalResult(TypedArgument { \
-                                    identifier: \"c\", \
-                                    type_identifier: \"I64\" \
-                                }), \
-                                ApplyFormalResult(TypedArgument { \
-                                    identifier: \"d\", \
-                                    type_identifier: \"F64\" \
-                                })\
-                            ] \
-                        }), \
-                        body: \"🔵\" \
-                    }))), \
-                    AdviceGlobal(AdviceGlobal(\"🟣\"))\
-                ]), \
-                _eoi: EndOfInput \
-            }"
+                            parameters_results: [\
+                                WasmParameter { identifier: \"c\", identifier_type: I64 }, \
+                                WasmParameter { identifier: \"d\", identifier_type: F64 }\
+                            ] }), \
+                            body: \"🔵\" \
+                        })), \
+                AdviceGlobal(\"🟣\")\
+            ])"
+        );
+    }
+
+    #[test]
+    fn test_errors_incorrect_parameters() {
+        let outcomes = [
+            ("(args Args          )", "(results DynResults )", "Formal parameters must both be either high-level, dynamic or mutably dynamic (got: args Args, for ress DynResults)."),
+            ("(    (a FOO)        )", "(    (b I32)        )", "Provided type FOO unsupported, use one of following instead: I32, F32, I64 & F64."),
+            ("(    (a I32) (a I32))", "(    (c I32)        )", "Duplicate parameter found: a"),
+            ("(    (a I32)        )", "(    (c I32) (c I32))", "Duplicate parameter found: c"),
+            ("(    (a I32)        )", "(    (a I32)        )", "Duplicate paramater accross arguments and results: a."),
+            ("(Mut (a I32) (a I32))", "(Mut (c I32)        )", "Duplicate parameter found: a"),
+            ("(Mut (a I32)        )", "(Mut (c I32) (c I64))", "Duplicate parameter found: c"),
+            ("(Mut (a I32)        )", "(Mut (a I32)        )", "Duplicate paramater accross arguments and results: a."),
+        ];
+
+        for (parameter_arguments, parameter_results, message) in outcomes {
+            let program = format!(
+                "(aspect 
+                    (advice apply (func WasmFunction) {} {}
+                        >>>GUEST>>>🟢<<<GUEST<<<))",
+                parameter_arguments, parameter_results
+            );
+            assert_eq!(
+                program_to_wasp_root(program.as_str())
+                    .unwrap_err()
+                    .to_string()
+                    .as_str(),
+                message
+            );
+        }
+    }
+    #[test]
+    fn test_errors_incorrect_parameters_duplicate() {
+        let program: String =
+            "(aspect (advice apply (a WasmFunction) (a Args) (a Results) >>>GUEST>>>🟢<<<GUEST<<<))".into();
+        assert_eq!(
+            program_to_wasp_root(&program)
+                .unwrap_err()
+                .to_string()
+                .as_str(),
+            "Parameters must be unique, got: a, a, a."
         );
     }
 }

@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::ast::pest::{
+use crate::ast::wasp::{
     AdviceDefinition, ApplyGen, ApplyHookSignature, ApplySpe, TrapApply, TrapSignature,
     WasmParameter, WasmType, WaspRoot,
 };
@@ -144,7 +144,7 @@ impl ApplySpe {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::pest::{GenericTarget, WasmParameter, WasmType};
+    use crate::ast::wasp::{GenericTarget, WasmParameter, WasmType};
 
     #[test]
     fn generate_apply_spe_mut() {

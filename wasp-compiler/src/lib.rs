@@ -1,6 +1,6 @@
 use ast::assemblyscript::AssemblyScriptProgram;
-use ast::pest::{Rule, WaspParser, WaspRoot};
-use ast::wasp::WaspInput;
+use ast::pest::WaspInput;
+use ast::wasp::{Rule, WaspParser, WaspRoot};
 use from_pest::FromPest;
 use pest::Parser;
 
