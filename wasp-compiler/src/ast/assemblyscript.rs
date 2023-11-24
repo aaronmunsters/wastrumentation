@@ -124,7 +124,7 @@ impl ApplySpe {
         let parameters: Vec<String> = self
             .parameters_arguments
             .iter()
-            .map(|a| format!("{}: {}", a.identifier, a.identifier_type.to_string()))
+            .map(|a| format!("{}: {}", a.identifier, a.identifier_type))
             .collect();
 
         parameters.join(", ")
