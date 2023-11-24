@@ -5,7 +5,7 @@ use crate::ast::wasp::{
     WasmParameter, WasmType, WaspRoot,
 };
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct AssemblyScriptProgram {
     pub content: String,
 }

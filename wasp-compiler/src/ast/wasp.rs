@@ -66,7 +66,7 @@ pub struct ApplySpe {
     pub parameters_results: Vec<WasmParameter>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum WasmType {
     I32,
     F32,
@@ -80,10 +80,21 @@ pub struct WasmParameter {
     pub identifier_type: WasmType,
 }
 
+impl WasmParameter {
+    pub fn get_type(&self) -> WasmType {
+        self.identifier_type
+    }
+}
+
 impl TryFrom<pest_ast::WaspInput> for WaspRoot {
     type Error = anyhow::Error;
 
     fn try_from(pest_wasp_input: pest_ast::WaspInput) -> Result<Self, Self::Error> {
+        // TODO: determine what should happen if a specialization is defined more than once?
+        // 1. Throw an error?
+        // 2. Append them, in order of definition?
+        // 3. Allow more specific joinpoint definitions?
+        //      Difficulty here is to ensure that the joinpoint definitions are mutually exclusive when input program is not known aot
         let pest_ast::Wasp(pest_advice_definitions) = pest_wasp_input.records;
         let mut advice_definitions = Vec::with_capacity(pest_advice_definitions.len());
         for advice_definition in pest_advice_definitions {
@@ -564,5 +575,12 @@ mod tests {
                 .as_str(),
             "Parameters must be unique, got: a, a, a."
         );
+    }
+
+    #[test]
+    fn test_wasm_type() {
+        let x = WasmType::I32;
+        let y = x.clone();
+        format!("{x}, {y}");
     }
 }
