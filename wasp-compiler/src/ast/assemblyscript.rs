@@ -6,18 +6,18 @@ use crate::ast::pest::{
 };
 
 #[derive(Debug)]
-pub struct TypeScriptProgram {
+pub struct AssemblyScriptProgram {
     pub content: String,
 }
 
-impl From<WaspRoot> for TypeScriptProgram {
+impl From<WaspRoot> for AssemblyScriptProgram {
     fn from(wasp_root: WaspRoot) -> Self {
         let WaspRoot(advice_definitions) = wasp_root;
         let mut program_content = String::new();
         for advice_definition in advice_definitions {
             program_content.push_str(&advice_definition.to_assemblyscript())
         }
-        TypeScriptProgram {
+        AssemblyScriptProgram {
             content: program_content,
         }
     }
@@ -274,10 +274,10 @@ mod tests {
             <<<GUEST<<<)
         )
         "#;
-        let typescript_program = TypeScriptProgram::try_from(input_program).unwrap();
+        let assemblyscript_program = AssemblyScriptProgram::try_from(input_program).unwrap();
 
         assert_eq!(
-            typescript_program.content,
+            assemblyscript_program.content,
             r#"
                 console.log("Hello world!");
             
@@ -297,12 +297,12 @@ mod tests {
 
     #[test]
     fn should_debug() {
-        let typescript_program = TypeScriptProgram {
+        let assemblyscript_program = AssemblyScriptProgram {
             content: r#"console.log(43)"#.to_string(),
         };
         assert_eq!(
-            format!("{typescript_program:?}"),
-            r#"TypeScriptProgram { content: "console.log(43)" }"#
+            format!("{assemblyscript_program:?}"),
+            r#"AssemblyScriptProgram { content: "console.log(43)" }"#
         )
     }
 }

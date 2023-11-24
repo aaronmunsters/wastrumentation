@@ -1,4 +1,4 @@
-use ast::assemblyscript::TypeScriptProgram;
+use ast::assemblyscript::AssemblyScriptProgram;
 use ast::pest::{Rule, WaspParser, WaspRoot};
 use ast::wasp::WaspInput;
 use from_pest::FromPest;
@@ -6,15 +6,15 @@ use pest::Parser;
 
 mod ast;
 
-impl<'a> TryFrom<&'a str> for TypeScriptProgram {
+impl<'a> TryFrom<&'a str> for AssemblyScriptProgram {
     type Error = anyhow::Error;
 
     fn try_from(program: &'a str) -> Result<Self, Self::Error> {
         let mut pest_parse = WaspParser::parse(Rule::wasp_input, program)?;
         let wasp_input = WaspInput::from_pest(&mut pest_parse).expect("pest to input");
         let wasp_root = WaspRoot::try_from(wasp_input)?;
-        let typescript_program = TypeScriptProgram::from(wasp_root);
-        Ok(typescript_program)
+        let assemblyscript_program = AssemblyScriptProgram::from(wasp_root);
+        Ok(assemblyscript_program)
     }
 }
 
@@ -61,7 +61,7 @@ mod tests {
 
     #[test]
     fn parse_fail_pest() {
-        assert!(TypeScriptProgram::try_from("")
+        assert!(AssemblyScriptProgram::try_from("")
             .unwrap_err()
             .to_string()
             .as_str()
@@ -69,9 +69,9 @@ mod tests {
     }
 
     #[test]
-    fn typescript_conversion_fail() {
+    fn assemblyscript_conversion_fail() {
         assert_eq!(
-            TypeScriptProgram::try_from(
+            AssemblyScriptProgram::try_from(
                 "
                 (aspect
                     (advice apply (a WasmFunction)
