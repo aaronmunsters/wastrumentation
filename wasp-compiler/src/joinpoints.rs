@@ -4,7 +4,7 @@ use crate::ast::wasp::{
     ApplyHookSignature, ApplySpe, TrapSignature, WasmParameter, WasmType, WaspRoot,
 };
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Default)]
 pub struct JoinPoints {
     pub generic: bool,
     pub specialized: HashSet<SpecialisedJoinPoint>,
@@ -14,15 +14,6 @@ pub struct JoinPoints {
 pub struct SpecialisedJoinPoint {
     result_types: Vec<WasmType>,
     argument_types: Vec<WasmType>,
-}
-
-impl Default for JoinPoints {
-    fn default() -> Self {
-        Self {
-            generic: false,
-            specialized: Default::default(),
-        }
-    }
 }
 
 impl JoinPoints {
