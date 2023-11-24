@@ -3,7 +3,6 @@ use crate::ast::pest::{
     ApplySpeIntro,
 };
 use anyhow::anyhow;
-use pest_derive::Parser;
 use std::collections::HashSet;
 
 const ARGS_HIGHLEVEL: &str = "Args";
@@ -17,10 +16,6 @@ const I32_STR: &str = "I32";
 const F32_STR: &str = "F32";
 const I64_STR: &str = "I64";
 const F64_STR: &str = "F64";
-
-#[derive(Parser)]
-#[grammar = "wasp.pest"]
-pub struct WaspParser;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct WaspRoot(pub Vec<AdviceDefinition>);

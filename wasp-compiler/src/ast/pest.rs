@@ -1,6 +1,10 @@
-use crate::Rule;
 use pest::Span;
 use pest_ast::FromPest;
+use pest_derive::Parser;
+
+#[derive(Parser)]
+#[grammar = "wasp.pest"]
+pub struct WaspParser;
 
 fn span_into_string(span: Span) -> String {
     span.as_str().to_string()
