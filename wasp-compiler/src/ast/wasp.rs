@@ -116,23 +116,19 @@ struct EndOfInput;
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Ok;
+    use super::*;
+    use crate::WaspParser;
     use from_pest::FromPest;
     use pest::Parser;
 
-    use crate::WaspParser;
-
-    use super::*;
-
     #[test]
-    fn aspect_global_empty() -> anyhow::Result<()> {
-        let mut parse_tree = WaspParser::parse(Rule::wasp_input, "(aspect)")?;
-        let WaspInput { .. } = WaspInput::from_pest(&mut parse_tree)?;
-        Ok(())
+    fn aspect_global_empty() {
+        let mut parse_tree = WaspParser::parse(Rule::wasp_input, "(aspect)").unwrap();
+        let WaspInput { .. } = WaspInput::from_pest(&mut parse_tree).unwrap();
     }
 
     #[test]
-    fn aspect_global_only() -> anyhow::Result<()> {
+    fn aspect_global_only() {
         let expected = WaspInput {
             records: Wasp(vec![AdviceDefinition::AdviceGlobal(AdviceGlobal(
                 r#" console.log("Hello world!") "#.into(),
@@ -144,13 +140,13 @@ mod tests {
             r#"
         (aspect
             (global >>>GUEST>>> console.log("Hello world!") <<<GUEST<<<))"#,
-        )?;
-        assert_eq!(WaspInput::from_pest(&mut parse_tree)?, expected);
-        Ok(())
+        )
+        .unwrap();
+        assert_eq!(WaspInput::from_pest(&mut parse_tree).unwrap(), expected);
     }
 
     #[test]
-    fn aspect_trap_apply_hook() -> anyhow::Result<()> {
+    fn aspect_trap_apply_hook() {
         let expected = WaspInput {
             records: Wasp(vec![AdviceDefinition::AdviceTrap(AdviceTrap(
                 TrapSignature::TrapApply(TrapApply {
@@ -178,13 +174,13 @@ mod tests {
                     (args    Args)
                     (results Results)
                 >>>GUEST>>>global_function_count++;<<<GUEST<<<))"#,
-        )?;
-        assert_eq!(WaspInput::from_pest(&mut parse_tree)?, expected);
-        Ok(())
+        )
+        .unwrap();
+        assert_eq!(WaspInput::from_pest(&mut parse_tree).unwrap(), expected);
     }
 
     #[test]
-    fn aspect_test_apply_spe_intro() -> anyhow::Result<()> {
+    fn aspect_test_apply_spe_intro() {
         let expected = WaspInput {
             records: Wasp(vec![AdviceDefinition::AdviceTrap(AdviceTrap(
                 TrapSignature::TrapApply(TrapApply {
@@ -225,13 +221,13 @@ mod tests {
                       ((a I32) (b I32))
                       ((c F32) (d F32))
                 >>>GUEST>>>[🐇], [🔍], [🪖]<<<GUEST<<<))"#,
-        )?;
-        assert_eq!(WaspInput::from_pest(&mut parse_tree)?, expected);
-        Ok(())
+        )
+        .unwrap();
+        assert_eq!(WaspInput::from_pest(&mut parse_tree).unwrap(), expected);
     }
 
     #[test]
-    fn aspect_test_apply_spe_inter() -> anyhow::Result<()> {
+    fn aspect_test_apply_spe_inter() {
         let expected = WaspInput {
             records: Wasp(vec![AdviceDefinition::AdviceTrap(AdviceTrap(
                 TrapSignature::TrapApply(TrapApply {
@@ -272,13 +268,13 @@ mod tests {
                       (Mut (a I32) (b I32))
                       (Mut (c F32) (d F32))
                 >>>GUEST>>>[🐇], [🔍], [🪖]<<<GUEST<<<))"#,
-        )?;
-        assert_eq!(WaspInput::from_pest(&mut parse_tree)?, expected);
-        Ok(())
+        )
+        .unwrap();
+        assert_eq!(WaspInput::from_pest(&mut parse_tree).unwrap(), expected);
     }
 
     #[test]
-    fn aspect_trap_applies() -> anyhow::Result<()> {
+    fn aspect_trap_applies() {
         let expected = WaspInput {
             records: Wasp(vec![
                 AdviceDefinition::AdviceTrap(AdviceTrap(TrapSignature::TrapApply(TrapApply {
@@ -404,8 +400,141 @@ mod tests {
                       (Mut (c F32) (d F32))
                 >>>GUEST>>>[🐇], [📝], [🪖]<<<GUEST<<<)
     )"#,
-        )?;
-        assert_eq!(WaspInput::from_pest(&mut parse_tree)?, expected);
-        Ok(())
+        )
+        .unwrap();
+        assert_eq!(WaspInput::from_pest(&mut parse_tree).unwrap(), expected);
+    }
+
+    const CORRECT_PROGRAM: &'static str = r#"
+        (aspect
+            (advice apply (func    WasmFunction)
+                          (args    Args)
+                          (results Results)
+                >>>GUEST>>>🔴<<<GUEST<<<)
+            (advice apply (func    WasmFunction)
+                          (args    DynArgs)
+                          (results DynResults)
+                >>>GUEST>>>🟠<<<GUEST<<<)
+            (advice apply (func    WasmFunction)
+                          (args    MutDynArgs)
+                          (results MutDynResults)
+                >>>GUEST>>>🟡<<<GUEST<<<)
+            (advice apply (func    WasmFunction)
+                          ((a I32) (b F32))
+                          ((c I64) (d F64))
+                >>>GUEST>>>🟢<<<GUEST<<<)
+            (advice apply (func    WasmFunction)
+                          (Mut (a I32) (b F32))
+                          (Mut (c I64) (d F64))
+                >>>GUEST>>>🔵<<<GUEST<<<)
+            (global >>>GUEST>>>🟣<<<GUEST<<<))"#;
+
+    #[test]
+    fn test_debug() {
+        let mut parse_tree = WaspParser::parse(Rule::wasp_input, CORRECT_PROGRAM).unwrap();
+        let wasp_input = WaspInput::from_pest(&mut parse_tree).unwrap();
+        assert_eq!(
+            format!("{wasp_input:?}"),
+            "WaspInput { \
+                records: Wasp([\
+                    AdviceTrap(AdviceTrap(TrapApply(TrapApply { \
+                        apply_hook_signature: Gen(ApplyGen { \
+                            apply_formal_wasm_f: ApplyFormalWasmF(\"func\"), \
+                            apply_formal_argument: ApplyFormalArgument(TypedArgument { \
+                                identifier: \"args\", \
+                                type_identifier: \"Args\" \
+                            }), \
+                            apply_formal_result: ApplyFormalResult(TypedArgument { \
+                                identifier: \"results\", \
+                                type_identifier: \"Results\" \
+                            }) \
+                        }), \
+                        body: \"🔴\" \
+                    }))), \
+                    AdviceTrap(AdviceTrap(TrapApply(TrapApply { \
+                        apply_hook_signature: Gen(ApplyGen { \
+                            apply_formal_wasm_f: ApplyFormalWasmF(\"func\"), \
+                            apply_formal_argument: ApplyFormalArgument(TypedArgument { \
+                                identifier: \"args\", \
+                                type_identifier: \"DynArgs\" \
+                            }), \
+                            apply_formal_result: ApplyFormalResult(TypedArgument { \
+                                identifier: \"results\", \
+                                type_identifier: \"DynResults\" \
+                            }) \
+                        }), \
+                        body: \"🟠\" \
+                    }))), \
+                    AdviceTrap(AdviceTrap(TrapApply(TrapApply { \
+                        apply_hook_signature: Gen(ApplyGen { \
+                            apply_formal_wasm_f: ApplyFormalWasmF(\"func\"), \
+                            apply_formal_argument: ApplyFormalArgument(TypedArgument { \
+                                identifier: \"args\", \
+                                type_identifier: \"MutDynArgs\" \
+                            }), \
+                            apply_formal_result: ApplyFormalResult(TypedArgument { \
+                                identifier: \"results\", \
+                                type_identifier: \"MutDynResults\" \
+                            }) \
+                        }), \
+                        body: \"🟡\" \
+                    }))), \
+                    AdviceTrap(AdviceTrap(TrapApply(TrapApply { \
+                        apply_hook_signature: SpeIntro(ApplySpeIntro { \
+                            apply_formal_wasm_f: ApplyFormalWasmF(\"func\"), \
+                            formal_arguments_arguments: [\
+                                ApplyFormalArgument(TypedArgument { \
+                                    identifier: \"a\", \
+                                    type_identifier: \"I32\" \
+                                }), \
+                                ApplyFormalArgument(TypedArgument { \
+                                    identifier: \"b\", \
+                                    type_identifier: \"F32\" \
+                                })\
+                            ], \
+                            formal_arguments_results: [\
+                                ApplyFormalResult(TypedArgument { \
+                                    identifier: \"c\", \
+                                    type_identifier: \"I64\" \
+                                }), \
+                                ApplyFormalResult(TypedArgument { \
+                                    identifier: \"d\", \
+                                    type_identifier: \"F64\" \
+                                })\
+                            ] \
+                        }), \
+                        body: \"🟢\" \
+                    }))), \
+                    AdviceTrap(AdviceTrap(TrapApply(TrapApply { \
+                        apply_hook_signature: SpeInter(ApplySpeInter { \
+                            apply_formal_wasm_f: ApplyFormalWasmF(\"func\"), \
+                            formal_arguments_arguments: [\
+                                ApplyFormalArgument(TypedArgument { \
+                                    identifier: \"a\", \
+                                    type_identifier: \"I32\" \
+                                }), \
+                                ApplyFormalArgument(TypedArgument { \
+                                    identifier: \"b\", \
+                                    type_identifier: \"F32\" \
+                                })\
+                            ], \
+                            formal_arguments_results: [\
+                                ApplyFormalResult(TypedArgument { \
+                                    identifier: \"c\", \
+                                    type_identifier: \"I64\" \
+                                }), \
+                                ApplyFormalResult(TypedArgument { \
+                                    identifier: \"d\", \
+                                    type_identifier: \"F64\" \
+                                })\
+                            ] \
+                        }), \
+                        body: \"🔵\" \
+                    }))), \
+                    AdviceGlobal(AdviceGlobal(\"🟣\"))\
+                ]), \
+                _eoi: EndOfInput \
+            }"
+        );
     }
 }
