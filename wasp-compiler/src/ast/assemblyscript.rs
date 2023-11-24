@@ -5,6 +5,7 @@ use crate::ast::pest::{
     WasmParameter, WasmType, WaspRoot,
 };
 
+#[derive(Debug)]
 pub struct TypeScriptProgram {
     pub content: String,
 }
@@ -292,5 +293,16 @@ mod tests {
             }
             "#
         );
+    }
+
+    #[test]
+    fn should_debug() {
+        let typescript_program = TypeScriptProgram {
+            content: r#"console.log(43)"#.to_string(),
+        };
+        assert_eq!(
+            format!("{typescript_program:?}"),
+            r#"TypeScriptProgram { content: "console.log(43)" }"#
+        )
     }
 }
