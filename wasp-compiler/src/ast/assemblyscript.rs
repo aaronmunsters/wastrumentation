@@ -1,9 +1,16 @@
 use std::fmt::Display;
 
-use crate::ast::wasp::{
-    AdviceDefinition, ApplyGen, ApplyHookSignature, ApplySpe, TrapApply, TrapSignature,
-    WasmParameter, WasmType, WaspRoot,
+use crate::{
+    ast::wasp::{
+        AdviceDefinition, ApplyGen, ApplyHookSignature, ApplySpe, TrapApply, TrapSignature,
+        WasmParameter, WasmType, WaspRoot,
+    },
+    wasp_interface::{WasmExport, WasmImport, GENERIC_APPLY_FUNCTION_NAME, TRANSFORMED_INPUT_NS},
 };
+
+use crate::util::Alphabetical;
+
+const STD_INSTRUMENTATION_LIB: &str = include_str!("../std_instrumentation_lib.ts");
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct AssemblyScriptProgram {
@@ -12,8 +19,12 @@ pub struct AssemblyScriptProgram {
 
 impl From<WaspRoot> for AssemblyScriptProgram {
     fn from(wasp_root: WaspRoot) -> Self {
+        let mut program_content = if wasp_root.has_generic_apply() {
+            String::from(STD_INSTRUMENTATION_LIB)
+        } else {
+            String::new()
+        };
         let WaspRoot(advice_definitions) = wasp_root;
-        let mut program_content = String::new();
         for advice_definition in advice_definitions {
             program_content.push_str(&advice_definition.to_assemblyscript())
         }
@@ -49,15 +60,14 @@ impl ApplyGen {
     fn to_assemblyscript(&self, body: &str) -> String {
         format!(
             r#"
-            export function generic_apply(f_apply: i32, argc: i32, resc: i32, sigv: i32, sigtypv: i32): void {{
+            export function {GENERIC_APPLY_FUNCTION_NAME}(f_apply: i32, argc: i32, resc: i32, sigv: i32, sigtypv: i32): void {{
                 let func = new WasmFunction(f_apply, sigtypv);
                 let argsResults = new MutDynArgsResults(argc, resc, sigv, sigtypv);
                 let args = new MutDynArgs(argsResults);
                 let results = new MutDynRess(argsResults);
-                {}
+                {body}
             }}
             "#,
-            body
         ).to_string()
     }
 }
@@ -74,17 +84,135 @@ impl Display for WasmType {
     }
 }
 
-impl ApplySpe {
-    fn to_assemblyscript(&self, body: &str) -> String {
-        let full_signature_name = self.to_assemblyscript_full_signature_name();
-        let args_signature = self.to_assemblyscript_args_signature();
-        let ress_signature = self.to_assemblyscript_ress_signature();
-        let external_call_base_name = format!("call_base_{full_signature_name}");
-        let exported_func_inst_name = format!("apply_func_{full_signature_name}");
+fn signature_to_string(
+    mutable_signature: bool,
+    parameters_arguments: &Vec<WasmParameter>,
+    parameters_results: &Vec<WasmParameter>,
+) -> String {
+    let mutable_prefix = if mutable_signature { "mut_" } else { "" };
+    let wasm_pars_to_types_string = |arguments: &Vec<WasmParameter>| {
+        let arguments_types: Vec<String> = arguments
+            .iter()
+            .map(|argument| argument.identifier_type.to_string())
+            .collect();
+        arguments_types.join("_")
+    };
+
+    let argument_types_string = wasm_pars_to_types_string(parameters_arguments);
+    let arguments_types: &str = argument_types_string.as_str();
+
+    let result_types_string = wasm_pars_to_types_string(parameters_results);
+    let results_types: &str = result_types_string.as_str();
+
+    format!("{mutable_prefix}args_{arguments_types}_ress_{results_types}")
+}
+
+impl WasmImport {
+    pub fn for_extern_call_base(
+        mutable_signature: bool,
+        parameters_arguments: &Vec<WasmParameter>,
+        parameters_results: &Vec<WasmParameter>,
+    ) -> Self {
+        let full_signature_name =
+            signature_to_string(mutable_signature, parameters_arguments, parameters_results);
+        let name = format!("call_base_{full_signature_name}");
+
+        Self {
+            namespace: TRANSFORMED_INPUT_NS.into(),
+            name,
+            args: WasmParameterVec(parameters_arguments).types(),
+            results: WasmParameterVec(parameters_results).types(),
+        }
+    }
+
+    fn to_assemblyscript_declaration(&self) -> String {
+        let Self {
+            namespace,
+            name,
+            args,
+            results,
+        } = self;
+        let args_signature = args
+            .iter()
+            .enumerate()
+            .map(|(index, wasm_type)| format!("{}: {wasm_type}", index.to_alphabetic()))
+            .collect::<Vec<String>>()
+            .join(", ");
+
+        let ress_signature = results
+            .iter()
+            .map(WasmType::to_string)
+            .collect::<Vec<String>>()
+            .join(", ");
         format!(
             r#"
-            @external("instrumented_input", "{external_call_base_name}")
-            declare function {external_call_base_name}({args_signature}): {ress_signature};
+        @external("{namespace}", "{name}")
+        declare function {name}({args_signature}): {ress_signature};        
+        "#
+        )
+    }
+}
+
+impl WasmExport {
+    pub fn for_exported_apply_trap(
+        mutable_signature: bool,
+        parameters_arguments: &Vec<WasmParameter>,
+        parameters_results: &Vec<WasmParameter>,
+    ) -> Self {
+        let full_signature_name =
+            signature_to_string(mutable_signature, parameters_arguments, parameters_results);
+        let name = format!("apply_func_{full_signature_name}");
+        WasmExport {
+            name,
+            args: WasmParameterVec(parameters_arguments).types(),
+            results: WasmParameterVec(parameters_results).types(),
+        }
+    }
+}
+
+struct WasmParameterVec<'a>(&'a [WasmParameter]);
+
+impl<'a> WasmParameterVec<'a> {
+    fn types(&self) -> Vec<WasmType> {
+        let Self(vec) = self;
+        vec.iter()
+            .map(|wasm_parameter| wasm_parameter.identifier_type)
+            .collect()
+    }
+}
+
+impl ApplySpe {
+    fn to_assemblyscript(&self, body: &str) -> String {
+        let Self {
+            mutable_signature,
+            parameters_arguments,
+            parameters_results,
+            ..
+        } = self;
+
+        let import = WasmImport::for_extern_call_base(
+            *mutable_signature,
+            parameters_arguments,
+            parameters_results,
+        );
+
+        let export = WasmExport::for_exported_apply_trap(
+            *mutable_signature,
+            parameters_arguments,
+            parameters_results,
+        );
+
+        let import_declaration = import.to_assemblyscript_declaration();
+        let external_call_base_name = import.name;
+
+        let args_signature = self.to_assemblyscript_args_signature();
+        let ress_signature = self.to_assemblyscript_ress_signature();
+
+        let exported_func_inst_name = export.name;
+
+        format!(
+            r#"
+            {import_declaration}
             export function {exported_func_inst_name}({args_signature}): {ress_signature} {{
                 let func = {external_call_base_name};
                 {{
@@ -93,31 +221,6 @@ impl ApplySpe {
             }}
             "#
         )
-    }
-
-    fn to_assemblyscript_full_signature_name(&self) -> String {
-        let Self {
-            mutable_signature,
-            parameters_arguments,
-            parameters_results,
-            ..
-        } = self;
-        let mutable_prefix = if *mutable_signature { "mut_" } else { "" };
-        let wasm_pars_to_types_string = |arguments: &Vec<WasmParameter>| {
-            let arguments_types: Vec<String> = arguments
-                .iter()
-                .map(|argument| argument.identifier_type.to_string())
-                .collect();
-            arguments_types.join("_")
-        };
-
-        let argument_types_string = wasm_pars_to_types_string(parameters_arguments);
-        let arguments_types: &str = argument_types_string.as_str();
-
-        let result_types_string = wasm_pars_to_types_string(parameters_results);
-        let results_types: &str = result_types_string.as_str();
-
-        format!("{mutable_prefix}args_{arguments_types}_ress_{results_types}")
     }
 
     fn to_assemblyscript_args_signature(&self) -> String {
@@ -176,16 +279,20 @@ mod tests {
 
         assert_eq!(
             ast.to_assemblyscript(),
-            r#"
-            @external("instrumented_input", "call_base_mut_args_i32_f32_i64_ress_f64")
-            declare function call_base_mut_args_i32_f32_i64_ress_f64(a: i32, b: f32, c: i64): f64;
-            export function apply_func_mut_args_i32_f32_i64_ress_f64(a: i32, b: f32, c: i64): f64 {
+            format!(
+                r#"
+            
+        @external("transformed_input", "call_base_mut_args_i32_f32_i64_ress_f64")
+        declare function call_base_mut_args_i32_f32_i64_ress_f64(a: i32, b: f32, c: i64): f64;        
+        
+            export function apply_func_mut_args_i32_f32_i64_ress_f64(a: i32, b: f32, c: i64): f64 {{
                 let func = call_base_mut_args_i32_f32_i64_ress_f64;
-                {
+                {{
                      console.log(a); return func(a); 
-                }
-            }
+                }}
+            }}
             "#
+            )
         )
     }
 
@@ -219,16 +326,20 @@ mod tests {
 
         assert_eq!(
             ast.to_assemblyscript(),
-            r#"
-            @external("instrumented_input", "call_base_args_i32_f32_i64_ress_f64")
-            declare function call_base_args_i32_f32_i64_ress_f64(a: i32, b: f32, c: i64): f64;
-            export function apply_func_args_i32_f32_i64_ress_f64(a: i32, b: f32, c: i64): f64 {
+            format!(
+                r#"
+            
+        @external("transformed_input", "call_base_args_i32_f32_i64_ress_f64")
+        declare function call_base_args_i32_f32_i64_ress_f64(a: i32, b: f32, c: i64): f64;        
+        
+            export function apply_func_args_i32_f32_i64_ress_f64(a: i32, b: f32, c: i64): f64 {{
                 let func = call_base_args_i32_f32_i64_ress_f64;
-                {
+                {{
                      console.log(a); return func(a); 
-                }
-            }
+                }}
+            }}
             "#
+            )
         )
     }
 
@@ -275,9 +386,8 @@ mod tests {
         )
         "#;
         let assemblyscript_program = AssemblyScriptProgram::try_from(input_program).unwrap();
-
-        assert_eq!(
-            assemblyscript_program.content,
+        let mut expected_outcome = String::from(STD_INSTRUMENTATION_LIB);
+        expected_outcome.push_str(
             r#"
                 console.log("Hello world!");
             
@@ -293,6 +403,8 @@ mod tests {
             }
             "#
         );
+
+        assert_eq!(assemblyscript_program.content, expected_outcome);
     }
 
     #[test]

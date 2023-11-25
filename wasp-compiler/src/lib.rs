@@ -4,26 +4,32 @@ use ast::wasp::WaspRoot;
 use from_pest::FromPest;
 use joinpoints::JoinPoints;
 use pest::Parser;
+use wasp_interface::WaspInterface;
 
 mod ast;
 mod joinpoints;
+mod util;
+mod wasp_interface;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct CompilationResult {
     pub assemblyscript_program: AssemblyScriptProgram,
     pub join_points: JoinPoints,
+    pub wasp_interface: WaspInterface,
 }
 
 pub fn compile(wasp: &str) -> anyhow::Result<CompilationResult> {
     let mut pest_parse = WaspParser::parse(Rule::wasp_input, wasp)?;
     let wasp_input = WaspInput::from_pest(&mut pest_parse).expect("pest to input");
     let wasp_root = WaspRoot::try_from(wasp_input)?;
+    let wasp_interface = WaspInterface::from(&wasp_root); // TODO: put to use!
     let join_points = wasp_root.join_points();
     let assemblyscript_program = AssemblyScriptProgram::from(wasp_root);
 
     Ok(CompilationResult {
         assemblyscript_program,
         join_points,
+        wasp_interface,
     })
 }
 
@@ -118,7 +124,8 @@ mod tests {
                 join_points: JoinPoints {
                     generic: false,
                     specialized: [].into()
-                }
+                },
+                wasp_interface: WaspInterface::default()
             }
         );
 
@@ -154,6 +161,7 @@ mod tests {
                 generic: false,
                 specialized: [].into(),
             },
+            wasp_interface: WaspInterface::default(),
         };
         assert_eq!(
             format!("{compilation_result:?}"),
@@ -164,7 +172,8 @@ mod tests {
                 join_points: JoinPoints { \
                     generic: false, \
                     specialized: {} \
-                } \
+                }, \
+                wasp_interface: WaspInterface { inputs: [], outputs: [] } \
             }"
         );
     }

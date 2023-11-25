@@ -86,6 +86,23 @@ impl WasmParameter {
     }
 }
 
+impl WaspRoot {
+    pub fn has_generic_apply(&self) -> bool {
+        let Self(advice_definitions) = self;
+        advice_definitions
+            .iter()
+            .any(|advice_definition: &AdviceDefinition| {
+                matches!(
+                    advice_definition,
+                    AdviceDefinition::AdviceTrap(TrapSignature::TrapApply(TrapApply {
+                        apply_hook_signature: ApplyHookSignature::Gen(_),
+                        ..
+                    }))
+                )
+            })
+    }
+}
+
 impl TryFrom<pest_ast::WaspInput> for WaspRoot {
     type Error = anyhow::Error;
 
