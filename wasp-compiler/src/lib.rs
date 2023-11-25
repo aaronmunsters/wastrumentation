@@ -22,7 +22,7 @@ pub fn compile(wasp: &str) -> anyhow::Result<CompilationResult> {
     let mut pest_parse = WaspParser::parse(Rule::wasp_input, wasp)?;
     let wasp_input = WaspInput::from_pest(&mut pest_parse).expect("pest to input");
     let wasp_root = WaspRoot::try_from(wasp_input)?;
-    let wasp_interface = WaspInterface::from(&wasp_root); // TODO: put to use!
+    let wasp_interface = WaspInterface::from(&wasp_root);
     let join_points = wasp_root.join_points();
     let assemblyscript_program = AssemblyScriptProgram::from(wasp_root);
 
