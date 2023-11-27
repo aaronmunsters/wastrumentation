@@ -132,6 +132,9 @@ class MutDynRess {
     }
 }
 
+@external("instrumented_input", "call_base")
+declare function call_base(f_apply: i32, sigv: i32): void
+
 class WasmFunction {
     f_apply: i32;
     sigv: i32;

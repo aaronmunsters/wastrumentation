@@ -1,0 +1,13 @@
+(aspect
+    (global >>>GUEST>>>
+        console.log("Hello world!");
+    <<<GUEST<<<)
+
+    (advice apply (func    WasmFunction)
+                    (args    MutDynArgs)
+                    (results MutDynResults) >>>GUEST>>>
+            console.log(`${args.get<i32>(0)}`);
+            console.log(`${args.get<i32>(1)}`);
+            func.apply();
+    <<<GUEST<<<)
+)

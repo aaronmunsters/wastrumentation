@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 wasabi_wasm = { path = "../wasabi/crates/wasabi_wasm" }
+wasp-compiler = { path = "../wasp-compiler" }

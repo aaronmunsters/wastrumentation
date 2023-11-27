@@ -6,10 +6,10 @@ use joinpoints::JoinPoints;
 use pest::Parser;
 use wasp_interface::WaspInterface;
 
-mod ast;
-mod joinpoints;
+pub mod ast;
+pub mod joinpoints;
 mod util;
-mod wasp_interface;
+pub mod wasp_interface;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct CompilationResult {

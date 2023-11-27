@@ -9,7 +9,6 @@ if [[ ! -e node_modules ]]; then
 fi
 
 deno run --allow-write=./src_generated/ ./generate_for_signatures.ts
-cp analysis.ts src_generated/analysis.ts
 
 # Compile the AssemblyScript library to WebAssembly optimized
 npx asc src_generated/lib.ts --textFile dist/wastrumentation_stack.wat -O \

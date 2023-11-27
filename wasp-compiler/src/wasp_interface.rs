@@ -4,12 +4,13 @@ use crate::ast::wasp::{
 
 pub const TRANSFORMED_INPUT_NS: &str = "transformed_input";
 pub const GENERIC_APPLY_FUNCTION_NAME: &str = "generic_apply";
-pub const CALL_BASE: &str = "generic_apply";
+pub const CALL_BASE: &str = "call_base";
 
 #[derive(Debug, PartialEq, Eq, Default)]
 pub struct WaspInterface {
     pub inputs: Vec<WasmImport>,
     pub outputs: Vec<WasmExport>,
+    pub generic_interface: Option<(WasmExport, WasmImport)>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -29,6 +30,7 @@ pub struct WasmExport {
 
 impl From<&WaspRoot> for WaspInterface {
     fn from(wasp_root: &WaspRoot) -> Self {
+        let mut generic_interface = None;
         let mut wasm_imports: Vec<WasmImport> = Vec::new();
         let mut wasm_exports: Vec<WasmExport> = Vec::new();
         let WaspRoot(advice_definitions) = wasp_root;
@@ -39,26 +41,28 @@ impl From<&WaspRoot> for WaspInterface {
                         apply_hook_signature: ApplyHookSignature::Gen(_),
                         ..
                     }) => {
-                        wasm_exports.push(WasmExport {
-                            name: GENERIC_APPLY_FUNCTION_NAME.into(),
-                            args: vec![
-                                WasmType::I32, // f_apply
-                                WasmType::I32, // argc
-                                WasmType::I32, // resc
-                                WasmType::I32, // sigv
-                                WasmType::I32, // sigtypv
-                            ],
-                            results: vec![],
-                        });
-                        wasm_imports.push(WasmImport {
-                            namespace: GENERIC_APPLY_FUNCTION_NAME.into(),
-                            name: CALL_BASE.into(),
-                            args: vec![
-                                WasmType::I32, // f_apply
-                                WasmType::I32, // sigv
-                            ],
-                            results: vec![],
-                        });
+                        generic_interface = Some((
+                            WasmExport {
+                                name: GENERIC_APPLY_FUNCTION_NAME.into(),
+                                args: vec![
+                                    WasmType::I32, // f_apply
+                                    WasmType::I32, // argc
+                                    WasmType::I32, // resc
+                                    WasmType::I32, // sigv
+                                    WasmType::I32, // sigtypv
+                                ],
+                                results: vec![],
+                            },
+                            WasmImport {
+                                namespace: TRANSFORMED_INPUT_NS.into(),
+                                name: CALL_BASE.into(),
+                                args: vec![
+                                    WasmType::I32, // f_apply
+                                    WasmType::I32, // sigv
+                                ],
+                                results: vec![],
+                            },
+                        ));
                     }
                     TrapSignature::TrapApply(TrapApply {
                         apply_hook_signature:
@@ -87,6 +91,7 @@ impl From<&WaspRoot> for WaspInterface {
         Self {
             inputs: wasm_imports,
             outputs: wasm_exports,
+            generic_interface,
         }
     }
 }
