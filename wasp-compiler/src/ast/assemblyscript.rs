@@ -61,7 +61,7 @@ impl ApplyGen {
         format!(
             r#"
             export function {GENERIC_APPLY_FUNCTION_NAME}(f_apply: i32, argc: i32, resc: i32, sigv: i32, sigtypv: i32): void {{
-                let func = new WasmFunction(f_apply, sigtypv);
+                let func = new WasmFunction(f_apply, sigv);
                 let argsResults = new MutDynArgsResults(argc, resc, sigv, sigtypv);
                 let args = new MutDynArgs(argsResults);
                 let results = new MutDynRess(argsResults);
@@ -359,7 +359,7 @@ mod tests {
             ast.to_assemblyscript(),
             r#"
             export function generic_apply(f_apply: i32, argc: i32, resc: i32, sigv: i32, sigtypv: i32): void {
-                let func = new WasmFunction(f_apply, sigtypv);
+                let func = new WasmFunction(f_apply, sigv);
                 let argsResults = new MutDynArgsResults(argc, resc, sigv, sigtypv);
                 let args = new MutDynArgs(argsResults);
                 let results = new MutDynRess(argsResults);
@@ -392,7 +392,7 @@ mod tests {
                 console.log("Hello world!");
             
             export function generic_apply(f_apply: i32, argc: i32, resc: i32, sigv: i32, sigtypv: i32): void {
-                let func = new WasmFunction(f_apply, sigtypv);
+                let func = new WasmFunction(f_apply, sigv);
                 let argsResults = new MutDynArgsResults(argc, resc, sigv, sigtypv);
                 let args = new MutDynArgs(argsResults);
                 let results = new MutDynRess(argsResults);

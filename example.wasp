@@ -1,13 +1,23 @@
 (aspect
     (global >>>GUEST>>>
+
         console.log("Hello world!");
+        console.log("This is the start of the module!");
+        
     <<<GUEST<<<)
 
     (advice apply (func    WasmFunction)
-                    (args    MutDynArgs)
-                    (results MutDynResults) >>>GUEST>>>
-            console.log(`${args.get<i32>(0)}`);
-            console.log(`${args.get<i32>(1)}`);
-            func.apply();
-    <<<GUEST<<<)
-)
+                  (args    MutDynArgs)
+                  (results MutDynResults) >>>GUEST>>>
+        // pre
+        // ...
+        // args.set<i32>(0, 1234);
+
+        // base //
+        func.apply();
+        // base //
+        
+        // post
+        // ...
+
+    <<<GUEST<<<))

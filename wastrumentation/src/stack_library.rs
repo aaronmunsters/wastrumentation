@@ -140,10 +140,7 @@ impl<'a> From<(FunctionType, &mut Module)> for StackLibrary {
             generate_allocate_name(&function_type),
         );
 
-        let allocate_types_input_type =
-            vec![ValType::I32; function_type.inputs().len() + function_type.results().len()];
-
-        let allocate_types_type = FunctionType::new(&allocate_types_input_type, &[ValType::I32]);
+        let allocate_types_type = FunctionType::new(&[], &[ValType::I32]);
         let allocate_types = module.add_function_import(
             allocate_types_type,
             INSTRUMENTATION_STACK_MODULE.into(),

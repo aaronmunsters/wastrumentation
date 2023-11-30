@@ -1,7 +1,7 @@
 (module
   (type (;0;) (func (param i32 i32 i32 i32 i32)))
   (type (;1;) (func (param i32 i32) (result i32)))
-  (type (;2;) (func (param i32 i32 i32) (result i32)))
+  (type (;2;) (func (result i32)))
   (type (;3;) (func))
   (type (;4;) (func (param i32) (result i32)))
   (type (;5;) (func (param i32 i32)))
@@ -25,11 +25,14 @@
     local.get 1
     call 1
     local.set 2
-    i32.const 0
-    i32.const 0
-    i32.const 0
     call 2
     local.set 3
+    i32.const 0
+    i32.const 2
+    i32.const 1
+    local.get 2
+    local.get 3
+    call 0
     local.get 2
     call 6
     call 3)

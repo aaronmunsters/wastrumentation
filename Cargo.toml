@@ -1,4 +1,9 @@
 [workspace]
 
 resolver = "2"
-members = ["wastrumentation", "wastrumentation_cli", "wasp-compiler"]
+members = [
+    "wastrumentation",
+    "wastrumentation_cli",
+    "wasp-compiler",
+    "patch-wasi-start-exports",
+]

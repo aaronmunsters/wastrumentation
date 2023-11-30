@@ -173,7 +173,7 @@ mod tests {
                     generic: false, \
                     specialized: {} \
                 }, \
-                wasp_interface: WaspInterface { inputs: [], outputs: [] } \
+                wasp_interface: WaspInterface { inputs: [], outputs: [], generic_interface: None } \
             }"
         );
     }

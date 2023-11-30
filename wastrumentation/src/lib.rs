@@ -25,6 +25,7 @@ pub const INSTRUMENTATION_ANALYSIS_MODULE: &str = "WASP_ANALYSIS";
 use crate::stack_library::StackLibrary;
 
 pub fn instrument(module: &mut Module, join_points: JoinPoints, wasp_interface: WaspInterface) {
+    let _ = join_points; // TODO: remove
     let pre_instrumentation_function_indices: Vec<Idx<Function>> =
         module.functions().map(|(idx, _)| idx).collect();
 
@@ -148,23 +149,9 @@ impl FunctionInstrumentation {
                 .collect();
             let call_allocate = Call(stack_library_for_target.allocate);
             let local_set_stack_ptr = Local(LocalOp::Set, stack_ptr_local);
-            let push_types_on_stack: Vec<Instr> = target_function_type
-                .inputs()
-                .iter()
-                .chain(target_function_type.results().iter()) // todo! is this order correct?
-                .map(|val_type| {
-                    Const(Val::I32(match val_type {
-                        ValType::I32 => 0,
-                        ValType::F32 => 1,
-                        ValType::I64 => 2,
-                        ValType::F64 => 3,
-                    }))
-                })
-                .collect();
             let call_allocate_types = Call(stack_library_for_target.allocate_types);
             let local_set_stack_types_ptr = Local(LocalOp::Set, stack_ptr_types_local);
 
-            // TODO: continue here ...
             let argc = Const(Val::I32((target_function_type.inputs().len()) as i32));
             let resc = Const(Val::I32((target_function_type.results().len()) as i32));
             let const_apply_table_index = Const(Val::I32(apply_table_index as i32));
@@ -177,18 +164,17 @@ impl FunctionInstrumentation {
             instrumented_body.extend(push_args_on_stack);
             instrumented_body.push(call_allocate);
             instrumented_body.push(local_set_stack_ptr);
-            instrumented_body.extend(push_types_on_stack);
             instrumented_body.push(call_allocate_types);
             instrumented_body.push(local_set_stack_types_ptr);
-            // [instrumented_body.extend_from_slice(&
-            //     // Prep call generic apply
-            //     const_apply_table_index,   // f_apply : i32
-            //     argc,                      // argc    : i32
-            //     resc,                      // resc    : i32
-            //     local_get_stack_ptr(),     // sigv    : i32
-            //     local_get_stack_types_ptr, // sigtypv : i32
-            //     call_generic_apply,
-            // ]);
+            instrumented_body.extend_from_slice(&[
+                // Prep call generic apply
+                const_apply_table_index,   // f_apply : i32
+                argc,                      // argc    : i32
+                resc,                      // resc    : i32
+                local_get_stack_ptr(),     // sigv    : i32
+                local_get_stack_types_ptr, // sigtypv : i32
+                call_generic_apply,
+            ]);
 
             for load_call in &stack_library_for_target.ret_load_n {
                 instrumented_body.push(local_get_stack_ptr());
@@ -196,6 +182,7 @@ impl FunctionInstrumentation {
             }
 
             instrumented_body.push(call_free);
+            // TODO: free types ptr
             instrumented_body.push(End);
             original_function.code_mut().unwrap().body = instrumented_body;
         }
