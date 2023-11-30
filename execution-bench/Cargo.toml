@@ -1,10 +1,10 @@
 [package]
-name = "wastrumentation"
+name = "execution-bench"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-wasabi_wasm = { path = "../wasabi/crates/wasabi_wasm" }
-wasp-compiler = { path = "../wasp-compiler" }
+anyhow = "1.0.75"
+wasmtime = "15.0.0"

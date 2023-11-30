@@ -1,10 +1,14 @@
 [package]
-name = "wastrumentation"
+name = "wasp-compiler"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-wasabi_wasm = { path = "../wasabi/crates/wasabi_wasm" }
-wasp-compiler = { path = "../wasp-compiler" }
+anyhow = "1.0.75"
+from-pest = "0.3.2"
+num-integer = "0.1.45"
+pest = "2.7.5"
+pest-ast = "0.3.4"
+pest_derive = "2.7.5"

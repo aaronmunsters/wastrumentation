@@ -1,5 +1,5 @@
 [package]
-name = "wastrumentation"
+name = "patch-wasi-start-exports"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,4 +7,5 @@ edition = "2021"
 
 [dependencies]
 wasabi_wasm = { path = "../wasabi/crates/wasabi_wasm" }
-wasp-compiler = { path = "../wasp-compiler" }
+clap = { version = "4.4.8", features = ["derive", "string"] }
+anyhow = "1.0.75"

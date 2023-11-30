@@ -8,6 +8,9 @@ use std::path::PathBuf;
     long_about = None
 )]
 pub struct Cli {
+    /// The input wasp program, in Wasm
+    #[arg(short = 'w', long)]
+    pub wasp: PathBuf,
     /// The input program to transform, in Wasm
     #[arg(short = 'i', long)]
     pub input: PathBuf,

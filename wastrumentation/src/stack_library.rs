@@ -14,6 +14,7 @@ use wasabi_wasm::{Function, FunctionType, Idx, Module, ValType};
 
 pub struct StackLibrary {
     pub allocate: Idx<Function>,
+    pub allocate_types: Idx<Function>,
     pub free: Idx<Function>,
     pub arg_load_n: Vec<Idx<Function>>,
     pub arg_store_n: Vec<Idx<Function>>,
@@ -87,6 +88,10 @@ mod stack_library_generator {
         generate_name("allocate", function_type)
     }
 
+    pub(super) fn generate_allocate_types_name(function_type: &FunctionType) -> String {
+        generate_name("allocate_types", function_type)
+    }
+
     pub(super) fn generate_free_name(function_type: &FunctionType) -> String {
         generate_name("free", function_type)
     }
@@ -133,6 +138,13 @@ impl<'a> From<(FunctionType, &mut Module)> for StackLibrary {
             allocate_type,
             INSTRUMENTATION_STACK_MODULE.into(),
             generate_allocate_name(&function_type),
+        );
+
+        let allocate_types_type = FunctionType::new(&[], &[ValType::I32]);
+        let allocate_types = module.add_function_import(
+            allocate_types_type,
+            INSTRUMENTATION_STACK_MODULE.into(),
+            generate_allocate_types_name(&function_type),
         );
 
         let free_type = FunctionType::new(&[], &[]);
@@ -212,6 +224,7 @@ impl<'a> From<(FunctionType, &mut Module)> for StackLibrary {
 
         StackLibrary {
             allocate,
+            allocate_types,
             free,
             arg_load_n,
             arg_store_n,

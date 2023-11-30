@@ -85,6 +85,55 @@ export function allocate_ret_${signature_rets_ident}_arg_${signature_args_ident}
 `;
 }
 
+function generate_allocate_types_buffer_generic(rets_count: number, args_count: number): string {
+    //                                                                                            // eg: rets_count := 2, args_count := 2
+    const total_allocation = `sizeof<i32>() * ${rets_count + args_count};`;                       // eg: `sizeof<i32>() * 4;`
+    
+    return `
+@inline
+function allocate_signature_types_buffer_ret_${rets_count}_arg_${args_count}(): usize {
+    const to_allocate = ${total_allocation}; // constant folded
+    const stack_begin = stack_allocate(to_allocate); // inlined
+    return stack_begin;
+}`;
+}
+
+function generate_allocate_types_buffer_specialized(signature: Signature): string {
+    // eg: [`i64`, `i32`]
+    const signature_rets = signature.return_types;
+    // eg: 2
+    const signature_rets_count = signature_rets.length;
+    // eg: `i64, i32`
+    const signature_rets_ident = signature_rets.join(`_`);
+    // eg: [`f64`, `f32`]
+    const signature_args = signature.argument_types;
+    // eg: 2
+    const signature_args_count = signature_args.length;
+    // eg: `a0, a1`
+    const args = signature_args.map((_type, index) => `a${index}`).join(`, `)
+    // eg: `f64, f32`
+    const signature_args_ident = signature_args.join(`_`);
+    // eg: `i64, i32, f64, f32`
+    const all_stores = [...signature_rets, ...signature_args].map((type) => {
+        // TODO: tie to known set of types
+        switch(type) {
+            case "i32": return 0;
+            case "f32": return 1;
+            case "i64": return 2;
+            case "f64": return 3;
+        }
+    }).map((value, index) => `
+    store<i32>(types_buffer + (sizeof<i32>()*${index}), ${value}, NO_OFFSET);`).join(``);
+    
+    return `
+export function allocate_types_ret_${signature_rets_ident}_arg_${signature_args_ident}(): usize {
+    const NO_OFFSET = 0;
+    const types_buffer = allocate_signature_types_buffer_ret_${signature_rets_count}_arg_${signature_args_count}();
+    ${all_stores}
+    return types_buffer;
+}`;
+}
+
 function generate_load_generic(rets_count: number, args_count: number): string {
     //                                                                                            // eg: rets_count := 2, args_count := 2
     const array_of_args_ints = Array.from(Array(args_count).keys());                              // eg: [0, 1]
@@ -106,7 +155,7 @@ function load_arg${n}_ret_${rets_count}_arg_${args_count}<${string_all_generics}
 @inline
 function load_ret${n}_ret_${rets_count}_arg_${args_count}<${string_all_generics}>(stack_ptr: usize): R${n} {
     const r${n}_offset = ${ret_offset(n, rets_count, args_count)}; // constant folded
-    return load<T${n}>(stack_ptr, r${n}_offset); // inlined
+    return load<R${n}>(stack_ptr, r${n}_offset); // inlined
 }`);
     return [...all_arg_loads, ...all_ret_loads].join(`\n`);
 }
@@ -333,6 +382,33 @@ function stack_allocate(bytes: usize): usize {
 function stack_deallocate(bytes: usize): void {
     $STACK_FREE_PTR =- bytes;
 }
+
+export function wastrumentation_stack_load_i32(ptr: i32): i32 {
+    return load<i32>(ptr);
+};
+export function wastrumentation_stack_load_f32(ptr: i32): f32 {
+    return load<f32>(ptr);
+};
+export function wastrumentation_stack_load_i64(ptr: i32): i64 {
+    return load<i64>(ptr);
+};
+export function wastrumentation_stack_load_f64(ptr: i32): f64 {
+    return load<f64>(ptr);
+};
+
+export function wastrumentation_stack_store_i32(ptr: i32, value: i32): void {
+    return store<i32>(ptr, value);
+};
+export function wastrumentation_stack_store_f32(ptr: i32, value: f32): void {
+    return store<f32>(ptr, value);
+};
+export function wastrumentation_stack_store_i64(ptr: i32, value: i64): void {
+    return store<i64>(ptr, value);
+};
+export function wastrumentation_stack_store_f64(ptr: i32, value: f64): void {
+    return store<f64>(ptr, value);
+};
+
 `;
 
 function generate_lib(signatures: Signature[]): string {
@@ -353,6 +429,7 @@ function generate_lib_for(signatures: Signature[]): string {
             program += generate_store_generic(signature_ret_count, signature_arg_count);
             program += generate_free_generic(signature_ret_count, signature_arg_count);
             program += generate_store_rets_generic(signature_ret_count, signature_arg_count);
+            program += generate_allocate_types_buffer_generic(signature_ret_count, signature_arg_count);
             processed_signature_counts.add(signature_length);
         }
         if (!processed_signatures.has(signature.toString())) {
@@ -361,6 +438,7 @@ function generate_lib_for(signatures: Signature[]): string {
             program += generate_store_specialized(signature);
             program += generate_free_specialized(signature);
             program += generate_store_rets_specialized(signature);
+            program += generate_allocate_types_buffer_specialized(signature);
             processed_signatures.add(signature.toString());
         }
     }
@@ -557,6 +635,12 @@ function store_rets_2_arg_2<R0, R1, T0, T1>(stack_ptr: usize, a0: R0, a1: R1): v
     // store a1
     store_ret1_ret_2_arg_2<R0, R1, T0, T1>(stack_ptr, a1);
     return;
+}
+@inline
+function allocate_signature_4(): usize {
+    const to_allocate = sizeof<i32>() * 4;; // constant folded
+    const stack_begin = stack_allocate(to_allocate); // inlined
+    return stack_begin;
 }
 export function allocate_ret_f32_f64_arg_i32_i64(a0: i32, a1: i64): usize {
     return allocate_ret_2_arg_2<f32, f64, i32, i64>(a0, a1);
@@ -767,6 +851,12 @@ function store_rets_4_arg_4<R0, R1, R2, R3, T0, T1, T2, T3>(stack_ptr: usize, a0
     // store a3
     store_ret3_ret_4_arg_4<R0, R1, R2, R3, T0, T1, T2, T3>(stack_ptr, a3);
     return;
+}
+@inline
+function allocate_signature_8(): usize {
+    const to_allocate = sizeof<i32>() * 8;; // constant folded
+    const stack_begin = stack_allocate(to_allocate); // inlined
+    return stack_begin;
 }
 export function allocate_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(a0: i64, a1: i32, a2: f32, a3: f64): usize {
     return allocate_ret_4_arg_4<f64, f32, i32, i64, i64, i32, f32, f64>(a0, a1, a2, a3);

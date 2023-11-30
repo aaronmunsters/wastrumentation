@@ -1,0 +1,22 @@
+(aspect
+    (global >>>GUEST>>>
+        export let call_count = 0;
+        export let max_count = 0;
+    <<<GUEST<<<)
+
+    (advice apply (func    WasmFunction)
+                  (args    MutDynArgs)
+                  (results MutDynResults) >>>GUEST>>>
+
+        // pre apply
+        call_count += 1;
+
+        if (max_count < call_count) max_count += 1;
+
+        func.apply();
+
+        call_count -= 1;
+        
+        
+
+    <<<GUEST<<<))

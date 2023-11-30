@@ -10,3 +10,4 @@ anyhow = "1.0.75"
 clap = { version = "4.4.8", features = ["derive", "string"] }
 wasabi_wasm = { path = "../wasabi/crates/wasabi_wasm" }
 wastrumentation = { path = "../wastrumentation" }
+wasp-compiler = { path = "../wasp-compiler" }

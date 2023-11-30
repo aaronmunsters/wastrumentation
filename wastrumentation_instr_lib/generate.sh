@@ -9,25 +9,33 @@ if [[ ! -e node_modules ]]; then
 fi
 
 deno run --allow-write=./src_generated/ ./generate_for_signatures.ts
-cp analysis.ts src_generated/analysis.ts
 
 # Compile the AssemblyScript library to WebAssembly optimized
-npx asc src_generated/lib.ts --textFile dist/wastrumentation_stack.wat -O \
+npx asc src_generated/lib.ts --textFile dist/wastrumentation_stack.wat -O3 \
+    --disable bulk-memory \
     --runtime minimal \
-    --config ./node_modules/@assemblyscript/wasi-shim/asconfig.json \
+     \
     --noExportMemory
-npx asc src_generated/lib.ts -o dist/wastrumentation_stack.wasm -O \
+npx asc src_generated/lib.ts -o dist/wastrumentation_stack.wasm -O3 \
+    --disable bulk-memory \
     --runtime minimal \
-    --config ./node_modules/@assemblyscript/wasi-shim/asconfig.json \
+     \
     --noExportMemory
 
+# wasm-metadce dist/wastrumentation_stack.wasm --graph-file reachability.json -o dist/wastrumentation_stack.wasm
+# wasm2wat dist/wastrumentation_stack.wasm -o dist/wastrumentation_stack.wat
+
 # Compile the analysis
-npx asc src_generated/analysis.ts --textFile dist/analysis.wat -O \
-    --runtime minimal \
-    --config ./node_modules/@assemblyscript/wasi-shim/asconfig.json
-npx asc src_generated/analysis.ts -o dist/analysis.wasm -O \
-    --runtime minimal \
-    --config ./node_modules/@assemblyscript/wasi-shim/asconfig.json
+npx asc src_generated/analysis.ts --textFile dist/analysis.wat -O3 \
+    --disable bulk-memory \
+    --runtime stub \
+    
+npx asc src_generated/analysis.ts -o dist/analysis.wasm -O3 \
+    --disable bulk-memory \
+    --runtime stub \
+
+# Removed flag:    
+# --config ./node_modules/@assemblyscript/wasi-shim/asconfig.json
 
 # # DOCUMENTATION 
 #        compilation unit             npx options used                       reason why
