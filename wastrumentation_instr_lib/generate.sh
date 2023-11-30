@@ -14,12 +14,12 @@ deno run --allow-write=./src_generated/ ./generate_for_signatures.ts
 npx asc src_generated/lib.ts --textFile dist/wastrumentation_stack.wat -O3 \
     --disable bulk-memory \
     --runtime minimal \
-     \
+    --config ./node_modules/@assemblyscript/wasi-shim/asconfig.json \
     --noExportMemory
 npx asc src_generated/lib.ts -o dist/wastrumentation_stack.wasm -O3 \
     --disable bulk-memory \
     --runtime minimal \
-     \
+    --config ./node_modules/@assemblyscript/wasi-shim/asconfig.json \
     --noExportMemory
 
 # wasm-metadce dist/wastrumentation_stack.wasm --graph-file reachability.json -o dist/wastrumentation_stack.wasm
@@ -28,12 +28,12 @@ npx asc src_generated/lib.ts -o dist/wastrumentation_stack.wasm -O3 \
 # Compile the analysis
 npx asc src_generated/analysis.ts --textFile dist/analysis.wat -O3 \
     --disable bulk-memory \
-    --runtime stub \
-    
+    --runtime minimal \
+    --config ./node_modules/@assemblyscript/wasi-shim/asconfig.json
 npx asc src_generated/analysis.ts -o dist/analysis.wasm -O3 \
     --disable bulk-memory \
-    --runtime stub \
-
+    --runtime minimal \
+    --config ./node_modules/@assemblyscript/wasi-shim/asconfig.json
 # Removed flag:    
 # --config ./node_modules/@assemblyscript/wasi-shim/asconfig.json
 

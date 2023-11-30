@@ -38,8 +38,19 @@
     call 3)
   (func (;13;) (type 1) (param i32 i32) (result i32)
     local.get 0
-    local.get 1
-    i32.add)
+    i32.const 1
+    i32.le_s
+    if (result i32)  ;; label = @1
+      i32.const 1
+    else
+      local.get 0
+      i32.const 1
+      i32.sub
+      local.get 1
+      call 12
+      local.get 0
+      i32.mul
+    end)
   (func (;14;) (type 7) (param i32)
     (local i32)
     local.get 0
@@ -54,6 +65,7 @@
     local.get 0
     call_indirect (type 7))
   (table (;0;) 1 1 funcref)
+  (memory (;0;) 0)
   (export "add-two" (func 12))
   (export "call_base" (func 15))
   (elem (;0;) (i32.const 0) func 14))

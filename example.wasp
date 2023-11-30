@@ -1,7 +1,6 @@
 (aspect
     (global >>>GUEST>>>
-        export let call_count = 0;
-        export let max_count = 0;
+        console.log("Hello from the start!");
     <<<GUEST<<<)
 
     (advice apply (func    WasmFunction)
@@ -9,13 +8,11 @@
                   (results MutDynResults) >>>GUEST>>>
 
         // pre apply
-        call_count += 1;
-
-        if (max_count < call_count) max_count += 1;
-
+        console.log(`Passed argument: ${args.get<i32>(0)}`);
         func.apply();
+        console.log(`Passed argument: ${args.get<i32>(0)}, result: ${results.get<i32>(0)}`);
 
-        call_count -= 1;
+        // post apply
         
         
 
