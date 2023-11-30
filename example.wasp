@@ -1,23 +1,22 @@
 (aspect
     (global >>>GUEST>>>
-
-        console.log("Hello world!");
-        console.log("This is the start of the module!");
-        
+        export let call_count = 0;
+        export let max_count = 0;
     <<<GUEST<<<)
 
     (advice apply (func    WasmFunction)
                   (args    MutDynArgs)
                   (results MutDynResults) >>>GUEST>>>
-        // pre
-        // ...
-        // args.set<i32>(0, 1234);
 
-        // base //
+        // pre apply
+        call_count += 1;
+
+        if (max_count < call_count) max_count += 1;
+
         func.apply();
-        // base //
+
+        call_count -= 1;
         
-        // post
-        // ...
+        
 
     <<<GUEST<<<))
