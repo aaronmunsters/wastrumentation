@@ -11,6 +11,7 @@ fn main() -> Result<()> {
 
     let engine: Engine = Engine::new(Config::default().wasm_multi_memory(true))?;
     let mut linker = Linker::new(&engine);
+    linker.allow_unknown_exports(true);
     wasmtime_wasi::add_to_linker(&mut linker, |s| s)?;
 
     // Create a WASI context and put it in a Store; all instances in the store

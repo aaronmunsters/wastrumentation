@@ -26,7 +26,7 @@ cargo run --package patch-wasi-start-exports -- \
         wastrumentation_stack=wastrumentation_instr_lib/dist/wastrumentation_stack.wasm \
         WASP_ANALYSIS=wastrumentation_instr_lib/dist/analysis.wasm
 
-wasm-merge -n --rename-export-conflicts --enable-multimemory \
+wasm-merge --rename-export-conflicts --enable-multimemory \
     wastrumentation_instr_lib/dist/wastrumentation_stack.wasm   wastrumentation_stack   \
     wastrumentation_instr_lib/dist/analysis.wasm                WASP_ANALYSIS           \
     ${OUT_DOT_WASM}                                             instrumented_input      \
