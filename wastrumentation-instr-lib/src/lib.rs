@@ -37,6 +37,61 @@ pub struct Signature {
     pub argument_types: Vec<WasmType>,
 }
 
+impl Signature {
+    fn mangled_name(&self) -> String {
+        let signature_rets = &self.return_types;
+        let signature_rets_ident = signature_rets
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<String>>()
+            .join("_");
+        let signature_args = &self.argument_types;
+        let signature_args_ident = signature_args
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<String>>()
+            .join("_");
+        format!("ret_{signature_rets_ident}_arg_{signature_args_ident}")
+    }
+
+    fn mangled_by_count_name(&self) -> String {
+        let signature_rets_count = self.return_types.len();
+        let signature_args_count = self.argument_types.len();
+        format!("ret_{signature_rets_count}_arg_{signature_args_count}")
+    }
+
+    fn comma_separated_types(&self) -> String {
+        self.return_types
+            .iter()
+            .chain(self.argument_types.iter())
+            .map(ToString::to_string)
+            .collect::<Vec<String>>()
+            .join(", ")
+    }
+
+    fn comma_separated_generics(rets_count: usize, args_count: usize) -> String {
+        Self::generics(rets_count, args_count).join(", ")
+    }
+
+    fn generics(rets_count: usize, args_count: usize) -> Vec<String> {
+        let arg_typs = (0..args_count).into_iter().map(|n| format!("T{n}"));
+        let ret_typs = (0..rets_count).into_iter().map(|n| format!("R{n}"));
+        ret_typs.chain(arg_typs).collect::<Vec<String>>()
+    }
+
+    fn generic_typed_arguments(args_count: usize) -> Vec<String> {
+        (0..args_count)
+            .clone()
+            .into_iter()
+            .map(|n| format!("a{n}: T{n}"))
+            .collect::<Vec<String>>()
+    }
+
+    fn generic_comma_separated_typed_arguments(args_count: usize) -> String {
+        Self::generic_typed_arguments(args_count).join(", ")
+    }
+}
+
 fn generics_offset(position: usize, rets_count: usize, args_offset: usize) -> String {
     if position == 0 {
         return "0".into();
@@ -63,40 +118,16 @@ fn ret_offset(ret_pos: usize, rets_count: usize, args_count: usize) -> String {
 }
 
 fn generate_allocate_generic(rets_count: usize, args_count: usize) -> String {
-    // eg: rets_count := 2, args_count := 2
-
-    // eg: [0, 1]
-    let arg_ints = 0..args_count;
-    // eg: [`T0`, `T1`]
-    let arg_typs = arg_ints.clone().into_iter().map(|n| format!("T{n}"));
-
-    // eg: [0, 1]
-    let ret_ints = 0..rets_count;
-    // eg: [`R0`, `R1`]
-    let ret_typs = ret_ints.into_iter().map(|n| format!("R{n}"));
-
-    // eg: [`R0`, `R1`, `T0`, `T1`]
-    let array_of_all_generics = ret_typs.into_iter().chain(arg_typs.into_iter());
-    // eg: `R0, R1, T0, T1`
-    let string_all_generics = array_of_all_generics
-        .clone()
-        .collect::<Vec<String>>()
-        .join(", ");
-
-    // eg: `a0: T0, a1: T1`
-    let signature = arg_ints
-        .clone()
-        .into_iter()
-        .map(|n| format!("a{n}: T{n}"))
-        .collect::<Vec<String>>()
-        .join(", ");
+    let string_all_generics = Signature::comma_separated_generics(rets_count, args_count);
+    let signature = Signature::generic_comma_separated_typed_arguments(args_count);
 
     // eg: `sizeof<R0>() +  sizeof<R1>() +  sizeof<T0>() +  sizeof<T1>()`
-    let total_allocation = array_of_all_generics
+    let total_allocation = Signature::generics(rets_count, args_count)
+        .iter()
         .map(|ty| format!("sizeof<{ty}>()"))
         .collect::<Vec<String>>()
         .join(" + ");
-    let all_stores = arg_ints
+    let all_stores = (0..args_count)
         .into_iter()
         .map(|n| {
             let offset = arg_offset(n, rets_count, args_count);
@@ -123,20 +154,8 @@ function allocate_ret_{rets_count}_arg_{args_count}<{string_all_generics}>({sign
 
 fn generate_allocate_specialized(signature: &Signature) -> String {
     // eg: Signature { return_type: [`i64`, `i32`], argument_types: [`f64`, `f32`] }
-    // eg: [`i64`, `i32`]
-    let signature_rets = &signature.return_types;
-    // eg: 2
-    let signature_rets_count = signature_rets.len();
-    // eg: `i64_i32`
-    let signature_rets_ident = signature_rets
-        .iter()
-        .map(ToString::to_string)
-        .collect::<Vec<String>>()
-        .join("_");
     // eg: [`f64`, `f32`]
     let signature_args = &signature.argument_types;
-    // eg: 2
-    let signature_args_count = signature_args.len();
     // eg: `a0, a1`
     let args = signature_args
         .into_iter()
@@ -144,12 +163,6 @@ fn generate_allocate_specialized(signature: &Signature) -> String {
         .map(|(index, _ty)| format!("a{index}"))
         .collect::<Vec<String>>()
         .join(", ");
-    // eg: `f64, f32`
-    let signature_args_ident = signature_args
-        .iter()
-        .map(ToString::to_string)
-        .collect::<Vec<String>>()
-        .join("_");
     // eg: `a0: f64, a1: f32`
     let signature_args_typs_ident = signature_args
         .into_iter()
@@ -157,18 +170,18 @@ fn generate_allocate_specialized(signature: &Signature) -> String {
         .map(|(index, ty)| format!("a{index}: {ty}"))
         .collect::<Vec<String>>()
         .join(", ");
-    // eg: `i64, i32, f64, f32`
-    let signature_typs_ident = signature_rets
-        .iter()
-        .chain(signature_args.iter())
-        .map(ToString::to_string)
-        .collect::<Vec<String>>()
-        .join(", ");
-    return format!("
-export function allocate_ret_{signature_rets_ident}_arg_{signature_args_ident}({signature_args_typs_ident}): usize {{
-    return allocate_ret_{signature_rets_count}_arg_{signature_args_count}<{signature_typs_ident}>({args});
+
+    let comma_separated_types = signature.comma_separated_types();
+    let mangled_name = signature.mangled_name();
+    let mangled_by_count_name = signature.mangled_by_count_name();
+
+    return format!(
+        "
+export function allocate_{mangled_name}({signature_args_typs_ident}): usize {{
+    return allocate_{mangled_by_count_name}<{comma_separated_types}>({args});
 }};
-");
+"
+    );
 }
 
 fn generate_allocate_types_buffer_generic(rets_count: usize, args_count: usize) -> String {
@@ -192,24 +205,8 @@ function allocate_signature_types_buffer_ret_{rets_count}_arg_{args_count}(): us
 fn generate_allocate_types_buffer_specialized(signature: &Signature) -> String {
     // eg: [`i64`, `i32`]
     let signature_rets = &signature.return_types;
-    // eg: 2
-    let signature_rets_count = signature_rets.len();
-    // eg: `i64, i32`
-    let signature_rets_ident = signature_rets
-        .iter()
-        .map(ToString::to_string)
-        .collect::<Vec<String>>()
-        .join("_");
     // eg: [`f64`, `f32`]
     let signature_args = &signature.argument_types;
-    // eg: 2
-    let signature_args_count = signature_args.len();
-    // eg: `f64, f32`
-    let signature_args_ident = signature_args
-        .iter()
-        .map(ToString::to_string)
-        .collect::<Vec<String>>()
-        .join("_");
     // eg: `i64, i32, f64, f32`
     let all_stores = signature_rets
         .iter()
@@ -222,35 +219,24 @@ fn generate_allocate_types_buffer_specialized(signature: &Signature) -> String {
         .collect::<Vec<String>>()
         .join("\n    ");
 
-    return format!("
-export function allocate_types_ret_{signature_rets_ident}_arg_{signature_args_ident}(): usize {{
+    let mangled_name = signature.mangled_name();
+    let mangled_by_count_name = signature.mangled_by_count_name();
+
+    return format!(
+        "
+export function allocate_types_{mangled_name}(): usize {{
     const NO_OFFSET = 0;
-    const types_buffer = allocate_signature_types_buffer_ret_{signature_rets_count}_arg_{signature_args_count}();
+    const types_buffer = allocate_signature_types_buffer_{mangled_by_count_name}();
     {all_stores}
     return types_buffer;
-}}");
+}}"
+    );
 }
 
 fn generate_load_generic(rets_count: usize, args_count: usize) -> String {
-    // eg: rets_count := 2, args_count := 2
-    // eg: [0, 1]
-    let array_of_args_ints = 0..args_count;
-    // eg: [`T0`, `T1`]
-    let array_of_args_typs = array_of_args_ints.clone().map(|n| format!("T{n}"));
+    let string_all_generics = Signature::comma_separated_generics(rets_count, args_count);
 
-    // eg: [0, 1]
-    let array_of_rets_ints = 0..rets_count;
-    // eg: [`R0`, `R1`]
-    let array_of_rets_typs = array_of_rets_ints.clone().map(|n| format!("R{n}"));
-
-    // eg: [`R0`, `R1`, `T0`, `T1`]
-    let array_of_all_generics = array_of_rets_typs
-        .into_iter()
-        .chain(array_of_args_typs.into_iter());
-    // eg: `R0, R1, T0, T1`
-    let string_all_generics = array_of_all_generics.collect::<Vec<String>>().join(", ");
-
-    let all_arg_loads = array_of_args_ints.map(|n| {
+    let all_arg_loads = (0..args_count).map(|n| {
         let an_offset = arg_offset(n, rets_count, args_count);
         format!("
 @inline
@@ -258,7 +244,7 @@ function load_arg{n}_ret_{rets_count}_arg_{args_count}<{string_all_generics}>(st
     const a{n}_offset = {an_offset}; // constant folded
     return load<T{n}>(stack_ptr, a{n}_offset); // inlined
 }}")});
-    let all_ret_loads = array_of_rets_ints.map(|n| {
+    let all_ret_loads = (0..rets_count).map(|n| {
         let ar_offset = ret_offset(n, rets_count, args_count);
         format!("
 @inline
@@ -275,39 +261,35 @@ function load_ret{n}_ret_{rets_count}_arg_{args_count}<{string_all_generics}>(st
 fn generate_load_specialized(signature: &Signature) -> String {
     // eg: [`i64`, `i32`]
     let signature_rets = &signature.return_types;
-    // eg: 2
-    let signature_rets_count = signature_rets.len();
-    // eg: `i64_i32`
-    let signature_rets_ident = signature_rets
-        .iter()
-        .map(ToString::to_string)
-        .collect::<Vec<String>>()
-        .join("_");
     // eg: [`f64`, `f32`]
     let signature_args = &signature.argument_types;
-    // eg: 2
-    let signature_args_count = signature_args.len();
-    // eg: `f64_f32`
-    let signature_args_ident = signature_args
+
+    let comma_separated_types = signature.comma_separated_types();
+    let mangled_name = signature.mangled_name();
+    let mangled_by_count_name = signature.mangled_by_count_name();
+
+    let all_arg_loads = signature_args
         .iter()
-        .map(ToString::to_string)
-        .collect::<Vec<String>>()
-        .join("_");
-    // eg: `i64, i32, f64, f32`
-    let signature_typs_ident = signature_rets
+        .enumerate()
+        .map(|(index, arg_i_ret_type)| {
+            format!(
+                "
+export function load_arg{index}_{mangled_name}(stack_ptr: usize): {arg_i_ret_type} {{
+    return load_arg{index}_{mangled_by_count_name}<{comma_separated_types}>(stack_ptr);
+}};"
+            )
+        });
+    let all_ret_loads = signature_rets
         .iter()
-        .chain(signature_args.iter())
-        .map(ToString::to_string)
-        .collect::<Vec<String>>()
-        .join(", ");
-    let all_arg_loads = signature_args.iter().enumerate().map(|(index, arg_i_ret_type)| format!("
-export function load_arg{index}_ret_{signature_rets_ident}_arg_{signature_args_ident}(stack_ptr: usize): {arg_i_ret_type} {{
-    return load_arg{index}_ret_{signature_rets_count}_arg_{signature_args_count}<{signature_typs_ident}>(stack_ptr);
-}};"));
-    let all_ret_loads = signature_rets.iter().enumerate().map(|(index, ret_i_ret_type )| format!("
-export function load_ret{index}_ret_{signature_rets_ident}_arg_{signature_args_ident}(stack_ptr: usize): {ret_i_ret_type} {{
-    return load_ret{index}_ret_{signature_rets_count}_arg_{signature_args_count}<{signature_typs_ident}>(stack_ptr);
-}};"));
+        .enumerate()
+        .map(|(index, ret_i_ret_type)| {
+            format!(
+                "
+export function load_ret{index}_{mangled_name}(stack_ptr: usize): {ret_i_ret_type} {{
+    return load_ret{index}_{mangled_by_count_name}<{comma_separated_types}>(stack_ptr);
+}};"
+            )
+        });
 
     return all_arg_loads
         .chain(all_ret_loads)
@@ -316,24 +298,9 @@ export function load_ret{index}_ret_{signature_rets_ident}_arg_{signature_args_i
 }
 
 fn generate_store_generic(rets_count: usize, args_count: usize) -> String {
-    // eg: rets_count := 2, args_count := 2
-    // eg: [0, 1]
-    let array_of_args_ints = 0..args_count;
-    // eg: [`T0`, `T1`]
-    let array_of_args_typs = array_of_args_ints.clone().map(|n| format!("T{n}"));
+    let string_all_generics = Signature::comma_separated_generics(rets_count, args_count);
 
-    // eg: [0, 1]
-    let array_of_rets_ints = 0..rets_count;
-    // eg: [`R0`, `R1`]
-    let array_of_rets_typs = array_of_rets_ints.clone().map(|n| format!("R{n}"));
-
-    // eg: [`R0`, `R1`, `T0`, `T1`]
-    let array_of_all_generics = array_of_rets_typs.chain(array_of_args_typs);
-
-    // eg: `R0, R1, T0, T1`
-    let string_all_generics = array_of_all_generics.collect::<Vec<String>>().join(", ");
-
-    let all_arg_stores = array_of_args_ints.map(|n| {
+    let all_arg_stores = (0..args_count).map(|n| {
         let an_offset = arg_offset(n, rets_count, args_count);
         format!("
 @inline
@@ -341,7 +308,7 @@ function store_arg{n}_ret_{rets_count}_arg_{args_count}<{string_all_generics}>(s
     const a{n}_offset = {an_offset}; // constant folded
     return store<T{n}>(stack_ptr + a{n}_offset, a{n}); // inlined
 }}")});
-    let all_ret_stores = array_of_rets_ints.map(|n| {
+    let all_ret_stores = (0..rets_count).map(|n| {
         let ar_offset = ret_offset(n, rets_count, args_count);
         format!("
 @inline
@@ -358,38 +325,20 @@ function store_ret{n}_ret_{rets_count}_arg_{args_count}<{string_all_generics}>(s
 fn generate_store_specialized(signature: &Signature) -> String {
     // eg: [`i64`, `i32`]
     let signature_rets = &signature.return_types;
-    // eg: 2
-    let signature_rets_count = signature_rets.len();
-    // eg: `i64_i32`
-    let signature_rets_ident = signature_rets
-        .iter()
-        .map(ToString::to_string)
-        .collect::<Vec<String>>()
-        .join("_");
     // eg: [`f64`, `f32`]
     let signature_args = &signature.argument_types;
-    // eg: 2
-    let signature_args_count = signature_args.len();
-    // eg: `f64_f32`
-    let signature_args_ident = signature_args
-        .iter()
-        .map(ToString::to_string)
-        .collect::<Vec<String>>()
-        .join("_");
-    // eg: `i64, i32, f64, f32`
-    let signature_typs_ident = signature_rets
-        .iter()
-        .chain(signature_args.iter())
-        .map(ToString::to_string)
-        .collect::<Vec<String>>()
-        .join(", ");
+
+    let comma_separated_types = signature.comma_separated_types();
+    let mangled_name = signature.mangled_name();
+    let mangled_by_count_name = signature.mangled_by_count_name();
+
     let all_arg_stores = signature_args.iter().enumerate().map(|(index, arg_i_ret_type)| format!("
-export function store_arg{index}_ret_{signature_rets_ident}_arg_{signature_args_ident}(stack_ptr: usize, a{index}: {arg_i_ret_type}): void {{
-    return store_arg{index}_ret_{signature_rets_count}_arg_{signature_args_count}<{signature_typs_ident}>(stack_ptr, a{index});
+export function store_arg{index}_{mangled_name}(stack_ptr: usize, a{index}: {arg_i_ret_type}): void {{
+    return store_arg{index}_{mangled_by_count_name}<{comma_separated_types}>(stack_ptr, a{index});
 }};"));
     let all_ret_stores = signature_rets.iter().enumerate().map(|(index, ret_i_ret_type)| format!("
-export function store_ret{index}_ret_{signature_rets_ident}_arg_{signature_args_ident}(stack_ptr: usize, a{index}: {ret_i_ret_type}): void {{
-    return store_ret{index}_ret_{signature_rets_count}_arg_{signature_args_count}<{signature_typs_ident}>(stack_ptr, a{index});
+export function store_ret{index}_{mangled_name}(stack_ptr: usize, a{index}: {ret_i_ret_type}): void {{
+    return store_ret{index}_{mangled_by_count_name}<{comma_separated_types}>(stack_ptr, a{index});
 }};"));
     return all_arg_stores
         .chain(all_ret_stores)
@@ -398,27 +347,11 @@ export function store_ret{index}_ret_{signature_rets_ident}_arg_{signature_args_
 }
 
 fn generate_free_generic(rets_count: usize, args_count: usize) -> String {
-    // eg: rets_count := 2, args_count := 2
-    // eg: [0, 1]
-    let array_of_args_ints = 0..args_count;
-    // eg: [`T0`, `T1`]
-    let array_of_args_typs = array_of_args_ints.map(|n| format!("T{n}"));
-
-    // eg: [0, 1]
-    let array_of_rets_ints = 0..rets_count;
-    // eg: [`R0`, `R1`]
-    let array_of_rets_typs = array_of_rets_ints.map(|n| format!("R{n}"));
-
-    // eg: [`R0`, `R1`, `T0`, `T1`]
-    let array_of_all_generics = array_of_rets_typs.chain(array_of_args_typs);
-    // eg: `R0, R1, T0, T1`
-    let string_all_generics = array_of_all_generics
-        .clone()
-        .collect::<Vec<String>>()
-        .join(", ");
+    let string_all_generics = Signature::comma_separated_generics(rets_count, args_count);
 
     // eg: `sizeof<R0>() +  sizeof<R1>() +  sizeof<T0>() +  sizeof<T1>()`
-    let total_allocation = array_of_all_generics
+    let total_allocation = Signature::generics(rets_count, args_count)
+        .iter()
         .map(|ty| format!("sizeof<{ty}>()"))
         .collect::<Vec<String>>()
         .join(" + ");
@@ -435,66 +368,28 @@ function free_ret_{rets_count}_arg_{args_count}<{string_all_generics}>(): void {
 }
 
 fn generate_free_specialized(signature: &Signature) -> String {
-    // eg: [`i64`, `i32`]
-    let signature_rets = &signature.return_types;
-    // eg: 2
-    let signature_rets_count = signature_rets.len();
-    // eg: `i64_i32`
-    let signature_rets_ident = signature_rets
-        .iter()
-        .map(ToString::to_string)
-        .collect::<Vec<String>>()
-        .join("_");
-    // eg: [`f64`, `f32`]
-    let signature_args = &signature.argument_types;
-    // eg: 2
-    let signature_args_count = signature_args.len();
-    // eg: `f64_f32`
-    let signature_args_ident = signature_args
-        .iter()
-        .map(ToString::to_string)
-        .collect::<Vec<String>>()
-        .join("_");
-    // eg: `i64, i32, f64, f32`
-    let signature_typs_ident = signature_rets
-        .iter()
-        .chain(signature_args.iter())
-        .map(ToString::to_string)
-        .collect::<Vec<String>>()
-        .join(", ");
     return format!(
         "
-export function free_ret_{signature_rets_ident}_arg_{signature_args_ident}(): void {{
-    return free_ret_{signature_rets_count}_arg_{signature_args_count}<{signature_typs_ident}>();
-}};"
+export function free_{}(): void {{
+    return free_{}<{}>();
+}};",
+        signature.mangled_name(),
+        signature.mangled_by_count_name(),
+        signature.comma_separated_types(),
     );
 }
 
 fn generate_store_rets_generic(rets_count: usize, args_count: usize) -> String {
-    // eg: rets_count := 2, args_count := 2
-    // eg: [0, 1]
-    let array_of_args_ints = 0..args_count;
-    // eg: [`T0`, `T1`]
-    let array_of_args_typs = array_of_args_ints.map(|n| format!("T{n}"));
-
-    // eg: [0, 1]
-    let array_of_rets_ints = 0..rets_count;
-    // eg: [`R0`, `R1`]
-    let array_of_rets_typs = array_of_rets_ints.clone().map(|n| format!("R{n}"));
-
-    // eg: [`R0`, `R1`, `T0`, `T1`]
-    let array_of_all_generics = array_of_rets_typs.chain(array_of_args_typs);
-    // eg: `R0, R1, T0, T1`
-    let string_all_generics = array_of_all_generics.collect::<Vec<String>>().join(", ");
+    let string_all_generics = Signature::comma_separated_generics(rets_count, args_count);
 
     // eg: [`a0: R0`, `a1: R1`]
-    let array_of_rets_signature = array_of_rets_ints.clone().map(|n| format!("a{n}: R{n}"));
+    let array_of_rets_signature = (0..rets_count).map(|n| format!("a{n}: R{n}"));
     let total_signature = (vec![String::from("stack_ptr: usize")])
         .into_iter()
         .chain(array_of_rets_signature)
         .collect::<Vec<String>>()
         .join(", ");
-    let all_stores = array_of_rets_ints
+    let all_stores = (0..rets_count)
         .map(|n| {
             format!(
                 "// store a{n}
@@ -517,36 +412,11 @@ function store_rets_{rets_count}_arg_{args_count}<{string_all_generics}>({total_
 fn generate_store_rets_specialized(signature: &Signature) -> String {
     // eg: [`i64`, `i32`]
     let signature_rets = &signature.return_types;
-    // eg: 2
-    let signature_rets_count = signature_rets.len();
-    // eg: `i64_i32`
-    let signature_rets_ident = signature_rets
-        .iter()
-        .map(ToString::to_string)
-        .collect::<Vec<String>>()
-        .join("_");
-    // eg: [`f64`, `f32`]
-    let signature_args = &signature.argument_types;
-    // eg: 2
-    let signature_args_count = signature_args.len();
     // eg: [`a0`, `a1`]
     let rets_arguments = signature_rets
         .iter()
         .enumerate()
         .map(|(index, _type)| format!("a{index}"));
-    // eg: `f64_f32`
-    let signature_args_ident = signature_args
-        .iter()
-        .map(ToString::to_string)
-        .collect::<Vec<String>>()
-        .join("_");
-    // eg: `i64, i32, f64, f32`
-    let signature_typs_ident = signature_rets
-        .iter()
-        .chain(signature_args.iter())
-        .map(ToString::to_string)
-        .collect::<Vec<String>>()
-        .join(", ");
     // eg: [`a0: R0`, `a1: R1`]
     let rets_signature = signature_rets
         .iter()
@@ -565,10 +435,16 @@ fn generate_store_rets_specialized(signature: &Signature) -> String {
         .collect::<Vec<String>>()
         .join(", ");
 
-    return format!("
-export function store_rets_ret_{signature_rets_ident}_arg_{signature_args_ident}({total_signature}): void {{
-    return store_rets_{signature_rets_count}_arg_{signature_args_count}<{signature_typs_ident}>({total_arguments});
-}};");
+    let comma_separated_types = signature.comma_separated_types();
+    let mangled_name = signature.mangled_name();
+    let mangled_by_count_name = signature.mangled_by_count_name();
+
+    return format!(
+        "
+export function store_rets_{mangled_name}({total_signature}): void {{
+    return store_rets_{mangled_by_count_name}<{comma_separated_types}>({total_arguments});
+}};"
+    );
 }
 
 const LIB_BOILERPLATE: &str = "
@@ -644,51 +520,41 @@ pub fn generate_lib(signatures: &[Signature]) -> String {
 }
 
 fn generate_lib_for(signatures: &[Signature]) -> String {
-    let mut processed_signature_counts: HashSet<String> = HashSet::new();
+    let mut processed_signature_counts: HashSet<(usize, usize)> = HashSet::new();
     let mut processed_signatures: HashSet<&Signature> = HashSet::new();
     let mut program = String::new();
     for signature in signatures {
         let signature_ret_count = signature.return_types.len();
         let signature_arg_count = signature.argument_types.len();
-        let signature_length: String = format!("{signature_ret_count},{signature_arg_count}");
+        let signature_length = (signature.return_types.len(), signature.argument_types.len());
         if !processed_signature_counts.contains(&signature_length) {
-            program.push_str(&generate_allocate_generic(
-                signature_ret_count,
-                signature_arg_count,
-            ));
-            program.push_str(&generate_load_generic(
-                signature_ret_count,
-                signature_arg_count,
-            ));
-            program.push_str(&generate_store_generic(
-                signature_ret_count,
-                signature_arg_count,
-            ));
-            program.push_str(&generate_free_generic(
-                signature_ret_count,
-                signature_arg_count,
-            ));
-            program.push_str(&generate_store_rets_generic(
-                signature_ret_count,
-                signature_arg_count,
-            ));
-            program.push_str(&generate_allocate_types_buffer_generic(
-                signature_ret_count,
-                signature_arg_count,
-            ));
             processed_signature_counts.insert(signature_length);
+            for generator in [
+                generate_allocate_generic,
+                generate_load_generic,
+                generate_store_generic,
+                generate_free_generic,
+                generate_store_rets_generic,
+                generate_allocate_types_buffer_generic,
+            ] {
+                program.push_str(generator(signature_ret_count, signature_arg_count).as_str())
+            }
         }
         if !processed_signatures.contains(signature) {
-            program.push_str(&generate_allocate_specialized(signature));
-            program.push_str(&generate_load_specialized(signature));
-            program.push_str(&generate_store_specialized(signature));
-            program.push_str(&generate_free_specialized(signature));
-            program.push_str(&generate_store_rets_specialized(signature));
-            program.push_str(&generate_allocate_types_buffer_specialized(signature));
             processed_signatures.insert(signature);
+            for generator in [
+                generate_allocate_specialized,
+                generate_load_specialized,
+                generate_store_specialized,
+                generate_free_specialized,
+                generate_store_rets_specialized,
+                generate_allocate_types_buffer_specialized,
+            ] {
+                program.push_str(&generator(signature));
+            }
         }
     }
-    return program;
+    program
 }
 
 #[cfg(test)]
@@ -1139,13 +1005,13 @@ function store_rets_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: u
             generate_store_rets_specialized(&get_ret_f64_f32_arg_i32_i64()),
             "
 export function store_rets_ret_f64_f32_arg_i32_i64(stack_ptr: usize, a0: f64, a1: f32): void {
-    return store_rets_2_arg_2<f64, f32, i32, i64>(stack_ptr, a0, a1);
+    return store_rets_ret_2_arg_2<f64, f32, i32, i64>(stack_ptr, a0, a1);
 };"
         );
 
         assert_eq!(generate_store_rets_specialized(&get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64()), "
 export function store_rets_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize, a0: f64, a1: f32, a2: i32, a3: i64): void {
-    return store_rets_4_arg_4<f64, f32, i32, i64, i64, i32, f32, f64>(stack_ptr, a0, a1, a2, a3);
+    return store_rets_ret_4_arg_4<f64, f32, i32, i64, i64, i32, f32, f64>(stack_ptr, a0, a1, a2, a3);
 };");
     }
 
@@ -1349,7 +1215,7 @@ export function free_ret_f32_f64_arg_i32_i64(): void {
     return free_ret_2_arg_2<f32, f64, i32, i64>();
 };
 export function store_rets_ret_f32_f64_arg_i32_i64(stack_ptr: usize, a0: f32, a1: f64): void {
-    return store_rets_2_arg_2<f32, f64, i32, i64>(stack_ptr, a0, a1);
+    return store_rets_ret_2_arg_2<f32, f64, i32, i64>(stack_ptr, a0, a1);
 };
 export function allocate_types_ret_f32_f64_arg_i32_i64(): usize {
     const NO_OFFSET = 0;
@@ -1398,7 +1264,7 @@ export function free_ret_f64_f32_arg_i32_i64(): void {
     return free_ret_2_arg_2<f64, f32, i32, i64>();
 };
 export function store_rets_ret_f64_f32_arg_i32_i64(stack_ptr: usize, a0: f64, a1: f32): void {
-    return store_rets_2_arg_2<f64, f32, i32, i64>(stack_ptr, a0, a1);
+    return store_rets_ret_2_arg_2<f64, f32, i32, i64>(stack_ptr, a0, a1);
 };
 export function allocate_types_ret_f64_f32_arg_i32_i64(): usize {
     const NO_OFFSET = 0;
@@ -1615,7 +1481,7 @@ export function free_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(): void {
     return free_ret_4_arg_4<f64, f32, i32, i64, i64, i32, f32, f64>();
 };
 export function store_rets_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize, a0: f64, a1: f32, a2: i32, a3: i64): void {
-    return store_rets_4_arg_4<f64, f32, i32, i64, i64, i32, f32, f64>(stack_ptr, a0, a1, a2, a3);
+    return store_rets_ret_4_arg_4<f64, f32, i32, i64, i64, i32, f32, f64>(stack_ptr, a0, a1, a2, a3);
 };
 export function allocate_types_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(): usize {
     const NO_OFFSET = 0;
