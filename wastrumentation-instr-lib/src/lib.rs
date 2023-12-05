@@ -1,6 +1,6 @@
 use std::{collections::HashSet, fmt::Display};
 
-#[derive(Hash, PartialEq, Eq, Clone)]
+#[derive(Hash, PartialEq, Eq)]
 pub enum WasmType {
     I32,
     F32,
@@ -31,7 +31,7 @@ impl Display for WasmType {
     }
 }
 
-#[derive(Hash, PartialEq, Eq, Clone)]
+#[derive(Hash, PartialEq, Eq)]
 pub struct Signature {
     pub return_types: Vec<WasmType>,
     pub argument_types: Vec<WasmType>,
