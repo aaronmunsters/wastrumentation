@@ -74,15 +74,14 @@ impl Signature {
     }
 
     fn generics(rets_count: usize, args_count: usize) -> Vec<String> {
-        let arg_typs = (0..args_count).into_iter().map(|n| format!("T{n}"));
-        let ret_typs = (0..rets_count).into_iter().map(|n| format!("R{n}"));
+        let arg_typs = (0..args_count).map(|n| format!("T{n}"));
+        let ret_typs = (0..rets_count).map(|n| format!("R{n}"));
         ret_typs.chain(arg_typs).collect::<Vec<String>>()
     }
 
     fn generic_typed_arguments(args_count: usize) -> Vec<String> {
         (0..args_count)
             .clone()
-            .into_iter()
             .map(|n| format!("a{n}: T{n}"))
             .collect::<Vec<String>>()
     }
@@ -103,7 +102,7 @@ fn generics_offset(position: usize, rets_count: usize, args_offset: usize) -> St
 
     ret_offsets
         .into_iter()
-        .chain(arg_offsets.into_iter())
+        .chain(arg_offsets)
         .take(position)
         .collect::<Vec<String>>()
         .join(" + ")
@@ -128,7 +127,6 @@ fn generate_allocate_generic(rets_count: usize, args_count: usize) -> String {
         .collect::<Vec<String>>()
         .join(" + ");
     let all_stores = (0..args_count)
-        .into_iter()
         .map(|n| {
             let offset = arg_offset(n, rets_count, args_count);
             format!(
@@ -158,14 +156,14 @@ fn generate_allocate_specialized(signature: &Signature) -> String {
     let signature_args = &signature.argument_types;
     // eg: `a0, a1`
     let args = signature_args
-        .into_iter()
+        .iter()
         .enumerate()
         .map(|(index, _ty)| format!("a{index}"))
         .collect::<Vec<String>>()
         .join(", ");
     // eg: `a0: f64, a1: f32`
     let signature_args_typs_ident = signature_args
-        .into_iter()
+        .iter()
         .enumerate()
         .map(|(index, ty)| format!("a{index}: {ty}"))
         .collect::<Vec<String>>()
@@ -175,13 +173,13 @@ fn generate_allocate_specialized(signature: &Signature) -> String {
     let mangled_name = signature.mangled_name();
     let mangled_by_count_name = signature.mangled_by_count_name();
 
-    return format!(
+    format!(
         "
 export function allocate_{mangled_name}({signature_args_typs_ident}): usize {{
     return allocate_{mangled_by_count_name}<{comma_separated_types}>({args});
 }};
 "
-    );
+    )
 }
 
 fn generate_allocate_types_buffer_generic(rets_count: usize, args_count: usize) -> String {
@@ -191,7 +189,7 @@ fn generate_allocate_types_buffer_generic(rets_count: usize, args_count: usize) 
     // eg: `sizeof<i32>() * 4;`
     let total_allocation = format!("sizeof<i32>() * {total_allocation_slots};");
 
-    return format!(
+    format!(
         "
 @inline
 function allocate_signature_types_buffer_ret_{rets_count}_arg_{args_count}(): usize {{
@@ -199,7 +197,7 @@ function allocate_signature_types_buffer_ret_{rets_count}_arg_{args_count}(): us
     const stack_begin = stack_allocate(to_allocate); // inlined
     return stack_begin;
 }}"
-    );
+    )
 }
 
 fn generate_allocate_types_buffer_specialized(signature: &Signature) -> String {
@@ -222,7 +220,7 @@ fn generate_allocate_types_buffer_specialized(signature: &Signature) -> String {
     let mangled_name = signature.mangled_name();
     let mangled_by_count_name = signature.mangled_by_count_name();
 
-    return format!(
+    format!(
         "
 export function allocate_types_{mangled_name}(): usize {{
     const NO_OFFSET = 0;
@@ -230,7 +228,7 @@ export function allocate_types_{mangled_name}(): usize {{
     {all_stores}
     return types_buffer;
 }}"
-    );
+    )
 }
 
 fn generate_load_generic(rets_count: usize, args_count: usize) -> String {
@@ -252,10 +250,10 @@ function load_ret{n}_ret_{rets_count}_arg_{args_count}<{string_all_generics}>(st
     const r{n}_offset = {ar_offset}; // constant folded
     return load<R{n}>(stack_ptr, r{n}_offset); // inlined
 }}")});
-    return all_arg_loads
+    all_arg_loads
         .chain(all_ret_loads)
         .collect::<Vec<String>>()
-        .join("\n");
+        .join("\n")
 }
 
 fn generate_load_specialized(signature: &Signature) -> String {
@@ -291,10 +289,10 @@ export function load_ret{index}_{mangled_name}(stack_ptr: usize): {ret_i_ret_typ
             )
         });
 
-    return all_arg_loads
+    all_arg_loads
         .chain(all_ret_loads)
         .collect::<Vec<String>>()
-        .join("\n");
+        .join("\n")
 }
 
 fn generate_store_generic(rets_count: usize, args_count: usize) -> String {
@@ -316,10 +314,10 @@ function store_ret{n}_ret_{rets_count}_arg_{args_count}<{string_all_generics}>(s
     const r{n}_offset = {ar_offset}; // constant folded
     return store<T{n}>(stack_ptr + r{n}_offset, r{n}); // inlined
 }}")});
-    return all_arg_stores
+    all_arg_stores
         .chain(all_ret_stores)
         .collect::<Vec<String>>()
-        .join("\n");
+        .join("\n")
 }
 
 fn generate_store_specialized(signature: &Signature) -> String {
@@ -340,10 +338,10 @@ export function store_arg{index}_{mangled_name}(stack_ptr: usize, a{index}: {arg
 export function store_ret{index}_{mangled_name}(stack_ptr: usize, a{index}: {ret_i_ret_type}): void {{
     return store_ret{index}_{mangled_by_count_name}<{comma_separated_types}>(stack_ptr, a{index});
 }};"));
-    return all_arg_stores
+    all_arg_stores
         .chain(all_ret_stores)
         .collect::<Vec<String>>()
-        .join("\n");
+        .join("\n")
 }
 
 fn generate_free_generic(rets_count: usize, args_count: usize) -> String {
@@ -356,7 +354,7 @@ fn generate_free_generic(rets_count: usize, args_count: usize) -> String {
         .collect::<Vec<String>>()
         .join(" + ");
 
-    return format!(
+    format!(
         "
 @inline
 function free_ret_{rets_count}_arg_{args_count}<{string_all_generics}>(): void {{
@@ -364,11 +362,11 @@ function free_ret_{rets_count}_arg_{args_count}<{string_all_generics}>(): void {
     stack_deallocate(to_deallocate); // inlined
     return;
 }}"
-    );
+    )
 }
 
 fn generate_free_specialized(signature: &Signature) -> String {
-    return format!(
+    format!(
         "
 export function free_{}(): void {{
     return free_{}<{}>();
@@ -376,7 +374,7 @@ export function free_{}(): void {{
         signature.mangled_name(),
         signature.mangled_by_count_name(),
         signature.comma_separated_types(),
-    );
+    )
 }
 
 fn generate_store_rets_generic(rets_count: usize, args_count: usize) -> String {
@@ -399,14 +397,14 @@ fn generate_store_rets_generic(rets_count: usize, args_count: usize) -> String {
         .collect::<Vec<String>>()
         .join("\n    ");
 
-    return format!(
+    format!(
         "
 @inline
 function store_rets_{rets_count}_arg_{args_count}<{string_all_generics}>({total_signature}): void {{
     {all_stores}
     return;
 }}"
-    );
+    )
 }
 
 fn generate_store_rets_specialized(signature: &Signature) -> String {
@@ -439,12 +437,12 @@ fn generate_store_rets_specialized(signature: &Signature) -> String {
     let mangled_name = signature.mangled_name();
     let mangled_by_count_name = signature.mangled_by_count_name();
 
-    return format!(
+    format!(
         "
 export function store_rets_{mangled_name}({total_signature}): void {{
     return store_rets_{mangled_by_count_name}<{comma_separated_types}>({total_arguments});
 }};"
-    );
+    )
 }
 
 const LIB_BOILERPLATE: &str = "
