@@ -37,24 +37,6 @@ pub struct Signature {
     pub argument_types: Vec<WasmType>,
 }
 
-impl Display for Signature {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let rt = self
-            .return_types
-            .iter()
-            .map(ToString::to_string)
-            .collect::<Vec<String>>()
-            .join("_");
-        let at = self
-            .argument_types
-            .iter()
-            .map(ToString::to_string)
-            .collect::<Vec<String>>()
-            .join("_");
-        write!(f, "({rt}, {at})")
-    }
-}
-
 fn generics_offset(position: usize, rets_count: usize, args_offset: usize) -> String {
     if position == 0 {
         return "0".into();
@@ -709,63 +691,63 @@ fn generate_lib_for(signatures: &[Signature]) -> String {
     return program;
 }
 
-// // ================================= //
-// // ================================= //
-// // ========= PROGRAM ENTRY ========= //
-// // ================================= //
-// // ================================= //
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-// const lib = generate_lib([
-//     new Signature(["i32"], ["i32", "i32"]),
-// ]);
-// await Deno.writeTextFile("src_generated/lib.ts", lib);
-
-// // ================================= //
-// // ================================= //
-// // ============= TESTS ============= //
-// // ================================= //
-// // ================================= //
-
-// import { assertEquals } from "https://deno.land/std@0.202.0/assert/mod.ts";
-
-#[test]
-fn compute_memory_offset_generically_works_correctly() {
-    let pos_frst = 0;
-    let pos_scnd = 1;
-    let pos_thrd = 2;
-    let pos_frth = 3;
-    for ((position, ret_count, arg_offset), expected) in [
-        ((pos_frst, 0, 1), "0"),
-        ((pos_frst, 0, 2), "0"),
-        ((pos_scnd, 0, 2), "sizeof<T0>()"),
-        ((pos_frst, 1, 0), "0"),
-        ((pos_frst, 1, 1), "0"),
-        ((pos_scnd, 1, 1), "sizeof<R0>()"),
-        ((pos_frst, 1, 2), "0"),
-        ((pos_scnd, 1, 2), "sizeof<R0>()"),
-        ((pos_thrd, 1, 2), "sizeof<R0>() + sizeof<T0>()"),
-        ((pos_frst, 2, 0), "0"),
-        ((pos_scnd, 2, 0), "sizeof<R0>()"),
-        ((pos_frst, 2, 1), "0"),
-        ((pos_scnd, 2, 1), "sizeof<R0>()"),
-        ((pos_thrd, 2, 1), "sizeof<R0>() + sizeof<R1>()"),
-        ((pos_frst, 2, 2), "0"),
-        ((pos_scnd, 2, 2), "sizeof<R0>()"),
-        ((pos_thrd, 2, 2), "sizeof<R0>() + sizeof<R1>()"),
-        (
-            (pos_frth, 2, 2),
-            "sizeof<R0>() + sizeof<R1>() + sizeof<T0>()",
-        ),
-    ] {
-        assert_eq!(generics_offset(position, ret_count, arg_offset), expected);
+    // Some sample signatures for testing purposes
+    fn get_ret_f64_f32_arg_i32_i64() -> Signature {
+        Signature {
+            return_types: vec![WasmType::F64, WasmType::F32],
+            argument_types: vec![WasmType::I32, WasmType::I64],
+        }
     }
-}
 
-#[test]
-fn generating_allocate_generic_instructions() {
-    assert_eq!(
-        generate_allocate_generic(0, 1),
-        "
+    fn get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64() -> Signature {
+        Signature {
+            return_types: vec![WasmType::F64, WasmType::F32, WasmType::I32, WasmType::I64],
+            argument_types: vec![WasmType::I64, WasmType::I32, WasmType::F32, WasmType::F64],
+        }
+    }
+
+    #[test]
+    fn compute_memory_offset_generically_works_correctly() {
+        let pos_frst = 0;
+        let pos_scnd = 1;
+        let pos_thrd = 2;
+        let pos_frth = 3;
+        for ((position, ret_count, arg_offset), expected) in [
+            ((pos_frst, 0, 1), "0"),
+            ((pos_frst, 0, 2), "0"),
+            ((pos_scnd, 0, 2), "sizeof<T0>()"),
+            ((pos_frst, 1, 0), "0"),
+            ((pos_frst, 1, 1), "0"),
+            ((pos_scnd, 1, 1), "sizeof<R0>()"),
+            ((pos_frst, 1, 2), "0"),
+            ((pos_scnd, 1, 2), "sizeof<R0>()"),
+            ((pos_thrd, 1, 2), "sizeof<R0>() + sizeof<T0>()"),
+            ((pos_frst, 2, 0), "0"),
+            ((pos_scnd, 2, 0), "sizeof<R0>()"),
+            ((pos_frst, 2, 1), "0"),
+            ((pos_scnd, 2, 1), "sizeof<R0>()"),
+            ((pos_thrd, 2, 1), "sizeof<R0>() + sizeof<R1>()"),
+            ((pos_frst, 2, 2), "0"),
+            ((pos_scnd, 2, 2), "sizeof<R0>()"),
+            ((pos_thrd, 2, 2), "sizeof<R0>() + sizeof<R1>()"),
+            (
+                (pos_frth, 2, 2),
+                "sizeof<R0>() + sizeof<R1>() + sizeof<T0>()",
+            ),
+        ] {
+            assert_eq!(generics_offset(position, ret_count, arg_offset), expected);
+        }
+    }
+
+    #[test]
+    fn generating_allocate_generic_instructions() {
+        assert_eq!(
+            generate_allocate_generic(0, 1),
+            "
 @inline
 function allocate_ret_0_arg_1<T0>(a0: T0): usize {
     const to_allocate = sizeof<T0>(); // constant folded
@@ -775,9 +757,9 @@ function allocate_ret_0_arg_1<T0>(a0: T0): usize {
     store<T0>(stack_begin, a0, a0_offset); // inlined
     return stack_begin;
 }"
-    );
+        );
 
-    assert_eq!(
+        assert_eq!(
         generate_allocate_generic(5, 5),
         "
 @inline
@@ -802,61 +784,38 @@ function allocate_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(a0: T0, a1
     return stack_begin;
 }"
     );
-}
+    }
 
-#[test]
-fn generating_allocate_specialized_instructions() {
-    let signature_0 = Signature {
-        return_types: vec![WasmType::F64, WasmType::F32],
-        argument_types: vec![WasmType::I32, WasmType::I64],
-    };
-    assert_eq!(
-        generate_allocate_specialized(&signature_0),
-        "
+    #[test]
+    fn generating_allocate_specialized_instructions() {
+        assert_eq!(
+            generate_allocate_specialized(&get_ret_f64_f32_arg_i32_i64()),
+            "
 export function allocate_ret_f64_f32_arg_i32_i64(a0: i32, a1: i64): usize {
     return allocate_ret_2_arg_2<f64, f32, i32, i64>(a0, a1);
 };
 "
-    );
+        );
 
-    let signature_1 = Signature {
-        return_types: vec![WasmType::F64, WasmType::F32, WasmType::I32, WasmType::I64],
-        argument_types: vec![WasmType::I64, WasmType::I32, WasmType::F32, WasmType::F64],
-    };
-    assert_eq!(generate_allocate_specialized(&signature_1), "
+        assert_eq!(generate_allocate_specialized(&get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64()), "
 export function allocate_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(a0: i64, a1: i32, a2: f32, a3: f64): usize {
     return allocate_ret_4_arg_4<f64, f32, i32, i64, i64, i32, f32, f64>(a0, a1, a2, a3);
 };
 ");
-}
+    }
 
-#[test]
-fn signature_to_string() {
-    let signature_0 = Signature {
-        return_types: vec![WasmType::F64, WasmType::F32],
-        argument_types: vec![WasmType::I32, WasmType::I64],
-    };
-    let signature_1 = Signature {
-        return_types: vec![WasmType::F64, WasmType::F32, WasmType::I32, WasmType::I64],
-        argument_types: vec![WasmType::I64, WasmType::I32, WasmType::F32, WasmType::F64],
-    };
-    // TODO: fix?
-    assert_eq!(signature_0.to_string(), "f32,f64,i32,i64");
-    assert_eq!(signature_1.to_string(), "f32,f64,i32,i64");
-}
-
-#[test]
-fn generating_load_generic_instructions() {
-    assert_eq!(
-        generate_load_generic(0, 1),
-        "
+    #[test]
+    fn generating_load_generic_instructions() {
+        assert_eq!(
+            generate_load_generic(0, 1),
+            "
 @inline
 function load_arg0_ret_0_arg_1<T0>(stack_ptr: usize): T0 {
     const a0_offset = 0; // constant folded
     return load<T0>(stack_ptr, a0_offset); // inlined
 }",
-    );
-    assert_eq!(generate_load_generic(5, 5), "
+        );
+        assert_eq!(generate_load_generic(5, 5), "
 @inline
 function load_arg0_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize): T0 {
     const a0_offset = sizeof<R0>() + sizeof<R1>() + sizeof<R2>() + sizeof<R3>() + sizeof<R4>(); // constant folded
@@ -916,18 +875,13 @@ function load_ret4_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr
     const r4_offset = sizeof<R0>() + sizeof<R1>() + sizeof<R2>() + sizeof<R3>(); // constant folded
     return load<R4>(stack_ptr, r4_offset); // inlined
 }");
-}
+    }
 
-#[test]
-fn generating_load_specialized_instructions() {
-    let signature_0 = Signature {
-        return_types: vec![WasmType::F64, WasmType::F32],
-        argument_types: vec![WasmType::I32, WasmType::I64],
-    };
-
-    assert_eq!(
-        generate_load_specialized(&signature_0),
-        "
+    #[test]
+    fn generating_load_specialized_instructions() {
+        assert_eq!(
+            generate_load_specialized(&get_ret_f64_f32_arg_i32_i64()),
+            "
 export function load_arg0_ret_f64_f32_arg_i32_i64(stack_ptr: usize): i32 {
     return load_arg0_ret_2_arg_2<f64, f32, i32, i64>(stack_ptr);
 };
@@ -943,16 +897,11 @@ export function load_ret0_ret_f64_f32_arg_i32_i64(stack_ptr: usize): f64 {
 export function load_ret1_ret_f64_f32_arg_i32_i64(stack_ptr: usize): f32 {
     return load_ret1_ret_2_arg_2<f64, f32, i32, i64>(stack_ptr);
 };"
-    );
+        );
 
-    let signature_1 = Signature {
-        return_types: vec![WasmType::F64, WasmType::F32, WasmType::I32, WasmType::I64],
-        argument_types: vec![WasmType::I64, WasmType::I32, WasmType::F32, WasmType::F64],
-    };
-
-    assert_eq!(
-        generate_load_specialized(&signature_1),
-        "
+        assert_eq!(
+            generate_load_specialized(&get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64()),
+            "
 export function load_arg0_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize): i64 {
     return load_arg0_ret_4_arg_4<f64, f32, i32, i64, i64, i32, f32, f64>(stack_ptr);
 };
@@ -984,21 +933,21 @@ export function load_ret2_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usi
 export function load_ret3_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize): i64 {
     return load_ret3_ret_4_arg_4<f64, f32, i32, i64, i64, i32, f32, f64>(stack_ptr);
 };"
-    );
-}
+        );
+    }
 
-#[test]
-fn generating_store_generic_instructions() {
-    assert_eq!(
-        generate_store_generic(0, 1),
-        "
+    #[test]
+    fn generating_store_generic_instructions() {
+        assert_eq!(
+            generate_store_generic(0, 1),
+            "
 @inline
 function store_arg0_ret_0_arg_1<T0>(stack_ptr: usize, a0: T0): void {
     const a0_offset = 0; // constant folded
     return store<T0>(stack_ptr + a0_offset, a0); // inlined
 }",
-    );
-    assert_eq!(generate_store_generic(5, 5), "
+        );
+        assert_eq!(generate_store_generic(5, 5), "
 @inline
 function store_arg0_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize, a0: T0): void {
     const a0_offset = sizeof<R0>() + sizeof<R1>() + sizeof<R2>() + sizeof<R3>() + sizeof<R4>(); // constant folded
@@ -1058,22 +1007,13 @@ function store_ret4_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_pt
     const r4_offset = sizeof<R0>() + sizeof<R1>() + sizeof<R2>() + sizeof<R3>(); // constant folded
     return store<T4>(stack_ptr + r4_offset, r4); // inlined
 }");
-}
+    }
 
-#[test]
-fn generating_store_specialized_instructions() {
-    let signature_0 = Signature {
-        return_types: vec![WasmType::F64, WasmType::F32],
-        argument_types: vec![WasmType::I32, WasmType::I64],
-    };
-    let signature_1 = Signature {
-        return_types: vec![WasmType::F64, WasmType::F32, WasmType::I32, WasmType::I64],
-        argument_types: vec![WasmType::I64, WasmType::I32, WasmType::F32, WasmType::F64],
-    };
-
-    assert_eq!(
-        generate_store_specialized(&signature_0),
-        "
+    #[test]
+    fn generating_store_specialized_instructions() {
+        assert_eq!(
+            generate_store_specialized(&get_ret_f64_f32_arg_i32_i64()),
+            "
 export function store_arg0_ret_f64_f32_arg_i32_i64(stack_ptr: usize, a0: i32): void {
     return store_arg0_ret_2_arg_2<f64, f32, i32, i64>(stack_ptr, a0);
 };
@@ -1089,9 +1029,9 @@ export function store_ret0_ret_f64_f32_arg_i32_i64(stack_ptr: usize, a0: f64): v
 export function store_ret1_ret_f64_f32_arg_i32_i64(stack_ptr: usize, a1: f32): void {
     return store_ret1_ret_2_arg_2<f64, f32, i32, i64>(stack_ptr, a1);
 };",
-    );
+        );
 
-    assert_eq!(generate_store_specialized(&signature_1), "
+        assert_eq!(generate_store_specialized(&get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64()), "
 export function store_arg0_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize, a0: i64): void {
     return store_arg0_ret_4_arg_4<f64, f32, i32, i64, i64, i32, f32, f64>(stack_ptr, a0);
 };
@@ -1123,69 +1063,60 @@ export function store_ret2_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: us
 export function store_ret3_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize, a3: i64): void {
     return store_ret3_ret_4_arg_4<f64, f32, i32, i64, i64, i32, f32, f64>(stack_ptr, a3);
 };");
-}
+    }
 
-#[test]
-fn generating_free_generic_instruction() {
-    assert_eq!(
-        generate_free_generic(0, 1),
-        "
+    #[test]
+    fn generating_free_generic_instruction() {
+        assert_eq!(
+            generate_free_generic(0, 1),
+            "
 @inline
 function free_ret_0_arg_1<T0>(): void {
     const to_deallocate = sizeof<T0>(); // constant folded
     stack_deallocate(to_deallocate); // inlined
     return;
 }"
-    );
-    assert_eq!(generate_free_generic(5, 5), "
+        );
+        assert_eq!(generate_free_generic(5, 5), "
 @inline
 function free_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(): void {
     const to_deallocate = sizeof<R0>() + sizeof<R1>() + sizeof<R2>() + sizeof<R3>() + sizeof<R4>() + sizeof<T0>() + sizeof<T1>() + sizeof<T2>() + sizeof<T3>() + sizeof<T4>(); // constant folded
     stack_deallocate(to_deallocate); // inlined
     return;
 }");
-}
+    }
 
-#[test]
-fn generating_free_specialized_instruction() {
-    let signature_0 = Signature {
-        return_types: vec![WasmType::F64, WasmType::F32],
-        argument_types: vec![WasmType::I32, WasmType::I64],
-    };
-    let signature_1 = Signature {
-        return_types: vec![WasmType::F64, WasmType::F32, WasmType::I32, WasmType::I64],
-        argument_types: vec![WasmType::I64, WasmType::I32, WasmType::F32, WasmType::F64],
-    };
-
-    assert_eq!(
-        generate_free_specialized(&signature_0),
-        "
+    #[test]
+    fn generating_free_specialized_instruction() {
+        assert_eq!(
+            generate_free_specialized(&get_ret_f64_f32_arg_i32_i64()),
+            "
 export function free_ret_f64_f32_arg_i32_i64(): void {
     return free_ret_2_arg_2<f64, f32, i32, i64>();
 };",
-    );
+        );
 
-    assert_eq!(
-        generate_free_specialized(&signature_1),
-        "
+        assert_eq!(
+            generate_free_specialized(&get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64()),
+            "
 export function free_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(): void {
     return free_ret_4_arg_4<f64, f32, i32, i64, i64, i32, f32, f64>();
 };",
-    );
-}
+        );
+    }
 
-#[test]
-fn generating_store_rets_generic_instruction() {
-    assert_eq!(
-        generate_store_rets_generic(0, 1),
-        "
+    #[test]
+    fn generating_store_rets_generic_instruction() {
+        assert_eq!(
+            generate_store_rets_generic(0, 1),
+            "
 @inline
 function store_rets_0_arg_1<T0>(stack_ptr: usize): void {
     
     return;
 }",
-    );
-    assert_eq!(generate_store_rets_generic(5, 5), "
+        );
+        assert_eq!(generate_store_rets_generic(5, 5), "
 @inline
 function store_rets_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize, a0: R0, a1: R1, a2: R2, a3: R3, a4: R4): void {
     // store a0
@@ -1200,67 +1131,58 @@ function store_rets_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: u
     store_ret4_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr, a4);
     return;
 }");
-}
+    }
 
-#[test]
-fn generating_store_rets_specialized_instruction() {
-    let signature_0 = Signature {
-        return_types: vec![WasmType::F64, WasmType::F32],
-        argument_types: vec![WasmType::I32, WasmType::I64],
-    };
-    let signature_1 = Signature {
-        return_types: vec![WasmType::F64, WasmType::F32, WasmType::I32, WasmType::I64],
-        argument_types: vec![WasmType::I64, WasmType::I32, WasmType::F32, WasmType::F64],
-    };
-
-    assert_eq!(
-        generate_store_rets_specialized(&signature_0),
-        "
+    #[test]
+    fn generating_store_rets_specialized_instruction() {
+        assert_eq!(
+            generate_store_rets_specialized(&get_ret_f64_f32_arg_i32_i64()),
+            "
 export function store_rets_ret_f64_f32_arg_i32_i64(stack_ptr: usize, a0: f64, a1: f32): void {
     return store_rets_2_arg_2<f64, f32, i32, i64>(stack_ptr, a0, a1);
 };"
-    );
+        );
 
-    assert_eq!(generate_store_rets_specialized(&signature_1), "
+        assert_eq!(generate_store_rets_specialized(&get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64()), "
 export function store_rets_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize, a0: f64, a1: f32, a2: i32, a3: i64): void {
     return store_rets_4_arg_4<f64, f32, i32, i64, i64, i32, f32, f64>(stack_ptr, a0, a1, a2, a3);
 };");
-}
+    }
 
-#[test]
-fn generating_allocate_types_generic_specialized() {
-    assert_eq!(
-        generate_allocate_types_buffer_generic(0, 1),
-        "
+    #[test]
+    fn generating_allocate_types_generic_specialized() {
+        assert_eq!(
+            generate_allocate_types_buffer_generic(0, 1),
+            "
 @inline
 function allocate_signature_types_buffer_ret_0_arg_1(): usize {
     const to_allocate = sizeof<i32>() * 1;; // constant folded
     const stack_begin = stack_allocate(to_allocate); // inlined
     return stack_begin;
 }"
-    );
+        );
 
-    assert_eq!(
-        generate_allocate_types_buffer_generic(5, 5),
-        "
+        assert_eq!(
+            generate_allocate_types_buffer_generic(5, 5),
+            "
 @inline
 function allocate_signature_types_buffer_ret_5_arg_5(): usize {
     const to_allocate = sizeof<i32>() * 10;; // constant folded
     const stack_begin = stack_allocate(to_allocate); // inlined
     return stack_begin;
 }"
-    )
-}
+        )
+    }
 
-#[test]
-fn generating_allocate_types_buffer_specialized_instruction() {
-    let signature_0 = Signature {
-        return_types: vec![WasmType::F64, WasmType::F32],
-        argument_types: vec![WasmType::I32, WasmType::I64],
-    };
-    assert_eq!(
-        generate_allocate_types_buffer_specialized(&signature_0),
-        "
+    #[test]
+    fn generating_allocate_types_buffer_specialized_instruction() {
+        let signature_0 = Signature {
+            return_types: vec![WasmType::F64, WasmType::F32],
+            argument_types: vec![WasmType::I32, WasmType::I64],
+        };
+        assert_eq!(
+            generate_allocate_types_buffer_specialized(&signature_0),
+            "
 export function allocate_types_ret_f64_f32_arg_i32_i64(): usize {
     const NO_OFFSET = 0;
     const types_buffer = allocate_signature_types_buffer_ret_2_arg_2();
@@ -1270,14 +1192,14 @@ export function allocate_types_ret_f64_f32_arg_i32_i64(): usize {
     store<i32>(types_buffer + (sizeof<i32>()*3), 2, NO_OFFSET);
     return types_buffer;
 }"
-    );
-    let signature_1 = Signature {
-        return_types: vec![WasmType::F64, WasmType::F32, WasmType::I32, WasmType::I64],
-        argument_types: vec![WasmType::I64, WasmType::I32, WasmType::F32, WasmType::F64],
-    };
-    assert_eq!(
-        generate_allocate_types_buffer_specialized(&signature_1),
-        "
+        );
+        let signature_1 = Signature {
+            return_types: vec![WasmType::F64, WasmType::F32, WasmType::I32, WasmType::I64],
+            argument_types: vec![WasmType::I64, WasmType::I32, WasmType::F32, WasmType::F64],
+        };
+        assert_eq!(
+            generate_allocate_types_buffer_specialized(&signature_1),
+            "
 export function allocate_types_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(): usize {
     const NO_OFFSET = 0;
     const types_buffer = allocate_signature_types_buffer_ret_4_arg_4();
@@ -1291,37 +1213,26 @@ export function allocate_types_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(): usize 
     store<i32>(types_buffer + (sizeof<i32>()*7), 3, NO_OFFSET);
     return types_buffer;
 }"
-    );
-}
+        );
+    }
 
-#[test]
-fn generating_library_for_signatures() {
-    // a few signatures, some different, some duplicate
-    let signature_1 = Signature {
-        return_types: vec![WasmType::F64, WasmType::F32, WasmType::I32, WasmType::I64],
-        argument_types: vec![WasmType::I64, WasmType::I32, WasmType::F32, WasmType::F64],
-    };
+    #[test]
+    fn generating_library_for_signatures() {
+        let get_ret_f32_f64_arg_i32_i64 = || Signature {
+            return_types: vec![WasmType::F32, WasmType::F64],
+            argument_types: vec![WasmType::I32, WasmType::I64],
+        };
 
-    let get_ret_f32_f64_arg_i32_i64 = || Signature {
-        return_types: vec![WasmType::F32, WasmType::F64],
-        argument_types: vec![WasmType::I32, WasmType::I64],
-    };
+        let signatures: Vec<Signature> = vec![
+            get_ret_f32_f64_arg_i32_i64(),                 // dupe [A]
+            get_ret_f64_f32_arg_i32_i64(),                 // dupe [B]
+            get_ret_f32_f64_arg_i32_i64(),                 // dupe [A]
+            get_ret_f64_f32_arg_i32_i64(),                 // dupe [B]
+            get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(), // unique
+        ];
 
-    // this is signature_0
-    let signature_0 = Signature {
-        return_types: vec![WasmType::F64, WasmType::F32],
-        argument_types: vec![WasmType::I32, WasmType::I64],
-    };
-    let signatures: Vec<Signature> = vec![
-        get_ret_f32_f64_arg_i32_i64(), // dupe [A]
-        signature_0.clone(),           // dupe [B]
-        get_ret_f32_f64_arg_i32_i64(), // dupe [A]
-        signature_0,                   // dupe [B]
-        signature_1,                   // unique
-    ];
-
-    let lib = generate_lib_for(&signatures);
-    assert_eq!(lib, "
+        let lib = generate_lib_for(&signatures);
+        assert_eq!(lib, "
 @inline
 function allocate_ret_2_arg_2<R0, R1, T0, T1>(a0: T0, a1: T1): usize {
     const to_allocate = sizeof<R0>() + sizeof<R1>() + sizeof<T0>() + sizeof<T1>(); // constant folded
@@ -1719,4 +1630,5 @@ export function allocate_types_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(): usize 
     store<i32>(types_buffer + (sizeof<i32>()*7), 3, NO_OFFSET);
     return types_buffer;
 }");
+    }
 }
