@@ -7,46 +7,46 @@ const TYPE_I64: i32 = 2;
 const TYPE_F64: i32 = 3;
 
 @external("wastrumentation_stack", "wastrumentation_stack_load_i32")
-declare function wastrumentation_stack_load_i32(ptr: i32): i32;
+declare function wastrumentation_stack_load_i32(ptr: i32, offset: i32): i32;
 @external("wastrumentation_stack", "wastrumentation_stack_load_f32")
-declare function wastrumentation_stack_load_f32(ptr: i32): f32;
+declare function wastrumentation_stack_load_f32(ptr: i32, offset: i32): f32;
 @external("wastrumentation_stack", "wastrumentation_stack_load_i64")
-declare function wastrumentation_stack_load_i64(ptr: i32): i64;
+declare function wastrumentation_stack_load_i64(ptr: i32, offset: i32): i64;
 @external("wastrumentation_stack", "wastrumentation_stack_load_f64")
-declare function wastrumentation_stack_load_f64(ptr: i32): f64;
+declare function wastrumentation_stack_load_f64(ptr: i32, offset: i32): f64;
 
 @external("wastrumentation_stack", "wastrumentation_stack_store_i32")
-declare function wastrumentation_stack_store_i32(ptr: i32, value: i32): void;
+declare function wastrumentation_stack_store_i32(ptr: i32, value: i32, offset: i32): void;
 @external("wastrumentation_stack", "wastrumentation_stack_store_f32")
-declare function wastrumentation_stack_store_f32(ptr: i32, value: f32): void;
+declare function wastrumentation_stack_store_f32(ptr: i32, value: f32, offset: i32): void;
 @external("wastrumentation_stack", "wastrumentation_stack_store_i64")
-declare function wastrumentation_stack_store_i64(ptr: i32, value: i64): void;
+declare function wastrumentation_stack_store_i64(ptr: i32, value: i64, offset: i32): void;
 @external("wastrumentation_stack", "wastrumentation_stack_store_f64")
-declare function wastrumentation_stack_store_f64(ptr: i32, value: f64): void;
+declare function wastrumentation_stack_store_f64(ptr: i32, value: f64, offset: i32): void;
 
-function wastrumentation_memory_load<T>(ptr: i32): T {
+function wastrumentation_memory_load<T>(ptr: i32, offset: i32): T {
     if (false) { unreachable(); }
     else if (sizeof<T>() == 4 && isInteger<T>())
-        return wastrumentation_stack_load_i32(ptr);
+        return wastrumentation_stack_load_i32(ptr, offset);
     else if (sizeof<T>() == 4 && isFloat<T>())
-        return wastrumentation_stack_load_f32(ptr);
+        return wastrumentation_stack_load_f32(ptr, offset);
     else if (sizeof<T>() == 8 && isInteger<T>())
-        return wastrumentation_stack_load_i64(ptr);
+        return wastrumentation_stack_load_i64(ptr, offset);
     else if (sizeof<T>() == 8 && isFloat<T>())
-        return wastrumentation_stack_load_f64(ptr);
+        return wastrumentation_stack_load_f64(ptr, offset);
     unreachable();
 }
 
-function wastrumentation_memory_store<T>(ptr: i32, value: T): void {
+function wastrumentation_memory_store<T>(ptr: i32, value: T, offset: i32): void {
     if (false) { unreachable(); }
     else if (sizeof<T>() == 4 && isInteger<T>())
-        return wastrumentation_stack_store_i32(ptr, value);
+        return wastrumentation_stack_store_i32(ptr, value, offset);
     else if (sizeof<T>() == 4 && isFloat<T>())
-        return wastrumentation_stack_store_f32(ptr, value);
+        return wastrumentation_stack_store_f32(ptr, value, offset);
     else if (sizeof<T>() == 8 && isInteger<T>())
-        return wastrumentation_stack_store_i64(ptr, value);
+        return wastrumentation_stack_store_i64(ptr, value, offset);
     else if (sizeof<T>() == 8 && isFloat<T>())
-        return wastrumentation_stack_store_f64(ptr, value);
+        return wastrumentation_stack_store_f64(ptr, value, offset);
     unreachable();
 }
 
@@ -76,7 +76,7 @@ class MutDynArgsResults {
         this.argsOffsetTo = [];
         for(let type_index = 0; type_index < resc; type_index++) {
             this.ressOffsetTo.push(offset);
-            switch(wastrumentation_memory_load<i32>(sigtypv + ((0 + type_index)*sizeof<i32>()))) {
+            switch(wastrumentation_memory_load<i32>(sigtypv, (0 + type_index)*sizeof<i32>())) {
                 case TYPE_I32:
                     offset += sizeof<i32>();
                     break;
@@ -97,7 +97,7 @@ class MutDynArgsResults {
         offset = 0;
         for(let type_index = 0; type_index < argc; type_index++) {
             this.argsOffsetTo.push(offsetToArgs + offset);
-            switch(wastrumentation_memory_load<i32>(sigtypv + ((argc + type_index)*sizeof<i32>()))) {
+            switch(wastrumentation_memory_load<i32>(sigtypv, (argc + type_index)*sizeof<i32>())) {
                 case TYPE_I32:
                     offset += sizeof<i32>();
                     break;
@@ -125,22 +125,22 @@ class MutDynArgsResults {
 
     getArg<T>(index: i32): T {
         this.checkBounds(this.argc, index);
-        return wastrumentation_memory_load<T>(this.sigv + this.argsOffsetTo[index]);
+        return wastrumentation_memory_load<T>(this.sigv, this.argsOffsetTo[index]);
     }
 
     setArg<T>(index: i32, value: T): void {
         this.checkBounds(this.argc, index);
-        wastrumentation_memory_store<T>(this.sigv + this.argsOffsetTo[index], value);
+        wastrumentation_memory_store<T>(this.sigv, value, this.argsOffsetTo[index]);
     }
 
     getRes<T>(index: i32): T {
         this.checkBounds(this.resc, index);
-        return wastrumentation_memory_load<T>(this.sigv + this.ressOffsetTo[index]);
+        return wastrumentation_memory_load<T>(this.sigv, this.ressOffsetTo[index]);
     }
 
     setRes<T>(index: i32, value: T): void {
         this.checkBounds(this.resc, index);
-        wastrumentation_memory_store<T>(this.sigv + this.ressOffsetTo[index], value);
+        wastrumentation_memory_store<T>(this.sigv, value, this.ressOffsetTo[index]);
     }
 }
 
