@@ -97,7 +97,7 @@ class MutDynArgsResults {
         offset = 0;
         for(let type_index = 0; type_index < argc; type_index++) {
             this.argsOffsetTo.push(offsetToArgs + offset);
-            switch(wastrumentation_memory_load<i32>(sigtypv + ((argc + type_index)*sizeof<i32>()))) {
+            switch(wastrumentation_memory_load<i32>(sigtypv + ((resc + type_index)*sizeof<i32>()))) {
                 case TYPE_I32:
                     offset += sizeof<i32>();
                     break;
