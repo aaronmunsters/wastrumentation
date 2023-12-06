@@ -128,7 +128,7 @@ function free_ret_2_arg_2<R0, R1, T0, T1>(): void {
     return;
 }
 @inline
-function store_rets_2_arg_2<R0, R1, T0, T1>(stack_ptr: usize, a0: R0, a1: R1): void {
+function store_rets_ret_2_arg_2<R0, R1, T0, T1>(stack_ptr: usize, a0: R0, a1: R1): void {
     // store a0
     store_ret0_ret_2_arg_2<R0, R1, T0, T1>(stack_ptr, a0);
     // store a1
@@ -358,7 +358,7 @@ function free_ret_4_arg_4<R0, R1, R2, R3, T0, T1, T2, T3>(): void {
     return;
 }
 @inline
-function store_rets_4_arg_4<R0, R1, R2, R3, T0, T1, T2, T3>(stack_ptr: usize, a0: R0, a1: R1, a2: R2, a3: R3): void {
+function store_rets_ret_4_arg_4<R0, R1, R2, R3, T0, T1, T2, T3>(stack_ptr: usize, a0: R0, a1: R1, a2: R2, a3: R3): void {
     // store a0
     store_ret0_ret_4_arg_4<R0, R1, R2, R3, T0, T1, T2, T3>(stack_ptr, a0);
     // store a1

@@ -54,9 +54,13 @@ impl Signature {
         format!("ret_{signature_rets_ident}_arg_{signature_args_ident}")
     }
 
-    fn mangled_by_count_name(&self) -> String {
+    fn mangled_name_by_count(&self) -> String {
         let signature_rets_count = self.return_types.len();
         let signature_args_count = self.argument_types.len();
+        format!("ret_{signature_rets_count}_arg_{signature_args_count}")
+    }
+
+    fn generic_name(signature_rets_count: usize, signature_args_count: usize) -> String {
         format!("ret_{signature_rets_count}_arg_{signature_args_count}")
     }
 
@@ -119,6 +123,7 @@ fn ret_offset(ret_pos: usize, rets_count: usize, args_count: usize) -> String {
 fn generate_allocate_generic(rets_count: usize, args_count: usize) -> String {
     let string_all_generics = Signature::comma_separated_generics(rets_count, args_count);
     let signature = Signature::generic_comma_separated_typed_arguments(args_count);
+    let generic_name = Signature::generic_name(rets_count, args_count);
 
     // eg: `sizeof<R0>() +  sizeof<R1>() +  sizeof<T0>() +  sizeof<T1>()`
     let total_allocation = Signature::generics(rets_count, args_count)
@@ -141,7 +146,7 @@ fn generate_allocate_generic(rets_count: usize, args_count: usize) -> String {
     format!(
         "
 @inline
-function allocate_ret_{rets_count}_arg_{args_count}<{string_all_generics}>({signature}): usize {{
+function allocate_{generic_name}<{string_all_generics}>({signature}): usize {{
     const to_allocate = {total_allocation}; // constant folded
     const stack_begin = stack_allocate(to_allocate); // inlined
     {all_stores}
@@ -171,7 +176,7 @@ fn generate_allocate_specialized(signature: &Signature) -> String {
 
     let comma_separated_types = signature.comma_separated_types();
     let mangled_name = signature.mangled_name();
-    let mangled_by_count_name = signature.mangled_by_count_name();
+    let mangled_by_count_name = signature.mangled_name_by_count();
 
     format!(
         "
@@ -184,10 +189,11 @@ export function allocate_{mangled_name}({signature_args_typs_ident}): usize {{
 
 fn generate_allocate_types_buffer_generic(rets_count: usize, args_count: usize) -> String {
     let total_allocation = format!("sizeof<i32>() * {};", rets_count + args_count);
+    let generic_name = Signature::generic_name(rets_count, args_count);
     format!(
         "
 @inline
-function allocate_signature_types_buffer_ret_{rets_count}_arg_{args_count}(): usize {{
+function allocate_signature_types_buffer_{generic_name}(): usize {{
     const to_allocate = {total_allocation}; // constant folded
     const stack_begin = stack_allocate(to_allocate); // inlined
     return stack_begin;
@@ -213,7 +219,7 @@ fn generate_allocate_types_buffer_specialized(signature: &Signature) -> String {
         .join("\n    ");
 
     let mangled_name = signature.mangled_name();
-    let mangled_by_count_name = signature.mangled_by_count_name();
+    let mangled_by_count_name = signature.mangled_name_by_count();
 
     format!(
         "
@@ -228,23 +234,30 @@ export function allocate_types_{mangled_name}(): usize {{
 
 fn generate_load_generic(rets_count: usize, args_count: usize) -> String {
     let string_all_generics = Signature::comma_separated_generics(rets_count, args_count);
+    let generic_name = Signature::generic_name(rets_count, args_count);
 
     let all_arg_loads = (0..args_count).map(|n| {
         let an_offset = arg_offset(n, rets_count, args_count);
-        format!("
+        format!(
+            "
 @inline
-function load_arg{n}_ret_{rets_count}_arg_{args_count}<{string_all_generics}>(stack_ptr: usize): T{n} {{
+function load_arg{n}_{generic_name}<{string_all_generics}>(stack_ptr: usize): T{n} {{
     const a{n}_offset = {an_offset}; // constant folded
     return load<T{n}>(stack_ptr, a{n}_offset); // inlined
-}}")});
+}}"
+        )
+    });
     let all_ret_loads = (0..rets_count).map(|n| {
         let ar_offset = ret_offset(n, rets_count, args_count);
-        format!("
+        format!(
+            "
 @inline
-function load_ret{n}_ret_{rets_count}_arg_{args_count}<{string_all_generics}>(stack_ptr: usize): R{n} {{
+function load_ret{n}_{generic_name}<{string_all_generics}>(stack_ptr: usize): R{n} {{
     const r{n}_offset = {ar_offset}; // constant folded
     return load<R{n}>(stack_ptr, r{n}_offset); // inlined
-}}")});
+}}"
+        )
+    });
     all_arg_loads
         .chain(all_ret_loads)
         .collect::<Vec<String>>()
@@ -259,7 +272,7 @@ fn generate_load_specialized(signature: &Signature) -> String {
 
     let comma_separated_types = signature.comma_separated_types();
     let mangled_name = signature.mangled_name();
-    let mangled_by_count_name = signature.mangled_by_count_name();
+    let mangled_by_count_name = signature.mangled_name_by_count();
 
     let all_arg_loads = signature_args
         .iter()
@@ -292,23 +305,30 @@ export function load_ret{index}_{mangled_name}(stack_ptr: usize): {ret_i_ret_typ
 
 fn generate_store_generic(rets_count: usize, args_count: usize) -> String {
     let string_all_generics = Signature::comma_separated_generics(rets_count, args_count);
+    let generic_name = Signature::generic_name(rets_count, args_count);
 
     let all_arg_stores = (0..args_count).map(|n| {
         let an_offset = arg_offset(n, rets_count, args_count);
-        format!("
+        format!(
+            "
 @inline
-function store_arg{n}_ret_{rets_count}_arg_{args_count}<{string_all_generics}>(stack_ptr: usize, a{n}: T{n}): void {{
+function store_arg{n}_{generic_name}<{string_all_generics}>(stack_ptr: usize, a{n}: T{n}): void {{
     const a{n}_offset = {an_offset}; // constant folded
     return store<T{n}>(stack_ptr + a{n}_offset, a{n}); // inlined
-}}")});
+}}"
+        )
+    });
     let all_ret_stores = (0..rets_count).map(|n| {
         let ar_offset = ret_offset(n, rets_count, args_count);
-        format!("
+        format!(
+            "
 @inline
-function store_ret{n}_ret_{rets_count}_arg_{args_count}<{string_all_generics}>(stack_ptr: usize, r{n}: R{n}): void {{
+function store_ret{n}_{generic_name}<{string_all_generics}>(stack_ptr: usize, r{n}: R{n}): void {{
     const r{n}_offset = {ar_offset}; // constant folded
     return store<T{n}>(stack_ptr + r{n}_offset, r{n}); // inlined
-}}")});
+}}"
+        )
+    });
     all_arg_stores
         .chain(all_ret_stores)
         .collect::<Vec<String>>()
@@ -323,7 +343,7 @@ fn generate_store_specialized(signature: &Signature) -> String {
 
     let comma_separated_types = signature.comma_separated_types();
     let mangled_name = signature.mangled_name();
-    let mangled_by_count_name = signature.mangled_by_count_name();
+    let mangled_by_count_name = signature.mangled_name_by_count();
 
     let all_arg_stores = signature_args.iter().enumerate().map(|(index, arg_i_ret_type)| format!("
 export function store_arg{index}_{mangled_name}(stack_ptr: usize, a{index}: {arg_i_ret_type}): void {{
@@ -341,6 +361,7 @@ export function store_ret{index}_{mangled_name}(stack_ptr: usize, a{index}: {ret
 
 fn generate_free_generic(rets_count: usize, args_count: usize) -> String {
     let string_all_generics = Signature::comma_separated_generics(rets_count, args_count);
+    let generic_name = Signature::generic_name(rets_count, args_count);
 
     // eg: `sizeof<R0>() +  sizeof<R1>() +  sizeof<T0>() +  sizeof<T1>()`
     let total_allocation = Signature::generics(rets_count, args_count)
@@ -352,7 +373,7 @@ fn generate_free_generic(rets_count: usize, args_count: usize) -> String {
     format!(
         "
 @inline
-function free_ret_{rets_count}_arg_{args_count}<{string_all_generics}>(): void {{
+function free_{generic_name}<{string_all_generics}>(): void {{
     const to_deallocate = {total_allocation}; // constant folded
     stack_deallocate(to_deallocate); // inlined
     return;
@@ -367,13 +388,14 @@ export function free_{}(): void {{
     return free_{}<{}>();
 }};",
         signature.mangled_name(),
-        signature.mangled_by_count_name(),
+        signature.mangled_name_by_count(),
         signature.comma_separated_types(),
     )
 }
 
 fn generate_store_rets_generic(rets_count: usize, args_count: usize) -> String {
     let string_all_generics = Signature::comma_separated_generics(rets_count, args_count);
+    let generic_name = Signature::generic_name(rets_count, args_count);
 
     // eg: [`a0: R0`, `a1: R1`]
     let array_of_rets_signature = (0..rets_count).map(|n| format!("a{n}: R{n}"));
@@ -386,7 +408,7 @@ fn generate_store_rets_generic(rets_count: usize, args_count: usize) -> String {
         .map(|n| {
             format!(
                 "// store a{n}
-    store_ret{n}_ret_{rets_count}_arg_{args_count}<{string_all_generics}>(stack_ptr, a{n});"
+    store_ret{n}_{generic_name}<{string_all_generics}>(stack_ptr, a{n});"
             )
         })
         .collect::<Vec<String>>()
@@ -395,7 +417,7 @@ fn generate_store_rets_generic(rets_count: usize, args_count: usize) -> String {
     format!(
         "
 @inline
-function store_rets_{rets_count}_arg_{args_count}<{string_all_generics}>({total_signature}): void {{
+function store_rets_{generic_name}<{string_all_generics}>({total_signature}): void {{
     {all_stores}
     return;
 }}"
@@ -430,7 +452,7 @@ fn generate_store_rets_specialized(signature: &Signature) -> String {
 
     let comma_separated_types = signature.comma_separated_types();
     let mangled_name = signature.mangled_name();
-    let mangled_by_count_name = signature.mangled_by_count_name();
+    let mangled_by_count_name = signature.mangled_name_by_count();
 
     format!(
         "
@@ -970,14 +992,14 @@ export function free_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(): void {
             generate_store_rets_generic(0, 1),
             "
 @inline
-function store_rets_0_arg_1<T0>(stack_ptr: usize): void {
+function store_rets_ret_0_arg_1<T0>(stack_ptr: usize): void {
     
     return;
 }",
         );
         assert_eq!(generate_store_rets_generic(5, 5), "
 @inline
-function store_rets_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize, a0: R0, a1: R1, a2: R2, a3: R3, a4: R4): void {
+function store_rets_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize, a0: R0, a1: R1, a2: R2, a3: R3, a4: R4): void {
     // store a0
     store_ret0_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr, a0);
     // store a1
