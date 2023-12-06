@@ -31,5 +31,9 @@ fn generating_library_for_signatures() {
     ];
 
     let lib = generate_lib(&signatures);
-    assert_eq!(lib, include_str!("expected_lib.ts"));
+
+    let mut expected = String::from(include_str!("../src/lib_boilerplate.ts"));
+    expected.push_str(include_str!("expected_lib.ts"));
+
+    assert_eq!(lib, expected);
 }

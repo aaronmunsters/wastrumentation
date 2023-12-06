@@ -36,29 +36,62 @@ function stack_deallocate(bytes: usize): void {
     $STACK_FREE_PTR =- bytes;
 }
 
-export function wastrumentation_stack_load_i32(ptr: i32): i32 {
+@inline
+export function wastrumentation_stack_load_i32(ptr: usize): i32 {
     return load<i32>(ptr);
 };
-export function wastrumentation_stack_load_f32(ptr: i32): f32 {
+@inline
+export function wastrumentation_stack_load_f32(ptr: usize): f32 {
     return load<f32>(ptr);
 };
-export function wastrumentation_stack_load_i64(ptr: i32): i64 {
+@inline
+export function wastrumentation_stack_load_i64(ptr: usize): i64 {
     return load<i64>(ptr);
 };
-export function wastrumentation_stack_load_f64(ptr: i32): f64 {
+@inline
+export function wastrumentation_stack_load_f64(ptr: usize): f64 {
     return load<f64>(ptr);
 };
 
-export function wastrumentation_stack_store_i32(ptr: i32, value: i32): void {
+@inline
+export function wastrumentation_stack_store_i32(ptr: usize, value: i32): void {
     return store<i32>(ptr, value);
 };
-export function wastrumentation_stack_store_f32(ptr: i32, value: f32): void {
+@inline
+export function wastrumentation_stack_store_f32(ptr: usize, value: f32): void {
     return store<f32>(ptr, value);
 };
-export function wastrumentation_stack_store_i64(ptr: i32, value: i64): void {
+@inline
+export function wastrumentation_stack_store_i64(ptr: usize, value: i64): void {
     return store<i64>(ptr, value);
 };
-export function wastrumentation_stack_store_f64(ptr: i32, value: f64): void {
+@inline
+export function wastrumentation_stack_store_f64(ptr: usize, value: f64): void {
     return store<f64>(ptr, value);
 };
 
+function wastrumentation_memory_load<T>(ptr: usize, offset: usize): T {
+    if (false) { unreachable(); }
+    else if (sizeof<T>() == 4 && isInteger<T>())
+        return wastrumentation_stack_load_i32(ptr + offset);
+    else if (sizeof<T>() == 4 && isFloat<T>())
+        return wastrumentation_stack_load_f32(ptr + offset);
+    else if (sizeof<T>() == 8 && isInteger<T>())
+        return wastrumentation_stack_load_i64(ptr + offset);
+    else if (sizeof<T>() == 8 && isFloat<T>())
+        return wastrumentation_stack_load_f64(ptr + offset);
+    unreachable();
+}
+
+function wastrumentation_memory_store<T>(ptr: usize, value: T, offset: usize): void {
+    if (false) { unreachable(); }
+    else if (sizeof<T>() == 4 && isInteger<T>())
+        return wastrumentation_stack_store_i32(ptr + offset, value);
+    else if (sizeof<T>() == 4 && isFloat<T>())
+        return wastrumentation_stack_store_f32(ptr + offset, value);
+    else if (sizeof<T>() == 8 && isInteger<T>())
+        return wastrumentation_stack_store_i64(ptr + offset, value);
+    else if (sizeof<T>() == 8 && isFloat<T>())
+        return wastrumentation_stack_store_f64(ptr + offset, value);
+    unreachable();
+}

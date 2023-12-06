@@ -137,7 +137,7 @@ fn generate_allocate_generic(rets_count: usize, args_count: usize) -> String {
             format!(
                 "// store a{n}
     const a{n}_offset = {offset}; // constant folded
-    store<T{n}>(stack_begin, a{n}, a{n}_offset); // inlined"
+    wastrumentation_memory_store<T{n}>(stack_begin, a{n}, a{n}_offset); // inlined"
             )
         })
         .collect::<Vec<String>>()
@@ -213,7 +213,7 @@ fn generate_allocate_types_buffer_specialized(signature: &Signature) -> String {
         .map(WasmType::runtime_enum_value)
         .enumerate()
         .map(|(index, enum_value)| {
-            format!("store<i32>(types_buffer + (sizeof<i32>()*{index}), {enum_value}, NO_OFFSET);")
+            format!("wastrumentation_memory_store<i32>(types_buffer, {enum_value}, (sizeof<i32>()*{index}));")
         })
         .collect::<Vec<String>>()
         .join("\n    ");
@@ -224,7 +224,6 @@ fn generate_allocate_types_buffer_specialized(signature: &Signature) -> String {
     format!(
         "
 export function allocate_types_{mangled_name}(): usize {{
-    const NO_OFFSET = 0;
     const types_buffer = allocate_signature_types_buffer_{mangled_by_count_name}();
     {all_stores}
     return types_buffer;
@@ -243,7 +242,7 @@ fn generate_load_generic(rets_count: usize, args_count: usize) -> String {
 @inline
 function load_arg{n}_{generic_name}<{string_all_generics}>(stack_ptr: usize): T{n} {{
     const a{n}_offset = {an_offset}; // constant folded
-    return load<T{n}>(stack_ptr, a{n}_offset); // inlined
+    return wastrumentation_memory_load<T{n}>(stack_ptr, a{n}_offset); // inlined
 }}"
         )
     });
@@ -254,7 +253,7 @@ function load_arg{n}_{generic_name}<{string_all_generics}>(stack_ptr: usize): T{
 @inline
 function load_ret{n}_{generic_name}<{string_all_generics}>(stack_ptr: usize): R{n} {{
     const r{n}_offset = {ar_offset}; // constant folded
-    return load<R{n}>(stack_ptr, r{n}_offset); // inlined
+    return wastrumentation_memory_load<R{n}>(stack_ptr, r{n}_offset); // inlined
 }}"
         )
     });
@@ -314,7 +313,7 @@ fn generate_store_generic(rets_count: usize, args_count: usize) -> String {
 @inline
 function store_arg{n}_{generic_name}<{string_all_generics}>(stack_ptr: usize, a{n}: T{n}): void {{
     const a{n}_offset = {an_offset}; // constant folded
-    return store<T{n}>(stack_ptr + a{n}_offset, a{n}); // inlined
+    return wastrumentation_memory_store<T{n}>(stack_ptr, a{n}, a{n}_offset); // inlined
 }}"
         )
     });
@@ -325,7 +324,7 @@ function store_arg{n}_{generic_name}<{string_all_generics}>(stack_ptr: usize, a{
 @inline
 function store_ret{n}_{generic_name}<{string_all_generics}>(stack_ptr: usize, r{n}: R{n}): void {{
     const r{n}_offset = {ar_offset}; // constant folded
-    return store<T{n}>(stack_ptr + r{n}_offset, r{n}); // inlined
+    return wastrumentation_memory_store<T{n}>(stack_ptr, r{n}, r{n}_offset); // inlined
 }}"
         )
     });
@@ -571,7 +570,7 @@ function allocate_ret_0_arg_1<T0>(a0: T0): usize {
     const stack_begin = stack_allocate(to_allocate); // inlined
     // store a0
     const a0_offset = 0; // constant folded
-    store<T0>(stack_begin, a0, a0_offset); // inlined
+    wastrumentation_memory_store<T0>(stack_begin, a0, a0_offset); // inlined
     return stack_begin;
 }"
         );
@@ -585,19 +584,19 @@ function allocate_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(a0: T0, a1
     const stack_begin = stack_allocate(to_allocate); // inlined
     // store a0
     const a0_offset = sizeof<R0>() + sizeof<R1>() + sizeof<R2>() + sizeof<R3>() + sizeof<R4>(); // constant folded
-    store<T0>(stack_begin, a0, a0_offset); // inlined
+    wastrumentation_memory_store<T0>(stack_begin, a0, a0_offset); // inlined
     // store a1
     const a1_offset = sizeof<R0>() + sizeof<R1>() + sizeof<R2>() + sizeof<R3>() + sizeof<R4>() + sizeof<T0>(); // constant folded
-    store<T1>(stack_begin, a1, a1_offset); // inlined
+    wastrumentation_memory_store<T1>(stack_begin, a1, a1_offset); // inlined
     // store a2
     const a2_offset = sizeof<R0>() + sizeof<R1>() + sizeof<R2>() + sizeof<R3>() + sizeof<R4>() + sizeof<T0>() + sizeof<T1>(); // constant folded
-    store<T2>(stack_begin, a2, a2_offset); // inlined
+    wastrumentation_memory_store<T2>(stack_begin, a2, a2_offset); // inlined
     // store a3
     const a3_offset = sizeof<R0>() + sizeof<R1>() + sizeof<R2>() + sizeof<R3>() + sizeof<R4>() + sizeof<T0>() + sizeof<T1>() + sizeof<T2>(); // constant folded
-    store<T3>(stack_begin, a3, a3_offset); // inlined
+    wastrumentation_memory_store<T3>(stack_begin, a3, a3_offset); // inlined
     // store a4
     const a4_offset = sizeof<R0>() + sizeof<R1>() + sizeof<R2>() + sizeof<R3>() + sizeof<R4>() + sizeof<T0>() + sizeof<T1>() + sizeof<T2>() + sizeof<T3>(); // constant folded
-    store<T4>(stack_begin, a4, a4_offset); // inlined
+    wastrumentation_memory_store<T4>(stack_begin, a4, a4_offset); // inlined
     return stack_begin;
 }"
     );
@@ -629,68 +628,68 @@ export function allocate_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(a0: i64, a1: i3
 @inline
 function load_arg0_ret_0_arg_1<T0>(stack_ptr: usize): T0 {
     const a0_offset = 0; // constant folded
-    return load<T0>(stack_ptr, a0_offset); // inlined
+    return wastrumentation_memory_load<T0>(stack_ptr, a0_offset); // inlined
 }",
         );
         assert_eq!(generate_load_generic(5, 5), "
 @inline
 function load_arg0_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize): T0 {
     const a0_offset = sizeof<R0>() + sizeof<R1>() + sizeof<R2>() + sizeof<R3>() + sizeof<R4>(); // constant folded
-    return load<T0>(stack_ptr, a0_offset); // inlined
+    return wastrumentation_memory_load<T0>(stack_ptr, a0_offset); // inlined
 }
 
 @inline
 function load_arg1_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize): T1 {
     const a1_offset = sizeof<R0>() + sizeof<R1>() + sizeof<R2>() + sizeof<R3>() + sizeof<R4>() + sizeof<T0>(); // constant folded
-    return load<T1>(stack_ptr, a1_offset); // inlined
+    return wastrumentation_memory_load<T1>(stack_ptr, a1_offset); // inlined
 }
 
 @inline
 function load_arg2_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize): T2 {
     const a2_offset = sizeof<R0>() + sizeof<R1>() + sizeof<R2>() + sizeof<R3>() + sizeof<R4>() + sizeof<T0>() + sizeof<T1>(); // constant folded
-    return load<T2>(stack_ptr, a2_offset); // inlined
+    return wastrumentation_memory_load<T2>(stack_ptr, a2_offset); // inlined
 }
 
 @inline
 function load_arg3_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize): T3 {
     const a3_offset = sizeof<R0>() + sizeof<R1>() + sizeof<R2>() + sizeof<R3>() + sizeof<R4>() + sizeof<T0>() + sizeof<T1>() + sizeof<T2>(); // constant folded
-    return load<T3>(stack_ptr, a3_offset); // inlined
+    return wastrumentation_memory_load<T3>(stack_ptr, a3_offset); // inlined
 }
 
 @inline
 function load_arg4_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize): T4 {
     const a4_offset = sizeof<R0>() + sizeof<R1>() + sizeof<R2>() + sizeof<R3>() + sizeof<R4>() + sizeof<T0>() + sizeof<T1>() + sizeof<T2>() + sizeof<T3>(); // constant folded
-    return load<T4>(stack_ptr, a4_offset); // inlined
+    return wastrumentation_memory_load<T4>(stack_ptr, a4_offset); // inlined
 }
 
 @inline
 function load_ret0_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize): R0 {
     const r0_offset = 0; // constant folded
-    return load<R0>(stack_ptr, r0_offset); // inlined
+    return wastrumentation_memory_load<R0>(stack_ptr, r0_offset); // inlined
 }
 
 @inline
 function load_ret1_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize): R1 {
     const r1_offset = sizeof<R0>(); // constant folded
-    return load<R1>(stack_ptr, r1_offset); // inlined
+    return wastrumentation_memory_load<R1>(stack_ptr, r1_offset); // inlined
 }
 
 @inline
 function load_ret2_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize): R2 {
     const r2_offset = sizeof<R0>() + sizeof<R1>(); // constant folded
-    return load<R2>(stack_ptr, r2_offset); // inlined
+    return wastrumentation_memory_load<R2>(stack_ptr, r2_offset); // inlined
 }
 
 @inline
 function load_ret3_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize): R3 {
     const r3_offset = sizeof<R0>() + sizeof<R1>() + sizeof<R2>(); // constant folded
-    return load<R3>(stack_ptr, r3_offset); // inlined
+    return wastrumentation_memory_load<R3>(stack_ptr, r3_offset); // inlined
 }
 
 @inline
 function load_ret4_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize): R4 {
     const r4_offset = sizeof<R0>() + sizeof<R1>() + sizeof<R2>() + sizeof<R3>(); // constant folded
-    return load<R4>(stack_ptr, r4_offset); // inlined
+    return wastrumentation_memory_load<R4>(stack_ptr, r4_offset); // inlined
 }");
     }
 
@@ -761,68 +760,68 @@ export function load_ret3_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usi
 @inline
 function store_arg0_ret_0_arg_1<T0>(stack_ptr: usize, a0: T0): void {
     const a0_offset = 0; // constant folded
-    return store<T0>(stack_ptr + a0_offset, a0); // inlined
+    return wastrumentation_memory_store<T0>(stack_ptr, a0, a0_offset); // inlined
 }",
         );
         assert_eq!(generate_store_generic(5, 5), "
 @inline
 function store_arg0_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize, a0: T0): void {
     const a0_offset = sizeof<R0>() + sizeof<R1>() + sizeof<R2>() + sizeof<R3>() + sizeof<R4>(); // constant folded
-    return store<T0>(stack_ptr + a0_offset, a0); // inlined
+    return wastrumentation_memory_store<T0>(stack_ptr, a0, a0_offset); // inlined
 }
 
 @inline
 function store_arg1_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize, a1: T1): void {
     const a1_offset = sizeof<R0>() + sizeof<R1>() + sizeof<R2>() + sizeof<R3>() + sizeof<R4>() + sizeof<T0>(); // constant folded
-    return store<T1>(stack_ptr + a1_offset, a1); // inlined
+    return wastrumentation_memory_store<T1>(stack_ptr, a1, a1_offset); // inlined
 }
 
 @inline
 function store_arg2_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize, a2: T2): void {
     const a2_offset = sizeof<R0>() + sizeof<R1>() + sizeof<R2>() + sizeof<R3>() + sizeof<R4>() + sizeof<T0>() + sizeof<T1>(); // constant folded
-    return store<T2>(stack_ptr + a2_offset, a2); // inlined
+    return wastrumentation_memory_store<T2>(stack_ptr, a2, a2_offset); // inlined
 }
 
 @inline
 function store_arg3_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize, a3: T3): void {
     const a3_offset = sizeof<R0>() + sizeof<R1>() + sizeof<R2>() + sizeof<R3>() + sizeof<R4>() + sizeof<T0>() + sizeof<T1>() + sizeof<T2>(); // constant folded
-    return store<T3>(stack_ptr + a3_offset, a3); // inlined
+    return wastrumentation_memory_store<T3>(stack_ptr, a3, a3_offset); // inlined
 }
 
 @inline
 function store_arg4_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize, a4: T4): void {
     const a4_offset = sizeof<R0>() + sizeof<R1>() + sizeof<R2>() + sizeof<R3>() + sizeof<R4>() + sizeof<T0>() + sizeof<T1>() + sizeof<T2>() + sizeof<T3>(); // constant folded
-    return store<T4>(stack_ptr + a4_offset, a4); // inlined
+    return wastrumentation_memory_store<T4>(stack_ptr, a4, a4_offset); // inlined
 }
 
 @inline
 function store_ret0_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize, r0: R0): void {
     const r0_offset = 0; // constant folded
-    return store<T0>(stack_ptr + r0_offset, r0); // inlined
+    return wastrumentation_memory_store<T0>(stack_ptr, r0, r0_offset); // inlined
 }
 
 @inline
 function store_ret1_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize, r1: R1): void {
     const r1_offset = sizeof<R0>(); // constant folded
-    return store<T1>(stack_ptr + r1_offset, r1); // inlined
+    return wastrumentation_memory_store<T1>(stack_ptr, r1, r1_offset); // inlined
 }
 
 @inline
 function store_ret2_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize, r2: R2): void {
     const r2_offset = sizeof<R0>() + sizeof<R1>(); // constant folded
-    return store<T2>(stack_ptr + r2_offset, r2); // inlined
+    return wastrumentation_memory_store<T2>(stack_ptr, r2, r2_offset); // inlined
 }
 
 @inline
 function store_ret3_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize, r3: R3): void {
     const r3_offset = sizeof<R0>() + sizeof<R1>() + sizeof<R2>(); // constant folded
-    return store<T3>(stack_ptr + r3_offset, r3); // inlined
+    return wastrumentation_memory_store<T3>(stack_ptr, r3, r3_offset); // inlined
 }
 
 @inline
 function store_ret4_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize, r4: R4): void {
     const r4_offset = sizeof<R0>() + sizeof<R1>() + sizeof<R2>() + sizeof<R3>(); // constant folded
-    return store<T4>(stack_ptr + r4_offset, r4); // inlined
+    return wastrumentation_memory_store<T4>(stack_ptr, r4, r4_offset); // inlined
 }");
     }
 
@@ -1001,12 +1000,11 @@ function allocate_signature_types_buffer_ret_5_arg_5(): usize {
             generate_allocate_types_buffer_specialized(&signature_0),
             "
 export function allocate_types_ret_f64_f32_arg_i32_i64(): usize {
-    const NO_OFFSET = 0;
     const types_buffer = allocate_signature_types_buffer_ret_2_arg_2();
-    store<i32>(types_buffer + (sizeof<i32>()*0), 3, NO_OFFSET);
-    store<i32>(types_buffer + (sizeof<i32>()*1), 1, NO_OFFSET);
-    store<i32>(types_buffer + (sizeof<i32>()*2), 0, NO_OFFSET);
-    store<i32>(types_buffer + (sizeof<i32>()*3), 2, NO_OFFSET);
+    wastrumentation_memory_store<i32>(types_buffer, 3, (sizeof<i32>()*0));
+    wastrumentation_memory_store<i32>(types_buffer, 1, (sizeof<i32>()*1));
+    wastrumentation_memory_store<i32>(types_buffer, 0, (sizeof<i32>()*2));
+    wastrumentation_memory_store<i32>(types_buffer, 2, (sizeof<i32>()*3));
     return types_buffer;
 }"
         );
@@ -1018,16 +1016,15 @@ export function allocate_types_ret_f64_f32_arg_i32_i64(): usize {
             generate_allocate_types_buffer_specialized(&signature_1),
             "
 export function allocate_types_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(): usize {
-    const NO_OFFSET = 0;
     const types_buffer = allocate_signature_types_buffer_ret_4_arg_4();
-    store<i32>(types_buffer + (sizeof<i32>()*0), 3, NO_OFFSET);
-    store<i32>(types_buffer + (sizeof<i32>()*1), 1, NO_OFFSET);
-    store<i32>(types_buffer + (sizeof<i32>()*2), 0, NO_OFFSET);
-    store<i32>(types_buffer + (sizeof<i32>()*3), 2, NO_OFFSET);
-    store<i32>(types_buffer + (sizeof<i32>()*4), 2, NO_OFFSET);
-    store<i32>(types_buffer + (sizeof<i32>()*5), 0, NO_OFFSET);
-    store<i32>(types_buffer + (sizeof<i32>()*6), 1, NO_OFFSET);
-    store<i32>(types_buffer + (sizeof<i32>()*7), 3, NO_OFFSET);
+    wastrumentation_memory_store<i32>(types_buffer, 3, (sizeof<i32>()*0));
+    wastrumentation_memory_store<i32>(types_buffer, 1, (sizeof<i32>()*1));
+    wastrumentation_memory_store<i32>(types_buffer, 0, (sizeof<i32>()*2));
+    wastrumentation_memory_store<i32>(types_buffer, 2, (sizeof<i32>()*3));
+    wastrumentation_memory_store<i32>(types_buffer, 2, (sizeof<i32>()*4));
+    wastrumentation_memory_store<i32>(types_buffer, 0, (sizeof<i32>()*5));
+    wastrumentation_memory_store<i32>(types_buffer, 1, (sizeof<i32>()*6));
+    wastrumentation_memory_store<i32>(types_buffer, 3, (sizeof<i32>()*7));
     return types_buffer;
 }"
         );
