@@ -1,71 +1,48 @@
-let $STACK_FREE_PTR: usize = 0;
-let $TOTAL_MEMORY: usize = 0;
-const $MEMORY_GROWTH_SIZE: usize = 1;
+const allocations: Array<ArrayBuffer> = new Array<ArrayBuffer>();
 
-@inline
-function grow_memory(): void {
-    // Grow by constant size
-    if (memory.grow(($MEMORY_GROWTH_SIZE as i32)) == -1) {
-        // If growth failed, trap
-        unreachable()
-    } else {
-        // If growth did not fail, adjust house keeping
-        $TOTAL_MEMORY += $MEMORY_GROWTH_SIZE;
-    }
-}
-
-@inline
-function total_used_memory_in_bytes(): usize {
-    const $PAGE_BYTE_SIZE: usize = 65536;
-    return $TOTAL_MEMORY * $PAGE_BYTE_SIZE;
-}
-
-@inline
 function stack_allocate(bytes: usize): usize {
-    const stack_free_ptr_before_alloc = $STACK_FREE_PTR;
-    const stack_free_ptr_after_alloc = $STACK_FREE_PTR + bytes;
-    while (stack_free_ptr_after_alloc > total_used_memory_in_bytes()) grow_memory();
-    $STACK_FREE_PTR = stack_free_ptr_after_alloc;
-    return stack_free_ptr_before_alloc;
+    let allocation = new ArrayBuffer(bytes as i32);
+    let pointer = (allocations.push(allocation) - 1);
+    console.log(`stack_allocate[*frame=${pointer}, len(frame)=${bytes}]`);
+    return pointer;
 }
 
-@inline
 function stack_deallocate(bytes: usize): void {
-    $STACK_FREE_PTR -= bytes;
+    // todo... get 'free' pointer and dealloc!
 }
 
-@inline
 export function wastrumentation_stack_load_i32(ptr: usize, offset: usize): i32 {
-    return load<i32>(ptr + offset, 0);
+    console.log(`load_i32[*frame=${ptr}, offset=${offset}, len(frame)=${allocations[ptr as i32].byteLength}]`);
+    return Int32Array.wrap(allocations[ptr as i32], offset as i32, 1)[0];
 };
-@inline
 export function wastrumentation_stack_load_f32(ptr: usize, offset: usize): f32 {
-    return load<f32>(ptr + offset, 0);
+    console.log(`load_f32[*frame=${ptr}, offset=${offset}, len(frame)=${allocations[ptr as i32].byteLength}]`);
+    return Float32Array.wrap(allocations[ptr as i32], offset as i32, 1)[0];
 };
-@inline
 export function wastrumentation_stack_load_i64(ptr: usize, offset: usize): i64 {
-    return load<i64>(ptr + offset, 0);
+    console.log(`load_i64[*frame=${ptr}, offset=${offset}, len(frame)=${allocations[ptr as i32].byteLength}]`);
+    return Int64Array.wrap(allocations[ptr as i32], offset as i32, 1)[0];
 };
-@inline
 export function wastrumentation_stack_load_f64(ptr: usize, offset: usize): f64 {
-    return load<f64>(ptr + offset, 0);
+    console.log(`load_f64[*frame=${ptr}, offset=${offset}, len(frame)=${allocations[ptr as i32].byteLength}]`);
+    return Float64Array.wrap(allocations[ptr as i32], offset as i32, 1)[0];
 };
 
-@inline
 export function wastrumentation_stack_store_i32(ptr: usize, value: i32, offset: usize): void {
-    return store<i32>(ptr + offset, value);
+    console.log(`store_i32[*frame=${ptr}, offset=${offset}, value=${value}, len(frame)=${allocations[ptr as i32].byteLength}]`);
+    Int32Array.wrap(allocations[ptr as i32], offset as i32, 1)[0] = value;
 };
-@inline
 export function wastrumentation_stack_store_f32(ptr: usize, value: f32, offset: usize): void {
-    return store<f32>(ptr + offset, value);
+    console.log(`store_f32[*frame=${ptr}, offset=${offset}, value=${value}, len(frame)=${allocations[ptr as i32].byteLength}]`);
+    Float64Array.wrap(allocations[ptr as i32], offset as i32, 1)[0] = value;
 };
-@inline
 export function wastrumentation_stack_store_i64(ptr: usize, value: i64, offset: usize): void {
-    return store<i64>(ptr + offset, value);
+    console.log(`store_i64[*frame=${ptr}, offset=${offset}, value=${value}, len(frame)=${allocations[ptr as i32].byteLength}]`);
+    Int64Array.wrap(allocations[ptr as i32], offset as i32, 1)[0] = value;
 };
-@inline
 export function wastrumentation_stack_store_f64(ptr: usize, value: f64, offset: usize): void {
-    return store<f64>(ptr + offset, value);
+    console.log(`store_f64[*frame=${ptr}, offset=${offset}, value=${value}, len(frame)=${allocations[ptr as i32].byteLength}]`);
+    Float64Array.wrap(allocations[ptr as i32], offset as i32, 1)[0] = value;
 };
 
 function wastrumentation_memory_load<T>(ptr: usize, offset: usize): T {

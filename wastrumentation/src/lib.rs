@@ -1,3 +1,4 @@
+use stack_library::StackLibrary;
 use wasabi_wasm::Element;
 use wasabi_wasm::Function;
 use wasabi_wasm::FunctionType;
@@ -11,6 +12,7 @@ use wasabi_wasm::Table;
 use wasabi_wasm::Val;
 use wasabi_wasm::ValType;
 
+use wasp_compiler::ast::assemblyscript::AssemblyScriptProgram;
 use wasp_compiler::{
     ast::wasp::WasmType,
     joinpoints::JoinPoints,
@@ -22,21 +24,26 @@ mod stack_library;
 pub const INSTRUMENTATION_STACK_MODULE: &str = "wastrumentation_stack";
 pub const INSTRUMENTATION_ANALYSIS_MODULE: &str = "WASP_ANALYSIS";
 
-use crate::stack_library::StackLibrary;
-
-pub fn instrument(module: &mut Module, join_points: JoinPoints, wasp_interface: WaspInterface) {
+pub fn instrument(
+    module: &mut Module,
+    join_points: JoinPoints,
+    wasp_interface: WaspInterface,
+) -> Option<AssemblyScriptProgram> {
     let _ = join_points; // TODO: remove
     let pre_instrumentation_function_indices: Vec<Idx<Function>> =
         module.functions().map(|(idx, _)| idx).collect();
 
     if let Some((generic_import, generic_export)) = wasp_interface.generic_interface {
-        FunctionInstrumentation::instrument(
+        let standard_lib = FunctionInstrumentation::instrument(
             module,
             pre_instrumentation_function_indices,
             generic_import,
             generic_export,
         );
-    };
+        Some(standard_lib)
+    } else {
+        None
+    }
 
     // TODO: specific instrumentation
 }
@@ -72,7 +79,7 @@ impl FunctionInstrumentation {
         pre_instrumentation_function_indices: Vec<Idx<Function>>,
         wasp_exported_generic_apply_trap: WasmExport,
         wasp_imported_generic_apply_base: WasmImport,
-    ) {
+    ) -> AssemblyScriptProgram {
         let args: &[ValType] = &ValTypeVec::from(wasp_exported_generic_apply_trap.args).0;
         let results: &[ValType] = &ValTypeVec::from(wasp_exported_generic_apply_trap.results).0;
         // 0. GENERATE GENERIC APPLY
@@ -83,8 +90,10 @@ impl FunctionInstrumentation {
         );
 
         // 1. GENERATE IMPORTS FOR INSTRUMENTATION STACK LIBRARY
-        let stack_library =
-            StackLibrary::from_module(module, &pre_instrumentation_function_indices);
+        let StackLibrary {
+            assemblyscript_code,
+            signature_import_links,
+        } = StackLibrary::from_module(module, &pre_instrumentation_function_indices);
 
         // 2. Generate function instrumentation functionality
         let apply_table_index = module.tables.len();
@@ -98,8 +107,9 @@ impl FunctionInstrumentation {
                 .map(|(_, l)| l.type_)
                 .collect();
             let target_function_body = module.function(function_index).code().unwrap().body.clone();
-            let stack_library_for_target =
-                stack_library.get(&target_function_type).expect("Imported");
+            let stack_library_for_target = signature_import_links
+                .get(&target_function_type)
+                .expect("Imported");
 
             // 1. Generate "uninstrumented" function
             let uninstrumented_index = module.add_function(
@@ -222,6 +232,9 @@ impl FunctionInstrumentation {
             .function_mut(call_base_idx)
             .export
             .push(wasp_imported_generic_apply_base.name.into());
+        AssemblyScriptProgram {
+            content: assemblyscript_code,
+        }
     }
 }
 

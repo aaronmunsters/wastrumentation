@@ -9,10 +9,73 @@ use self::stack_library_generator::*;
 use crate::INSTRUMENTATION_STACK_MODULE;
 use std::{collections::HashMap, fmt::Display};
 use wasabi_wasm::{Function, FunctionType, Idx, Module, ValType};
+use wastrumentation_instr_lib::{generate_lib, Signature, WasmType};
 
 // TODO: use some macro's here to generate most of the boilerplate -> this makes it also more maintainable
+// TODO: tie this together with the generation library, ie. get names from there!
 
 pub struct StackLibrary {
+    pub signature_import_links: HashMap<FunctionType, SignatureStackLibrary>,
+    pub assemblyscript_code: String,
+}
+
+impl StackLibrary {
+    pub fn from_module(module: &mut Module, functions: &[Idx<Function>]) -> Self {
+        let signature_import_links: HashMap<FunctionType, SignatureStackLibrary> =
+            functions.iter().fold(HashMap::new(), |mut acc, index| {
+                let function_type = module.function(*index).type_;
+                if acc.contains_key(&function_type) {
+                    return acc;
+                }
+                let stack_library =
+                    SignatureStackLibrary::from_function_type_module(function_type, module);
+                acc.insert(function_type, stack_library);
+                acc
+            });
+        let signatures: Vec<Signature> = signature_import_links
+            .keys()
+            .map(WasabiFunctionType)
+            .map(Into::into)
+            .collect();
+        let assemblyscript_code = generate_lib(&signatures);
+        Self {
+            signature_import_links,
+            assemblyscript_code,
+        }
+    }
+}
+
+struct WasabiFunctionType<'a>(&'a FunctionType);
+impl<'a> From<WasabiFunctionType<'a>> for Signature {
+    fn from(value: WasabiFunctionType) -> Self {
+        let WasabiFunctionType(function_type) = value;
+        Self {
+            return_types: function_type
+                .results()
+                .iter()
+                .map(|i| match i {
+                    ValType::I32 => WasmType::I32,
+                    ValType::I64 => WasmType::I64,
+                    ValType::F32 => WasmType::F32,
+                    ValType::F64 => WasmType::F64,
+                })
+                .collect(),
+            argument_types: function_type
+                .inputs()
+                .iter()
+                .map(|i| match i {
+                    ValType::I32 => WasmType::I32,
+                    ValType::I64 => WasmType::I64,
+                    ValType::F32 => WasmType::F32,
+                    ValType::F64 => WasmType::F64,
+                })
+                .collect(),
+        }
+    }
+}
+
+pub struct SignatureStackLibrary {
+    pub function_type: FunctionType,
     pub allocate: Idx<Function>,
     pub allocate_types: Idx<Function>,
     pub free: Idx<Function>,
@@ -24,24 +87,10 @@ pub struct StackLibrary {
     pub ret_store_all: Idx<Function>,
 }
 
-impl StackLibrary {
+impl SignatureStackLibrary {
+    /// This will add the known imports to the function
     pub fn from_function_type_module(function_type: FunctionType, module: &mut Module) -> Self {
         (function_type, module).into()
-    }
-
-    pub fn from_module(
-        module: &mut Module,
-        functions: &[Idx<Function>],
-    ) -> HashMap<FunctionType, Self> {
-        functions.iter().fold(HashMap::new(), |mut acc, index| {
-            let function_type = module.function(*index).type_;
-            if acc.contains_key(&function_type) {
-                return acc;
-            }
-            let stack_library = StackLibrary::from_function_type_module(function_type, module);
-            acc.insert(function_type, stack_library);
-            acc
-        })
     }
 }
 
@@ -131,7 +180,7 @@ mod stack_library_generator {
     }
 }
 
-impl<'a> From<(FunctionType, &mut Module)> for StackLibrary {
+impl<'a> From<(FunctionType, &mut Module)> for SignatureStackLibrary {
     fn from((function_type, module): (FunctionType, &mut Module)) -> Self {
         let allocate_type = FunctionType::new(function_type.inputs(), &[ValType::I32]);
         let allocate = module.add_function_import(
@@ -222,7 +271,8 @@ impl<'a> From<(FunctionType, &mut Module)> for StackLibrary {
             generate_store_rets_name(&function_type),
         );
 
-        StackLibrary {
+        SignatureStackLibrary {
+            function_type,
             allocate,
             allocate_types,
             free,

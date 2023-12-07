@@ -8,7 +8,9 @@ use clap::Parser;
 use cli::Cli;
 
 use wasabi_wasm::Module;
-use wasp_compiler::{compile, CompilationResult as WaspCompilationResult};
+use wasp_compiler::{
+    ast::assemblyscript::AssemblyScriptProgram, compile, CompilationResult as WaspCompilationResult,
+};
 
 pub const INSTRUMENTATION_STACK_MODULE: &str = "wastrumentation_stack";
 pub const INSTRUMENTATION_ANALYSIS_MODULE: &str = "analysis";
@@ -37,7 +39,14 @@ fn main() -> Result<(), Error> {
         Module::from_file(&input).expect(&format!("Failed to read {}", input.to_string_lossy()));
 
     // 3. Instrument the module
-    wastrumentation::instrument(&mut module, join_points, wasp_interface);
+    let std_lib = wastrumentation::instrument(&mut module, join_points, wasp_interface);
+    if let Some(AssemblyScriptProgram {
+        content: assemblyscript_program,
+    }) = std_lib
+    {
+        let mut lib_file = File::create("./wastrumentation_instr_lib/src_generated/lib.ts")?;
+        write!(lib_file, "{assemblyscript_program}")?;
+    };
 
     // 4. Save the output
     module
