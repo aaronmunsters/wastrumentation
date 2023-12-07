@@ -1,19 +1,14 @@
 (aspect
     (global >>>GUEST>>>
-        console.log("Hello from the start!");
+        let call_stack = "";
     <<<GUEST<<<)
 
     (advice apply (func    WasmFunction)
                   (args    MutDynArgs)
                   (results MutDynResults) >>>GUEST>>>
-
-        // pre apply
-        console.log(`Passed argument: ${args.get<i32>(0)}`);
+        call_stack += ".";
+        console.log(`${call_stack} - [${args.get<i32>(0)}]`);
         func.apply();
-        console.log(`Passed argument: ${args.get<i32>(0)}, result: ${results.get<i32>(0)}`);
-
-        // post apply
-        
-        
-
+        console.log(`${call_stack} - [${args.get<i32>(0)}] -> [${results.get<i32>(0)}]`);
+        call_stack = call_stack.substr(0, call_stack.length-1);
     <<<GUEST<<<))
