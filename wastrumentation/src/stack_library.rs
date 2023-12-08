@@ -76,9 +76,10 @@ impl<'a> From<WasabiFunctionType<'a>> for Signature {
 
 pub struct SignatureStackLibrary {
     pub function_type: FunctionType,
-    pub allocate: Idx<Function>,
-    pub allocate_types: Idx<Function>,
-    pub free: Idx<Function>,
+    pub allocate_values_buffer: Idx<Function>,
+    pub allocate_types_buffer: Idx<Function>,
+    pub free_values_buffer: Idx<Function>,
+    pub free_types_buffer: Idx<Function>,
     pub arg_load_n: Vec<Idx<Function>>,
     pub arg_store_n: Vec<Idx<Function>>,
     pub arg_store_all: Idx<Function>,
@@ -133,16 +134,20 @@ mod stack_library_generator {
         )
     }
 
-    pub(super) fn generate_allocate_name(function_type: &FunctionType) -> String {
+    pub(super) fn generate_allocate_values_buffer_name(function_type: &FunctionType) -> String {
         generate_name("allocate", function_type)
     }
 
-    pub(super) fn generate_allocate_types_name(function_type: &FunctionType) -> String {
+    pub(super) fn generate_allocate_types_buffer_name(function_type: &FunctionType) -> String {
         generate_name("allocate_types", function_type)
     }
 
-    pub(super) fn generate_free_name(function_type: &FunctionType) -> String {
-        generate_name("free", function_type)
+    pub(super) fn generate_free_values_buffer_name(function_type: &FunctionType) -> String {
+        generate_name("free_values", function_type)
+    }
+
+    pub(super) fn generate_free_types_buffer_name(function_type: &FunctionType) -> String {
+        generate_name("free_types", function_type)
     }
 
     fn generate_indexed_name(
@@ -182,25 +187,33 @@ mod stack_library_generator {
 
 impl<'a> From<(FunctionType, &mut Module)> for SignatureStackLibrary {
     fn from((function_type, module): (FunctionType, &mut Module)) -> Self {
-        let allocate_type = FunctionType::new(function_type.inputs(), &[ValType::I32]);
-        let allocate = module.add_function_import(
-            allocate_type,
+        let allocate_values_buffer_type =
+            FunctionType::new(function_type.inputs(), &[ValType::I32]);
+        let allocate_values_buffer = module.add_function_import(
+            allocate_values_buffer_type,
             INSTRUMENTATION_STACK_MODULE.into(),
-            generate_allocate_name(&function_type),
+            generate_allocate_values_buffer_name(&function_type),
         );
 
-        let allocate_types_type = FunctionType::new(&[], &[ValType::I32]);
-        let allocate_types = module.add_function_import(
-            allocate_types_type,
+        let free_values_buffer_type = FunctionType::new(&[], &[]);
+        let free_values_buffer = module.add_function_import(
+            free_values_buffer_type,
             INSTRUMENTATION_STACK_MODULE.into(),
-            generate_allocate_types_name(&function_type),
+            generate_free_values_buffer_name(&function_type),
         );
 
-        let free_type = FunctionType::new(&[], &[]);
-        let free = module.add_function_import(
-            free_type,
+        let allocate_types_buffer_type = FunctionType::new(&[], &[ValType::I32]);
+        let allocate_types_buffer = module.add_function_import(
+            allocate_types_buffer_type,
             INSTRUMENTATION_STACK_MODULE.into(),
-            generate_free_name(&function_type),
+            generate_allocate_types_buffer_name(&function_type),
+        );
+
+        let free_types_buffer_type = FunctionType::new(&[], &[]);
+        let free_types_buffer = module.add_function_import(
+            free_types_buffer_type,
+            INSTRUMENTATION_STACK_MODULE.into(),
+            generate_free_types_buffer_name(&function_type),
         );
 
         let arg_load_n = function_type
@@ -273,9 +286,10 @@ impl<'a> From<(FunctionType, &mut Module)> for SignatureStackLibrary {
 
         SignatureStackLibrary {
             function_type,
-            allocate,
-            allocate_types,
-            free,
+            allocate_values_buffer,
+            allocate_types_buffer,
+            free_values_buffer,
+            free_types_buffer,
             arg_load_n,
             arg_store_n,
             arg_store_all,

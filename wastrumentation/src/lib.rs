@@ -157,10 +157,10 @@ impl FunctionInstrumentation {
                 .enumerate()
                 .map(|(index, _int_type)| Local(LocalOp::Get, index.into()))
                 .collect();
-            let call_allocate = Call(stack_library_for_target.allocate);
-            let local_set_stack_ptr = Local(LocalOp::Set, stack_ptr_local);
-            let call_allocate_types = Call(stack_library_for_target.allocate_types);
-            let local_set_stack_types_ptr = Local(LocalOp::Set, stack_ptr_types_local);
+            let call_allocate_values_buffer = Call(stack_library_for_target.allocate_values_buffer);
+            let local_set_values_buffer_ptr = Local(LocalOp::Set, stack_ptr_local);
+            let call_allocate_types_buffer = Call(stack_library_for_target.allocate_types_buffer);
+            let local_set_types_buffer_ptr = Local(LocalOp::Set, stack_ptr_types_local);
 
             let argc = Const(Val::I32((target_function_type.inputs().len()) as i32));
             let resc = Const(Val::I32((target_function_type.results().len()) as i32));
@@ -168,14 +168,15 @@ impl FunctionInstrumentation {
             let local_get_stack_ptr = || Local(LocalOp::Get, stack_ptr_local);
             let local_get_stack_types_ptr = Local(LocalOp::Get, stack_ptr_types_local);
             let call_generic_apply = Call(generic_apply_index);
-            let call_free = Call(stack_library_for_target.free);
+            let call_free_values_buffer = Call(stack_library_for_target.free_values_buffer);
+            let call_free_types_buffer = Call(stack_library_for_target.free_types_buffer);
 
             let mut instrumented_body = Vec::new();
             instrumented_body.extend(push_args_on_stack);
-            instrumented_body.push(call_allocate);
-            instrumented_body.push(local_set_stack_ptr);
-            instrumented_body.push(call_allocate_types);
-            instrumented_body.push(local_set_stack_types_ptr);
+            instrumented_body.push(call_allocate_values_buffer);
+            instrumented_body.push(local_set_values_buffer_ptr);
+            instrumented_body.push(call_allocate_types_buffer);
+            instrumented_body.push(local_set_types_buffer_ptr);
             instrumented_body.extend_from_slice(&[
                 // Prep call generic apply
                 const_apply_table_index,   // f_apply : i32
@@ -191,8 +192,8 @@ impl FunctionInstrumentation {
                 instrumented_body.push(Call(*load_call))
             }
 
-            instrumented_body.push(call_free);
-            // TODO: free types ptr
+            instrumented_body.push(call_free_values_buffer);
+            instrumented_body.push(call_free_types_buffer);
             instrumented_body.push(End);
             original_function.code_mut().unwrap().body = instrumented_body;
         }

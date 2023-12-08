@@ -373,7 +373,7 @@ export function store_ret{index}_{mangled_name}(stack_ptr: usize, a{index}: {ret
         .join("\n")
 }
 
-fn generate_free_generic(rets_count: usize, args_count: usize) -> String {
+fn generate_free_values_buffer_generic(rets_count: usize, args_count: usize) -> String {
     let string_all_generics = Signature::comma_separated_generics(rets_count, args_count);
     let generic_name = Signature::generic_name(rets_count, args_count);
 
@@ -387,7 +387,7 @@ fn generate_free_generic(rets_count: usize, args_count: usize) -> String {
     format!(
         "
 @inline
-function free_{generic_name}<{string_all_generics}>(): void {{
+function free_values_{generic_name}<{string_all_generics}>(): void {{
     const to_deallocate = {total_allocation}; // constant folded
     stack_deallocate(to_deallocate); // inlined
     return;
@@ -395,15 +395,41 @@ function free_{generic_name}<{string_all_generics}>(): void {{
     )
 }
 
-fn generate_free_specialized(signature: &Signature) -> String {
+fn generate_free_values_buffer_specialized(signature: &Signature) -> String {
     format!(
         "
-export function free_{}(): void {{
-    return free_{}<{}>();
+export function free_values_{}(): void {{
+    return free_values_{}<{}>();
 }};",
         signature.mangled_name(),
         signature.mangled_name_by_count(),
         signature.comma_separated_types(),
+    )
+}
+
+fn generate_free_types_buffer_generic(rets_count: usize, args_count: usize) -> String {
+    let generic_name = Signature::generic_name(rets_count, args_count);
+    let total_allocation = format!("sizeof<i32>() * {};", rets_count + args_count);
+
+    format!(
+        "
+@inline
+function free_types_{generic_name}(): void {{
+    const to_deallocate = {total_allocation}; // constant folded
+    stack_deallocate(to_deallocate); // inlined
+    return;
+}}"
+    )
+}
+
+fn generate_free_types_buffer_specialized(signature: &Signature) -> String {
+    format!(
+        "
+export function free_types_{}(): void {{
+    return free_types_{}();
+}};",
+        signature.mangled_name(),
+        signature.mangled_name_by_count(),
     )
 }
 
@@ -502,9 +528,10 @@ fn generate_lib_for(signatures: &[Signature]) -> String {
                 generate_allocate_generic,
                 generate_load_generic,
                 generate_store_generic,
-                generate_free_generic,
+                generate_free_values_buffer_generic,
                 generate_store_rets_generic,
                 generate_allocate_types_buffer_generic,
+                generate_free_types_buffer_generic,
             ] {
                 program.push_str(generator(signature_ret_count, signature_arg_count).as_str())
             }
@@ -515,9 +542,10 @@ fn generate_lib_for(signatures: &[Signature]) -> String {
                 generate_allocate_specialized,
                 generate_load_specialized,
                 generate_store_specialized,
-                generate_free_specialized,
+                generate_free_values_buffer_specialized,
                 generate_store_rets_specialized,
                 generate_allocate_types_buffer_specialized,
+                generate_free_types_buffer_specialized,
             ] {
                 program.push_str(&generator(signature));
             }
@@ -903,18 +931,18 @@ export function store_ret3_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: us
     #[test]
     fn generating_free_generic_instruction() {
         assert_eq!(
-            generate_free_generic(0, 1),
+            generate_free_values_buffer_generic(0, 1),
             "
 @inline
-function free_ret_0_arg_1<T0>(): void {
+function free_values_ret_0_arg_1<T0>(): void {
     const to_deallocate = sizeof<T0>(); // constant folded
     stack_deallocate(to_deallocate); // inlined
     return;
 }"
         );
-        assert_eq!(generate_free_generic(5, 5), "
+        assert_eq!(generate_free_values_buffer_generic(5, 5), "
 @inline
-function free_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(): void {
+function free_values_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(): void {
     const to_deallocate = sizeof<R0>() + sizeof<R1>() + sizeof<R2>() + sizeof<R3>() + sizeof<R4>() + sizeof<T0>() + sizeof<T1>() + sizeof<T2>() + sizeof<T3>() + sizeof<T4>(); // constant folded
     stack_deallocate(to_deallocate); // inlined
     return;
@@ -924,19 +952,61 @@ function free_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(): void {
     #[test]
     fn generating_free_specialized_instruction() {
         assert_eq!(
-            generate_free_specialized(&get_ret_f64_f32_arg_i32_i64()),
+            generate_free_values_buffer_specialized(&get_ret_f64_f32_arg_i32_i64()),
             "
-export function free_ret_f64_f32_arg_i32_i64(): void {
-    return free_ret_2_arg_2<f64, f32, i32, i64>();
+export function free_values_ret_f64_f32_arg_i32_i64(): void {
+    return free_values_ret_2_arg_2<f64, f32, i32, i64>();
 };",
         );
 
         assert_eq!(
-            generate_free_specialized(&get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64()),
+            generate_free_values_buffer_specialized(&get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64()),
             "
-export function free_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(): void {
-    return free_ret_4_arg_4<f64, f32, i32, i64, i64, i32, f32, f64>();
+export function free_values_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(): void {
+    return free_values_ret_4_arg_4<f64, f32, i32, i64, i64, i32, f32, f64>();
 };",
+        );
+    }
+
+    #[test]
+    fn generating_free_types_generic_instruction() {
+        assert_eq!(
+            generate_free_types_buffer_generic(0, 1),
+            "
+@inline
+function free_types_ret_0_arg_1(): void {
+    const to_deallocate = sizeof<i32>() * 1;; // constant folded
+    stack_deallocate(to_deallocate); // inlined
+    return;
+}"
+        );
+        assert_eq!(
+            generate_free_types_buffer_generic(5, 5),
+            "
+@inline
+function free_types_ret_5_arg_5(): void {
+    const to_deallocate = sizeof<i32>() * 10;; // constant folded
+    stack_deallocate(to_deallocate); // inlined
+    return;
+}"
+        );
+    }
+
+    #[test]
+    fn generating_free_types_specialized_instruction() {
+        assert_eq!(
+            generate_free_types_buffer_specialized(&get_ret_f64_f32_arg_i32_i64()),
+            "
+export function free_types_ret_f64_f32_arg_i32_i64(): void {
+    return free_types_ret_2_arg_2();
+};"
+        );
+        assert_eq!(
+            generate_free_types_buffer_specialized(&get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64()),
+            "
+export function free_types_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(): void {
+    return free_types_ret_4_arg_4();
+};"
         );
     }
 
