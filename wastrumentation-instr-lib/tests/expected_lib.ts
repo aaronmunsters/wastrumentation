@@ -49,13 +49,13 @@ function store_arg1_ret_2_arg_2<R0, R1, T0, T1>(stack_ptr: usize, a1: T1): void 
 @inline
 function store_ret0_ret_2_arg_2<R0, R1, T0, T1>(stack_ptr: usize, r0: R0): void {
     const r0_offset = 0; // constant folded
-    return wastrumentation_memory_store<T0>(stack_ptr, r0, r0_offset); // inlined
+    return wastrumentation_memory_store<R0>(stack_ptr, r0, r0_offset); // inlined
 }
 
 @inline
 function store_ret1_ret_2_arg_2<R0, R1, T0, T1>(stack_ptr: usize, r1: R1): void {
     const r1_offset = sizeof<R0>(); // constant folded
-    return wastrumentation_memory_store<T1>(stack_ptr, r1, r1_offset); // inlined
+    return wastrumentation_memory_store<R1>(stack_ptr, r1, r1_offset); // inlined
 }
 @inline
 function free_ret_2_arg_2<R0, R1, T0, T1>(): void {
@@ -265,25 +265,25 @@ function store_arg3_ret_4_arg_4<R0, R1, R2, R3, T0, T1, T2, T3>(stack_ptr: usize
 @inline
 function store_ret0_ret_4_arg_4<R0, R1, R2, R3, T0, T1, T2, T3>(stack_ptr: usize, r0: R0): void {
     const r0_offset = 0; // constant folded
-    return wastrumentation_memory_store<T0>(stack_ptr, r0, r0_offset); // inlined
+    return wastrumentation_memory_store<R0>(stack_ptr, r0, r0_offset); // inlined
 }
 
 @inline
 function store_ret1_ret_4_arg_4<R0, R1, R2, R3, T0, T1, T2, T3>(stack_ptr: usize, r1: R1): void {
     const r1_offset = sizeof<R0>(); // constant folded
-    return wastrumentation_memory_store<T1>(stack_ptr, r1, r1_offset); // inlined
+    return wastrumentation_memory_store<R1>(stack_ptr, r1, r1_offset); // inlined
 }
 
 @inline
 function store_ret2_ret_4_arg_4<R0, R1, R2, R3, T0, T1, T2, T3>(stack_ptr: usize, r2: R2): void {
     const r2_offset = sizeof<R0>() + sizeof<R1>(); // constant folded
-    return wastrumentation_memory_store<T2>(stack_ptr, r2, r2_offset); // inlined
+    return wastrumentation_memory_store<R2>(stack_ptr, r2, r2_offset); // inlined
 }
 
 @inline
 function store_ret3_ret_4_arg_4<R0, R1, R2, R3, T0, T1, T2, T3>(stack_ptr: usize, r3: R3): void {
     const r3_offset = sizeof<R0>() + sizeof<R1>() + sizeof<R2>(); // constant folded
-    return wastrumentation_memory_store<T3>(stack_ptr, r3, r3_offset); // inlined
+    return wastrumentation_memory_store<R3>(stack_ptr, r3, r3_offset); // inlined
 }
 @inline
 function free_ret_4_arg_4<R0, R1, R2, R3, T0, T1, T2, T3>(): void {

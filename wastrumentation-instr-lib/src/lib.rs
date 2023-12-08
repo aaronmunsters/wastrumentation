@@ -6,6 +6,13 @@ pub enum WasmType {
     F32,
     I64,
     F64,
+    Ref(RefType),
+}
+
+#[derive(Hash, PartialEq, Eq)]
+pub enum RefType {
+    FuncRef,
+    ExternRef,
 }
 
 impl WasmType {
@@ -15,6 +22,8 @@ impl WasmType {
             WasmType::F32 => 1,
             WasmType::I64 => 2,
             WasmType::F64 => 3,
+            WasmType::Ref(RefType::FuncRef) => 4,
+            WasmType::Ref(RefType::ExternRef) => 5,
         }
     }
 }
@@ -26,6 +35,8 @@ impl Display for WasmType {
             WasmType::F32 => "f32",
             WasmType::I64 => "i64",
             WasmType::F64 => "f64",
+            WasmType::Ref(RefType::FuncRef) => "FuncRef",
+            WasmType::Ref(RefType::ExternRef) => "ExternRef",
         };
         write!(f, "{as_string}")
     }
@@ -38,6 +49,10 @@ pub struct Signature {
 }
 
 impl Signature {
+    fn is_empty(&self) -> bool {
+        self.argument_types.is_empty() && self.return_types.is_empty()
+    }
+
     fn mangled_name(&self) -> String {
         let signature_rets = &self.return_types;
         let signature_rets_ident = signature_rets
@@ -324,7 +339,7 @@ function store_arg{n}_{generic_name}<{string_all_generics}>(stack_ptr: usize, a{
 @inline
 function store_ret{n}_{generic_name}<{string_all_generics}>(stack_ptr: usize, r{n}: R{n}): void {{
     const r{n}_offset = {ar_offset}; // constant folded
-    return wastrumentation_memory_store<T{n}>(stack_ptr, r{n}, r{n}_offset); // inlined
+    return wastrumentation_memory_store<R{n}>(stack_ptr, r{n}, r{n}_offset); // inlined
 }}"
         )
     });
@@ -474,6 +489,10 @@ fn generate_lib_for(signatures: &[Signature]) -> String {
     let mut processed_signatures: HashSet<&Signature> = HashSet::new();
     let mut program = String::new();
     for signature in signatures {
+        if signature.is_empty() {
+            continue;
+        }
+
         let signature_ret_count = signature.return_types.len();
         let signature_arg_count = signature.argument_types.len();
         let signature_length = (signature.return_types.len(), signature.argument_types.len());
@@ -797,31 +816,31 @@ function store_arg4_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_pt
 @inline
 function store_ret0_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize, r0: R0): void {
     const r0_offset = 0; // constant folded
-    return wastrumentation_memory_store<T0>(stack_ptr, r0, r0_offset); // inlined
+    return wastrumentation_memory_store<R0>(stack_ptr, r0, r0_offset); // inlined
 }
 
 @inline
 function store_ret1_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize, r1: R1): void {
     const r1_offset = sizeof<R0>(); // constant folded
-    return wastrumentation_memory_store<T1>(stack_ptr, r1, r1_offset); // inlined
+    return wastrumentation_memory_store<R1>(stack_ptr, r1, r1_offset); // inlined
 }
 
 @inline
 function store_ret2_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize, r2: R2): void {
     const r2_offset = sizeof<R0>() + sizeof<R1>(); // constant folded
-    return wastrumentation_memory_store<T2>(stack_ptr, r2, r2_offset); // inlined
+    return wastrumentation_memory_store<R2>(stack_ptr, r2, r2_offset); // inlined
 }
 
 @inline
 function store_ret3_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize, r3: R3): void {
     const r3_offset = sizeof<R0>() + sizeof<R1>() + sizeof<R2>(); // constant folded
-    return wastrumentation_memory_store<T3>(stack_ptr, r3, r3_offset); // inlined
+    return wastrumentation_memory_store<R3>(stack_ptr, r3, r3_offset); // inlined
 }
 
 @inline
 function store_ret4_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize, r4: R4): void {
     const r4_offset = sizeof<R0>() + sizeof<R1>() + sizeof<R2>() + sizeof<R3>(); // constant folded
-    return wastrumentation_memory_store<T4>(stack_ptr, r4, r4_offset); // inlined
+    return wastrumentation_memory_store<R4>(stack_ptr, r4, r4_offset); // inlined
 }");
     }
 
