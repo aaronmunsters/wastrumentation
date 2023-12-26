@@ -574,6 +574,24 @@ mod tests {
     }
 
     #[test]
+    fn test_signature_uniqueness() {
+        let mut hash_set: HashSet<Signature> = HashSet::default();
+        hash_set.insert(get_ret_f64_f32_arg_i32_i64());
+        hash_set.insert(get_ret_f64_f32_arg_i32_i64());
+        hash_set.insert(get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64());
+        hash_set.insert(get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64());
+        hash_set.insert(Signature {
+            return_types: vec![WasmType::Ref(RefType::ExternRef)],
+            argument_types: vec![WasmType::Ref(RefType::FuncRef)],
+        });
+        hash_set.insert(Signature {
+            return_types: vec![WasmType::Ref(RefType::ExternRef)],
+            argument_types: vec![WasmType::Ref(RefType::FuncRef)],
+        });
+        assert_eq!(hash_set.len(), 3);
+    }
+
+    #[test]
     fn compute_memory_offset_generically_works_correctly() {
         let pos_frst = 0;
         let pos_scnd = 1;
@@ -1114,6 +1132,29 @@ export function allocate_types_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(): usize 
     wastrumentation_memory_store<i32>(types_buffer, 0, (sizeof<i32>()*5));
     wastrumentation_memory_store<i32>(types_buffer, 1, (sizeof<i32>()*6));
     wastrumentation_memory_store<i32>(types_buffer, 3, (sizeof<i32>()*7));
+    return types_buffer;
+}"
+        );
+
+        let signature_2 = Signature {
+            return_types: vec![
+                WasmType::Ref(RefType::FuncRef),
+                WasmType::Ref(RefType::FuncRef),
+            ],
+            argument_types: vec![
+                WasmType::Ref(RefType::ExternRef),
+                WasmType::Ref(RefType::ExternRef),
+            ],
+        };
+        assert_eq!(
+            generate_allocate_types_buffer_specialized(&signature_2),
+            "
+export function allocate_types_ret_FuncRef_FuncRef_arg_ExternRef_ExternRef(): usize {
+    const types_buffer = allocate_signature_types_buffer_ret_2_arg_2();
+    wastrumentation_memory_store<i32>(types_buffer, 4, (sizeof<i32>()*0));
+    wastrumentation_memory_store<i32>(types_buffer, 4, (sizeof<i32>()*1));
+    wastrumentation_memory_store<i32>(types_buffer, 5, (sizeof<i32>()*2));
+    wastrumentation_memory_store<i32>(types_buffer, 5, (sizeof<i32>()*3));
     return types_buffer;
 }"
         );

@@ -23,6 +23,10 @@ fn generating_library_for_signatures() {
     };
 
     let signatures: Vec<Signature> = vec![
+        Signature {
+            return_types: vec![],
+            argument_types: vec![],
+        },
         get_ret_f32_f64_arg_i32_i64(),                 // dupe [A]
         get_ret_f64_f32_arg_i32_i64(),                 // dupe [B]
         get_ret_f32_f64_arg_i32_i64(),                 // dupe [A]
