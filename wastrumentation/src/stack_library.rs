@@ -312,12 +312,3 @@ impl<'a> From<(FunctionType, &mut Module)> for SignatureStackLibrary {
         }
     }
 }
-
-// todo!
-#[cfg(test)]
-mod test {
-    #[test]
-    fn foo() {
-        assert_eq!(1 + 2, 4)
-    }
-}
