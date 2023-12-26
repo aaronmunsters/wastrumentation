@@ -1,5 +1,6 @@
 use crate::ast::wasp::{
-    AdviceDefinition, ApplyHookSignature, ApplySpe, TrapApply, TrapSignature, WasmType, WaspRoot,
+    AdviceDefinition, ApplyHookSignature, ApplySpe, TrapApply, TrapSignature, WasmType,
+    WasmType::*, WaspRoot,
 };
 
 pub const TRANSFORMED_INPUT_NS: &str = "transformed_input";
@@ -28,6 +29,28 @@ pub struct WasmExport {
     pub results: Vec<WasmType>,
 }
 
+type ApplyInterface = (WasmExport, WasmImport);
+
+impl WaspInterface {
+    fn generic_apply_interface() -> ApplyInterface {
+        (
+            WasmExport {
+                name: GENERIC_APPLY_FUNCTION_NAME.into(),
+                // f_apply, argc, resc, sigv, sigtypv
+                args: vec![I32, I32, I32, I32, I32],
+                results: vec![],
+            },
+            WasmImport {
+                namespace: TRANSFORMED_INPUT_NS.into(),
+                name: CALL_BASE.into(),
+                // f_apply, sigv
+                args: vec![I32, I32],
+                results: vec![],
+            },
+        )
+    }
+}
+
 impl From<&WaspRoot> for WaspInterface {
     fn from(wasp_root: &WaspRoot) -> Self {
         let mut generic_interface = None;
@@ -40,30 +63,7 @@ impl From<&WaspRoot> for WaspInterface {
                     TrapSignature::TrapApply(TrapApply {
                         apply_hook_signature: ApplyHookSignature::Gen(_),
                         ..
-                    }) => {
-                        generic_interface = Some((
-                            WasmExport {
-                                name: GENERIC_APPLY_FUNCTION_NAME.into(),
-                                args: vec![
-                                    WasmType::I32, // f_apply
-                                    WasmType::I32, // argc
-                                    WasmType::I32, // resc
-                                    WasmType::I32, // sigv
-                                    WasmType::I32, // sigtypv
-                                ],
-                                results: vec![],
-                            },
-                            WasmImport {
-                                namespace: TRANSFORMED_INPUT_NS.into(),
-                                name: CALL_BASE.into(),
-                                args: vec![
-                                    WasmType::I32, // f_apply
-                                    WasmType::I32, // sigv
-                                ],
-                                results: vec![],
-                            },
-                        ));
-                    }
+                    }) => generic_interface = Some(WaspInterface::generic_apply_interface()),
                     TrapSignature::TrapApply(TrapApply {
                         apply_hook_signature:
                             ApplyHookSignature::Spe(ApplySpe {
@@ -96,4 +96,116 @@ impl From<&WaspRoot> for WaspInterface {
     }
 }
 
-// TODO: tests
+#[cfg(test)]
+mod tests {
+    use crate::ast::wasp::{ApplyGen, GenericTarget, WasmParameter};
+
+    use super::*;
+
+    #[test]
+    fn test_debug() {
+        let wasm_import = WasmImport {
+            namespace: "namespace".into(),
+            name: "name".into(),
+            args: vec![WasmType::I32],
+            results: vec![WasmType::F32],
+        };
+        assert_eq!(
+            format!("{wasm_import:?}"),
+            r#"WasmImport { namespace: "namespace", name: "name", args: [I32], results: [F32] }"#
+        );
+
+        let wasm_import = WasmExport {
+            name: "name".into(),
+            args: vec![WasmType::I32],
+            results: vec![WasmType::F32],
+        };
+        assert_eq!(
+            format!("{wasm_import:?}"),
+            r#"WasmExport { name: "name", args: [I32], results: [F32] }"#
+        );
+    }
+
+    #[test]
+    fn test_generation_empty() {
+        let wasp_root: WaspRoot = WaspRoot(vec![]);
+        let wasp_interface = WaspInterface::from(&wasp_root);
+        assert_eq!(wasp_interface, WaspInterface::default());
+    }
+
+    #[test]
+    fn test_generation_global_only() {
+        let wasp_root: WaspRoot = WaspRoot(vec![AdviceDefinition::AdviceGlobal(
+            "global functionality".into(),
+        )]);
+        let wasp_interface = WaspInterface::from(&wasp_root);
+        assert_eq!(wasp_interface, WaspInterface::default());
+    }
+
+    #[test]
+    fn test_generation_generic() {
+        // empty wasp root generates empty interface
+        let wasp_root = WaspRoot(vec![AdviceDefinition::AdviceTrap(
+            TrapSignature::TrapApply(TrapApply {
+                apply_hook_signature: ApplyHookSignature::Gen(ApplyGen {
+                    generic_means: GenericTarget::Dynamic,
+                    parameter_apply: "WasmFunc".into(),
+                    parameter_arguments: "WasmArgs".into(),
+                    parameter_results: "WasmResults".into(),
+                }),
+                body: "trap body".into(),
+            }),
+        )]);
+        let wasp_interface = WaspInterface::from(&wasp_root);
+
+        assert_eq!(
+            wasp_interface,
+            WaspInterface {
+                inputs: vec![],
+                outputs: vec![],
+                generic_interface: Some(WaspInterface::generic_apply_interface())
+            }
+        );
+    }
+
+    #[test]
+    fn test_generation_specialized() {
+        // empty wasp root generates empty interface
+        let wasp_root = WaspRoot(vec![AdviceDefinition::AdviceTrap(
+            TrapSignature::TrapApply(TrapApply {
+                apply_hook_signature: ApplyHookSignature::Spe(ApplySpe {
+                    mutable_signature: true,
+                    apply_parameter: "WasmFunc".into(),
+                    parameters_arguments: vec![WasmParameter {
+                        identifier: "a".into(),
+                        identifier_type: WasmType::I32,
+                    }],
+                    parameters_results: vec![WasmParameter {
+                        identifier: "b".into(),
+                        identifier_type: WasmType::F32,
+                    }],
+                }),
+                body: "trap body".into(),
+            }),
+        )]);
+        let wasp_interface = WaspInterface::from(&wasp_root);
+
+        assert_eq!(
+            wasp_interface,
+            WaspInterface {
+                inputs: vec![WasmImport {
+                    namespace: "transformed_input".into(),
+                    name: "call_base_mut_args_i32_ress_f32".into(),
+                    args: vec![I32],
+                    results: vec![F32]
+                }],
+                outputs: vec![WasmExport {
+                    name: "apply_func_mut_args_i32_ress_f32".into(),
+                    args: vec![I32],
+                    results: vec![F32]
+                }],
+                generic_interface: None
+            }
+        );
+    }
+}
