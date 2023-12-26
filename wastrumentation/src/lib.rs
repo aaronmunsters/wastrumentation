@@ -1,5 +1,6 @@
 use stack_library::StackLibrary;
 use wasabi_wasm::Element;
+use wasabi_wasm::ElementMode;
 use wasabi_wasm::Function;
 use wasabi_wasm::FunctionType;
 use wasabi_wasm::Idx;
@@ -8,6 +9,7 @@ use wasabi_wasm::Instr::*;
 use wasabi_wasm::Limits;
 use wasabi_wasm::LocalOp;
 use wasabi_wasm::Module;
+use wasabi_wasm::RefType;
 use wasabi_wasm::Table;
 use wasabi_wasm::Val;
 use wasabi_wasm::ValType;
@@ -30,8 +32,11 @@ pub fn instrument(
     wasp_interface: WaspInterface,
 ) -> Option<AssemblyScriptProgram> {
     let _ = join_points; // TODO: remove
-    let pre_instrumentation_function_indices: Vec<Idx<Function>> =
-        module.functions().map(|(idx, _)| idx).collect();
+    let pre_instrumentation_function_indices: Vec<Idx<Function>> = module
+        .functions()
+        .filter(|(_index, f)| f.code().is_some())
+        .map(|(idx, _)| idx)
+        .collect();
 
     if let Some((generic_import, generic_export)) = wasp_interface.generic_interface {
         let standard_lib = FunctionInstrumentation::instrument(
@@ -107,6 +112,13 @@ impl FunctionInstrumentation {
                 .map(|(_, l)| l.type_)
                 .collect();
             let target_function_body = module.function(function_index).code().unwrap().body.clone();
+
+            if target_function_type.inputs().is_empty() && target_function_type.results().is_empty()
+            {
+                // TODO: call with 0 args
+                continue;
+            }
+
             let stack_library_for_target = signature_import_links
                 .get(&target_function_type)
                 .expect("Imported");
@@ -199,17 +211,29 @@ impl FunctionInstrumentation {
         }
 
         let apply_count = apply_table_funs.len() as u32;
+        let apply_table_idx = module.tables.len();
         module.tables.push(Table {
             limits: Limits {
                 initial_size: apply_count,
                 max_size: Some(apply_count),
             },
             import: None,
-            elements: vec![Element {
-                offset: vec![Const(Val::I32(0)), End],
-                functions: apply_table_funs,
-            }],
+            ref_type: RefType::FuncRef,
             export: vec![],
+        });
+
+        let apply_table_funs_refs: Vec<Vec<Instr>> = apply_table_funs
+            .iter()
+            .map(|idx| vec![RefFunc(*idx), End])
+            .collect();
+
+        module.elements.push(Element {
+            typ: RefType::FuncRef,
+            init: apply_table_funs_refs,
+            mode: ElementMode::Active {
+                table: apply_table_idx.into(),
+                offset: vec![Const(Val::I32(0)), End],
+            },
         });
 
         let call_base_args = &ValTypeVec::from(wasp_imported_generic_apply_base.args).0;

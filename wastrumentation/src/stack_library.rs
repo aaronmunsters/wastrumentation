@@ -8,7 +8,7 @@
 use self::stack_library_generator::*;
 use crate::INSTRUMENTATION_STACK_MODULE;
 use std::{collections::HashMap, fmt::Display};
-use wasabi_wasm::{Function, FunctionType, Idx, Module, ValType};
+use wasabi_wasm::{Function, FunctionType, Idx, Module, RefType, ValType};
 use wastrumentation_instr_lib::{generate_lib, Signature, WasmType};
 
 // TODO: use some macro's here to generate most of the boilerplate -> this makes it also more maintainable
@@ -25,6 +25,9 @@ impl StackLibrary {
             functions.iter().fold(HashMap::new(), |mut acc, index| {
                 let function_type = module.function(*index).type_;
                 if acc.contains_key(&function_type) {
+                    return acc;
+                }
+                if function_type.results().is_empty() && function_type.inputs().is_empty() {
                     return acc;
                 }
                 let stack_library =
@@ -46,6 +49,26 @@ impl StackLibrary {
 }
 
 struct WasabiFunctionType<'a>(&'a FunctionType);
+
+impl WasabiFunctionType<'_> {
+    fn val_type_to_wasm_type(v: &ValType) -> WasmType {
+        match v {
+            ValType::I32 => WasmType::I32,
+            ValType::I64 => WasmType::I64,
+            ValType::F32 => WasmType::F32,
+            ValType::F64 => WasmType::F64,
+            ValType::Ref(r) => WasmType::Ref(Self::convert_reftype(r)),
+        }
+    }
+
+    fn convert_reftype(r: &RefType) -> wastrumentation_instr_lib::RefType {
+        match r {
+            RefType::ExternRef => wastrumentation_instr_lib::RefType::ExternRef,
+            RefType::FuncRef => wastrumentation_instr_lib::RefType::FuncRef,
+        }
+    }
+}
+
 impl<'a> From<WasabiFunctionType<'a>> for Signature {
     fn from(value: WasabiFunctionType) -> Self {
         let WasabiFunctionType(function_type) = value;
@@ -53,22 +76,12 @@ impl<'a> From<WasabiFunctionType<'a>> for Signature {
             return_types: function_type
                 .results()
                 .iter()
-                .map(|i| match i {
-                    ValType::I32 => WasmType::I32,
-                    ValType::I64 => WasmType::I64,
-                    ValType::F32 => WasmType::F32,
-                    ValType::F64 => WasmType::F64,
-                })
+                .map(WasabiFunctionType::val_type_to_wasm_type)
                 .collect(),
             argument_types: function_type
                 .inputs()
                 .iter()
-                .map(|i| match i {
-                    ValType::I32 => WasmType::I32,
-                    ValType::I64 => WasmType::I64,
-                    ValType::F32 => WasmType::F32,
-                    ValType::F64 => WasmType::F64,
-                })
+                .map(WasabiFunctionType::val_type_to_wasm_type)
                 .collect(),
         }
     }
