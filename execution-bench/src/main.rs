@@ -33,8 +33,8 @@ fn main() -> Result<()> {
 
     let mut results = [Val::I32(0)];
 
-    if let Some(Extern::Func(function)) = linker.get(&mut store, "main", "add-two") {
-        function.call(&mut store, &[Val::I32(10), Val::I32(20)], &mut results)?
+    if let Some(Extern::Func(function)) = linker.get(&mut store, "main", "compute_js_result") {
+        function.call(&mut store, &[], &mut results)?
     }
 
     dbg!("Results are {}", results);

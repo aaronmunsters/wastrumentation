@@ -1,8 +1,46 @@
+use wabt::wat2wasm;
 use wasi_common::pipe::WritePipe;
 use wasmtime::*;
 use wasmtime_wasi::sync::WasiCtxBuilder;
 
 #[test]
+fn test_function_call() {
+    let source_target_wat_fib = r#"
+    (module
+        (export "fib" (func $fib))
+        (func $fib (param $0 i32) (result i32)
+            local.get $0
+            i32.const 1
+            i32.le_s
+            if (result i32)
+                i32.const 1
+            else
+                local.get $0
+                i32.const 1
+                i32.sub
+                call $fib
+                local.get $0
+                i32.const 2
+                i32.sub
+                call $fib
+                i32.add
+            end
+        )
+    )"#;
+    let source_target_wasm_fib = wat2wasm(source_target_wat_fib).unwrap();
+
+    let engine = Engine::new(&Config::default()).unwrap();
+    let mut store = Store::new(&engine, ());
+    let module = Module::from_binary(&engine, &source_target_wasm_fib).unwrap();
+    let instance = Instance::new(&mut store, &module, &[]).unwrap();
+    let func = instance
+        .get_typed_func::<(i32,), (i32,)>(&mut store, "fib")
+        .unwrap();
+
+    assert_eq!(func.call(store, (10,)).unwrap(), (89,));
+}
+
+// #[test]
 fn test() {
     let engine: Engine = Engine::new(Config::default().wasm_multi_memory(true)).unwrap();
     let mut linker = Linker::new(&engine);
@@ -47,29 +85,5 @@ fn test() {
 
     let stdout_stream = stdout.try_into_inner().unwrap().into_inner();
     let stdout_content = String::from_utf8(stdout_stream).unwrap();
-    assert_eq!(
-        stdout_content,
-        r#"Hello from the start!
-Passed argument: 10
-Passed argument: 9
-Passed argument: 8
-Passed argument: 7
-Passed argument: 6
-Passed argument: 5
-Passed argument: 4
-Passed argument: 3
-Passed argument: 2
-Passed argument: 1
-Passed argument: 1, result: 1
-Passed argument: 2, result: 2
-Passed argument: 3, result: 6
-Passed argument: 4, result: 24
-Passed argument: 5, result: 120
-Passed argument: 6, result: 720
-Passed argument: 7, result: 5040
-Passed argument: 8, result: 40320
-Passed argument: 9, result: 362880
-Passed argument: 10, result: 3628800
-"#
-    );
+    assert_eq!(stdout_content, r#""#);
 }

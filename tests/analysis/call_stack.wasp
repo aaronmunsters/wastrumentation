@@ -1,0 +1,30 @@
+(aspect
+    (analysis-language ASSEMBLYSCRIPT)
+    (global >>>GUEST>>>
+        export let call_count = 0;
+        export let call_depth_max = 0;
+        let call_stack = 0;
+    <<<GUEST<<<)
+
+    (advice apply (func    WasmFunction)
+                  (args    MutDynArgs)
+                  (results MutDynResults) >>>GUEST>>>
+        // Before call:
+        // [1] Increment call stack size
+        // [2] Ensure highest call stack size is recorded
+        // [3] Ensure call count is incremented
+        // After call:
+        // [4] Ensure call count is decremented
+
+
+        /* [1] */
+        call_stack += 1;
+        /* [2] */
+        call_depth_max = Math.max(call_depth_max, call_stack);
+        /* [3] */
+        call_count += 1;
+        func.apply();
+        /* [4] */
+        call_stack -= 1;
+
+    <<<GUEST<<<))

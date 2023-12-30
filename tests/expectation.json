@@ -1,0 +1,20 @@
+{
+    "wat": "add_three.wat",
+    "analysis": "call_stack.wasp",
+    "wat-call": "fib",
+    "arguments": [
+        {
+            "type": "I32",
+            "value": 10
+        }
+    ],
+    "results": [
+        {
+            "type": "I32",
+            "value": 89
+        }
+    ],
+    "instrumentation": {
+        "todo": "... todo ..."
+    }
+}
