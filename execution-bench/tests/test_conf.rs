@@ -5,12 +5,18 @@ use std::path::PathBuf;
 #[serde(deny_unknown_fields)]
 pub struct TestConfiguration {
     pub input_program: PathBuf,
-    pub analysis: PathBuf,
     pub input_entry_point: String,
     pub arguments: Vec<WasmValue>,
     pub results: Vec<WasmValue>,
-    pub instrumentation_result: Vec<InstrumentationResult>,
     pub wasi_enabled: bool,
+    pub instrumentation_configurations: Vec<InstrumentationConfiguration>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct InstrumentationConfiguration {
+    pub analysis: PathBuf,
+    pub instrumentation_result: Vec<InstrumentationResult>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]

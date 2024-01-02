@@ -1,32 +1,33 @@
 [
     {
         "input_program":"./wat/add_three.wat",
-        "analysis":"./analysis/call_stack.wasp",
         "input_entry_point":"add_three",
         "arguments":[{"I32":1}, {"I32":2}, {"I32":3}],
         "results":[{"I32":6}],
-        "instrumentation_result": [
-            {
-                "GlobalValueEquals": {
-                    "identifier": "amount_of_calls",
-                    "result": {"I32": 20}
+        "wasi_enabled": false,
+        "instrumentation_configurations": [{
+            "analysis":"./analysis/call_stack.wasp",
+            "instrumentation_result": [
+                {
+                    "GlobalValueEquals": {
+                        "identifier": "amount_of_calls",
+                        "result": {"I32": 20}
+                    }
+                },
+                {
+                    "GlobalValueEquals": {
+                        "identifier": "max_call_depth",
+                        "result": {"I32": 6}}
                 }
-            },
-            {
-                "GlobalValueEquals": {
-                    "identifier": "max_call_depth",
-                    "result": {"I32": 6}}
-            }
-       ],
-       "wasi_enabled": false
+           ]
+        }]
     },
     {
         "input_program":"./wat/fib.wat",
-        "analysis":"./analysis/call_stack.wasp",
         "input_entry_point":"fib",
         "arguments":[{"I32":10}],
         "results":[{"I32":89}],
-        "instrumentation_result": [],
-        "wasi_enabled": false
+        "wasi_enabled": false,
+        "instrumentation_configurations": []
     }
 ]

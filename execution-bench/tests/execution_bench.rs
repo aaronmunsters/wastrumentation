@@ -1,4 +1,4 @@
-use test_conf::WasmValue;
+use test_conf::{InstrumentationConfiguration, WasmValue};
 use wabt::wat2wasm;
 use wasi_common::pipe::WritePipe;
 use wasmtime::*;
@@ -64,11 +64,6 @@ impl TestConfiguration {
             )
         };
 
-        let mut analysis_path = PathBuf::from_str(TEST_RELATIVE_PATH).unwrap();
-        analysis_path.push(&self.analysis);
-        let input_analysis = read_to_string(&analysis_path)
-            .expect(format!("Could not open {}", analysis_path.display()).as_str());
-
         // 1. execute input program
         let input_program_wasm = match input_program {
             WasmProgram::Text(input_program) => {
@@ -112,7 +107,17 @@ impl TestConfiguration {
         }
 
         // 3. instrument input program
-        let _ = input_analysis; // TODO:
+        for InstrumentationConfiguration {
+            analysis,
+            instrumentation_result,
+        } in &self.instrumentation_configurations
+        {
+            // TODO: kick off instrumentation
+            let mut analysis_path = PathBuf::from_str(TEST_RELATIVE_PATH).unwrap();
+            analysis_path.push(analysis);
+            let input_analysis = read_to_string(&analysis_path)
+                .expect(format!("Could not open {}", analysis_path.display()).as_str());
+        }
 
         // 4. execute instrumented input program
         // 5. check if input of instrumented input program matches
