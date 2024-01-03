@@ -1,3 +1,4 @@
+pub mod std_lib_compile;
 mod std_lib_gen;
 pub mod wasm_constructs;
 
