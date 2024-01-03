@@ -68,9 +68,15 @@ pub fn compile(compile_options: &CompileOptions) -> Result<CompileResult, Compil
     command_compile_lib.args(["-c", &npx_command]);
 
     // Kick off command, i.e. merge
-    command_compile_lib
+    let result = command_compile_lib
         .output()
-        .map_err(|err| CompileError(err.to_string()))?;
+        .expect("Could not execute compilation command");
+
+    if !(result.stderr.is_empty() && result.stdout.is_empty()) {
+        return Err(CompileError(
+            String::from_utf8_lossy(&result.stderr).to_string(),
+        ));
+    };
 
     let mut result = Vec::new();
     output_file
@@ -101,5 +107,33 @@ mod tests {
         let header_actual = &compile(&compile_options).unwrap().std_lib_module[0..4];
 
         assert_eq!(header_actual, wasm_magic_bytes);
+    }
+
+    #[test]
+    fn test_debug() {
+        let compile_error = CompileError("what went wrong".into());
+
+        let compile_result = CompileResult {
+            std_lib_module: vec![],
+        };
+
+        let compile_options = CompileOptions {
+            std_lib: "/* here would come code */".into(),
+        };
+
+        assert_eq!(
+            format!("{compile_error:?} - {compile_result:?} - {compile_options:?}"),
+            r#"CompileError("what went wrong") - CompileResult { std_lib_module: [] } - CompileOptions { std_lib: "/* here would come code */" }"#
+        );
+    }
+
+    #[test]
+    fn test_assemblyscript_faulty_compilation() {
+        let compile_options = CompileOptions {
+            std_lib: "this is not valid assemblyscript code".into(),
+        };
+
+        let CompileError(reason) = compile(&compile_options).unwrap_err();
+        assert!(reason.contains("ERROR"));
     }
 }
