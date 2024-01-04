@@ -1,6 +1,6 @@
 use super::compilation_result::{CompilationError, CompilationResult};
 use crate::std_lib_compile::{
-    CompilerOptions as CompilerOptionsTrait, CompilerResult as CompilerResultTrait, WasmModule,
+    CompilerOptions as CompilerOptionsTrait, CompilerResult as CompilerResultTrait,
 };
 
 use std::{
@@ -12,7 +12,6 @@ use tempfile::{tempdir, NamedTempFile};
 
 pub struct CompilerOptions {
     pub source_code: String,
-    pub compilation_output_type: CompilationOutputType,
     pub optimization_strategy: OptimizationStrategy,
     pub enable_bulk_memory: bool,
     pub enable_sign_extension: bool,
@@ -42,13 +41,8 @@ pub enum RuntimeStrategy {
     Minimal,
 }
 
-pub enum CompilationOutputType {
-    Text,
-    Binary,
-}
-
 impl CompilerOptions {
-    pub(crate) fn to_npx_command(&self, source_path: String, output_path: String) -> String {
+    pub(crate) fn to_npx_command(&self, source_path: &str, output_path: &str) -> String {
         let flag_bulk_memory = if self.enable_bulk_memory {
             ""
         } else {
@@ -89,15 +83,10 @@ impl CompilerOptions {
             ""
         };
 
-        let flag_output_type = match self.compilation_output_type {
-            CompilationOutputType::Binary => " -o ",
-            CompilationOutputType::Text => " --textFile ",
-        };
-
         format!(
             concat!(
                 // Pass input file & output file to command
-                "node ./node_modules/assemblyscript/bin/asc.js {source_path} {flag_output_type} {output_path} ",
+                "node ./node_modules/assemblyscript/bin/asc.js {source_path} -o {output_path} ",
                 // Pass wasi shim configuration to command
                 "{flag_wasi}",
                 // Pas additional options to command
@@ -117,7 +106,6 @@ impl CompilerOptions {
             flag_export_memory = flag_export_memory,
             flag_optimization = flag_optimization,
             flag_wasi = flag_wasi,
-            flag_output_type = flag_output_type,
         )
     }
 
@@ -154,7 +142,7 @@ impl CompilerOptions {
         command_compile_lib.current_dir(&working_dir_path);
 
         let npx_command =
-            compile_options.to_npx_command(assemblyscript_source_file_path, output_file_path);
+            compile_options.to_npx_command(&assemblyscript_source_file_path, &output_file_path);
 
         command_compile_lib.args(["-c", &npx_command]);
 
@@ -173,14 +161,8 @@ impl CompilerOptions {
         output_file
             .read_to_end(&mut result)
             .expect("Could not read result from written output");
-        let result = match compile_options.compilation_output_type {
-            CompilationOutputType::Text => WasmModule::Text(
-                String::from_utf8(result).expect("Could not parse webassembly text"),
-            ),
-            CompilationOutputType::Binary => WasmModule::Binary(result),
-        };
 
-        Ok(result)
+        Ok(result) // FIXME: do not unwrap, make known what went wrong
     }
 }
 
@@ -188,13 +170,9 @@ impl CompilerOptions {
 mod tests {
     use super::*;
 
-    fn simple_compiler_option_for(
-        source_code: String,
-        compilation_output_type: CompilationOutputType,
-    ) -> CompilerOptions {
+    fn simple_compiler_option_for(source_code: String) -> CompilerOptions {
         CompilerOptions {
             source_code,
-            compilation_output_type,
             enable_bulk_memory: false,
             enable_export_memory: false,
             enable_nontrapping_f2i: false,
@@ -207,10 +185,7 @@ mod tests {
 
     #[test]
     fn test_source_code_retrieval() {
-        let option = simple_compiler_option_for(
-            "/* source-code here */".into(),
-            CompilationOutputType::Text,
-        );
+        let option = simple_compiler_option_for("/* source-code here */".into());
         assert_eq!(
             String::from_utf8(option.source_code()).unwrap(),
             "/* source-code here */"
@@ -226,39 +201,17 @@ mod tests {
         }
         "#
             .into(),
-            CompilationOutputType::Binary,
         );
 
         let wasm_module = compile_options.compile().module().unwrap();
-        let binary_module = wasm_module.unwrap_binary();
-
         let wasm_magic_bytes: &[u8] = &[0x00, 0x61, 0x73, 0x6D];
-        assert_eq!(&binary_module[0..4], wasm_magic_bytes);
-    }
-
-    #[test]
-    fn test_assemblyscript_compilation_text() {
-        let compile_options = simple_compiler_option_for(
-            r#"
-        export function add_three(a: i32, b: i32, c: i32): i32 {
-            return a + b + c;
-        }
-        "#
-            .into(),
-            CompilationOutputType::Text,
-        );
-
-        let wasm_module = compile_options.compile().module().unwrap();
-        let binary_module = wasm_module.unwrap_text();
-        assert!(binary_module.contains(r#"(export "add_three" "#));
+        assert_eq!(&wasm_module[0..4], wasm_magic_bytes);
     }
 
     #[test]
     fn test_assemblyscript_faulty_compilation() {
-        let compiler_options = simple_compiler_option_for(
-            "this is not valid assemblyscript code".into(),
-            CompilationOutputType::Binary,
-        );
+        let compiler_options =
+            simple_compiler_option_for("this is not valid assemblyscript code".into());
 
         let reason = compiler_options.compile().module().unwrap_err();
         assert!(reason.contains("ERROR"));
@@ -268,7 +221,6 @@ mod tests {
     fn test_to_npx() {
         let mut options = CompilerOptions {
             source_code: "source".into(),
-            compilation_output_type: CompilationOutputType::Binary,
             optimization_strategy: OptimizationStrategy::O1,
             enable_bulk_memory: true,
             enable_sign_extension: true,
@@ -281,8 +233,8 @@ mod tests {
         assert_eq!(
             options.to_npx_command("path/to/source".into(), "path/to/output".into()),
             concat!(
-                "node ./node_modules/assemblyscript/bin/asc.js path/to/source  ",
-                "-o  path/to/output ",
+                "node ./node_modules/assemblyscript/bin/asc.js path/to/source ",
+                "-o path/to/output ",
                 "--config ./node_modules/@assemblyscript/wasi-shim/asconfig.json ",
                 "-O1 --runtime minimal ",
             )
@@ -290,7 +242,6 @@ mod tests {
 
         options = CompilerOptions {
             source_code: "source".into(),
-            compilation_output_type: CompilationOutputType::Text,
             optimization_strategy: OptimizationStrategy::O2,
             enable_bulk_memory: false,
             enable_sign_extension: false,
@@ -303,8 +254,8 @@ mod tests {
         assert_eq!(
             options.to_npx_command("path/to/source".into(), "path/to/output".into()),
             concat!(
-                "node ./node_modules/assemblyscript/bin/asc.js path/to/source  ",
-                "--textFile  path/to/output ",
+                "node ./node_modules/assemblyscript/bin/asc.js path/to/source ",
+                "-o path/to/output ",
                 "-O2 ",
                 "--disable bulk-memory ",
                 "--disable sign-extension ",
