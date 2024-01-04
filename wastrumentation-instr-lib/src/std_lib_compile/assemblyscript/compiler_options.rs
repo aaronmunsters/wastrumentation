@@ -42,6 +42,19 @@ pub enum RuntimeStrategy {
 }
 
 impl CompilerOptions {
+    pub fn no_wasi(source_code: String) -> Self {
+        Self {
+            source_code,
+            optimization_strategy: OptimizationStrategy::O3,
+            enable_bulk_memory: false,
+            enable_sign_extension: false,
+            enable_nontrapping_f2i: false,
+            enable_export_memory: false,
+            enable_wasi_shim: false,
+            runtime: RuntimeStrategy::Minimal,
+        }
+    }
+
     pub(crate) fn to_npx_command(&self, source_path: &str, output_path: &str) -> String {
         let flag_bulk_memory = if self.enable_bulk_memory {
             ""
@@ -181,6 +194,11 @@ mod tests {
             optimization_strategy: OptimizationStrategy::O3,
             runtime: RuntimeStrategy::Minimal,
         }
+    }
+
+    #[test]
+    fn test_no_wasi() {
+        assert!(!CompilerOptions::no_wasi("/* source code here */".into()).enable_wasi_shim)
     }
 
     #[test]
