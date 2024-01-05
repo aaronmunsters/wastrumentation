@@ -7,13 +7,10 @@ use anyhow::Error;
 use clap::Parser;
 use cli::Cli;
 
-use wasabi_wasm::Module;
-use wasp_compiler::{
-    ast::assemblyscript::AssemblyScriptProgram, compile, CompilationResult as WaspCompilationResult,
-};
-
 pub const INSTRUMENTATION_STACK_MODULE: &str = "wastrumentation_stack";
 pub const INSTRUMENTATION_ANALYSIS_MODULE: &str = "analysis";
+
+// TODO: implement tests
 
 fn main() -> Result<(), Error> {
     let Cli {
@@ -21,36 +18,23 @@ fn main() -> Result<(), Error> {
         input,
         output,
     } = Cli::parse();
-    // 1. Compile WASP
-    let wasp = std::fs::read_to_string(&wasp)
+    // 1. Load WASP
+    let wasp_source = std::fs::read_to_string(&wasp)
         .expect(&format!("Failed to read {}", wasp.to_string_lossy()));
-    let WaspCompilationResult {
-        assemblyscript_program,
-        join_points,
-        wasp_interface,
-    } = compile(&wasp).expect(&format!("Failed to compile {wasp}"));
 
-    let mut output_analysis =
-        File::create("./wastrumentation_instr_lib/src_generated/analysis.ts")?;
-    write!(output_analysis, "{}", assemblyscript_program.content)?;
-
-    // 2. Load module
-    let (mut module, _offsets, _warnings) =
-        Module::from_file(&input).expect(&format!("Failed to read {}", input.to_string_lossy()));
+    // 2. Load input program
+    let input_program =
+        std::fs::read(&input).expect(&format!("Failed to read {}", input.to_string_lossy()));
 
     // 3. Instrument the module
-    let std_lib = wastrumentation::instrument(&mut module, join_points, wasp_interface);
-    if let Some(AssemblyScriptProgram {
-        content: assemblyscript_program,
-    }) = std_lib
-    {
-        let mut lib_file = File::create("./wastrumentation_instr_lib/src_generated/lib.ts")?;
-        write!(lib_file, "{assemblyscript_program}")?;
-    };
+    let instrumented_input =
+        wastrumentation::wastrument(&input_program, &wasp_source).expect("Failed to instrument");
 
     // 4. Save the output
-    module
-        .to_file(&output)
-        .expect(&format!("Failed to write to {}", output.to_string_lossy()));
+    File::create(output)
+        .unwrap()
+        .write_all(&instrumented_input)
+        .unwrap();
+
     Ok(())
 }

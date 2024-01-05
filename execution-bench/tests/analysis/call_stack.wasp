@@ -1,0 +1,33 @@
+(aspect
+    (global >>>GUEST>>>
+        export let amount_of_calls: i32 = 0;
+        export let max_call_depth: i32 = 0;
+        let call_stack: i32 = 0;
+
+        function max<T>(a: T, b: T): T {
+            return a > b ? a : b;
+        }
+    <<<GUEST<<<)
+
+    (advice apply (func    WasmFunction)
+                  (args    MutDynArgs)
+                  (results MutDynResults) >>>GUEST>>>
+        // Before call:
+        // [1] Increment call stack size
+        // [2] Ensure highest call stack size is recorded
+        // [3] Ensure call count is incremented
+        // After call:
+        // [4] Ensure call count is decremented
+
+
+        /* [1] */
+        call_stack += 1;
+        /* [2] */
+        max_call_depth = max(max_call_depth, call_stack);
+        /* [3] */
+        amount_of_calls += 1;
+        func.apply();
+        /* [4] */
+        call_stack -= 1;
+
+    <<<GUEST<<<))

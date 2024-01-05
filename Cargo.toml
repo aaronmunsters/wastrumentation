@@ -8,4 +8,5 @@ members = [
     "wasp-compiler",
     "patch-wasi-start-exports",
     "execution-bench",
+    "wasm-merge",
 ]
