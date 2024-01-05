@@ -1,0 +1,245 @@
+use std::{
+    io::{Read, Write},
+    process::Command,
+};
+use tempfile::NamedTempFile;
+
+pub type MergeResult = Result<Vec<u8>, MergeError>;
+
+#[derive(Debug)]
+pub struct MergeError(pub String);
+
+#[derive(Debug)]
+pub struct MergeOptions {
+    pub no_validate: bool,
+    pub rename_export_conflicts: bool,
+    pub enable_multi_memory: bool,
+    pub input_modules: Vec<InputModule>,
+}
+
+#[derive(Debug)]
+pub struct InputModule {
+    pub module: Vec<u8>,
+    pub namespace: String,
+}
+
+pub fn merge(merge_options: &MergeOptions) -> MergeResult {
+    let merges: Vec<(&InputModule, String, NamedTempFile)> = merge_options
+        .input_modules
+        .iter()
+        .map(|im @ InputModule { module, .. }| {
+            let mut input_module = NamedTempFile::new().expect("Could not create temp output file");
+            input_module
+                .write_all(&module)
+                .expect("Could not write module to temp file");
+            let input_module_path = input_module.path().to_string_lossy().to_string();
+            (im, input_module_path, input_module)
+        })
+        .collect();
+    let merge_name_combinations = merges
+        .iter()
+        .map(|(InputModule { namespace, .. }, input_module_path, ..)| {
+            format!("{input_module_path} {namespace}")
+        })
+        .collect::<Vec<String>>()
+        .join(" ");
+
+    let mut output_file = NamedTempFile::new().expect("Could not create temp output file");
+    let output_file_path = output_file.path().to_string_lossy().to_string();
+
+    let flag_no_validate = if merge_options.no_validate {
+        " -n "
+    } else {
+        ""
+    };
+
+    let flag_rename_export_conflicts = if merge_options.rename_export_conflicts {
+        " --rename-export-conflicts "
+    } else {
+        ""
+    };
+
+    let flag_enable_multi_memory = if merge_options.enable_multi_memory {
+        " --enable-multimemory "
+    } else {
+        ""
+    };
+
+    let merge_command = format!(
+        concat!(
+            "wasm-merge",
+            "{flag_no_validate}",
+            "{flag_rename_export_conflicts}",
+            "{flag_enable_multi_memory}",
+            "{merge_name_combinations} -o {output_file_path}",
+        ),
+        flag_no_validate = flag_no_validate,
+        flag_rename_export_conflicts = flag_rename_export_conflicts,
+        flag_enable_multi_memory = flag_enable_multi_memory,
+        merge_name_combinations = merge_name_combinations,
+        output_file_path = output_file_path,
+    );
+
+    let mut command_merge = Command::new("bash");
+    command_merge.args(["-c", &merge_command]);
+
+    // Kick off command, i.e. merge
+    let result = command_merge
+        .output()
+        .expect("Could not execute compilation command");
+
+    if !(result.stderr.is_empty() && result.stdout.is_empty()) {
+        return Err(MergeError(
+            String::from_utf8_lossy(&result.stderr).to_string(),
+        ));
+    };
+
+    let mut result = Vec::new();
+    output_file
+        .read_to_end(&mut result)
+        .expect("Could not read result from written output");
+
+    Ok(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use wabt::wat2wasm;
+    use wasmtime::*;
+
+    const WAT_ODD: &str = r#"
+    (module
+        (import "even" "even" (func $even (param i32) (result i32)))
+        (export "odd" (func $odd))
+        (func $odd (param $0 i32) (result i32)
+         local.get $0
+         i32.eqz
+         if
+          i32.const 0
+          return
+         end
+         local.get $0
+         i32.const 1
+         i32.sub
+         call $even))"#;
+
+    const WAT_EVEN: &str = r#"
+    (module
+        (import "odd" "odd" (func $odd (param i32) (result i32)))
+        (export "even" (func $even))
+        (func $even (param $0 i32) (result i32)
+         local.get $0
+         i32.eqz
+         if
+          i32.const 1
+          return
+         end
+         local.get $0
+         i32.const 1
+         i32.sub
+         call $odd))"#;
+
+    #[test]
+    fn test_merge() {
+        let merge_options = MergeOptions {
+            enable_multi_memory: false,
+            no_validate: true,
+            rename_export_conflicts: true,
+            input_modules: vec![
+                InputModule {
+                    module: wat2wasm(WAT_EVEN).unwrap(),
+                    namespace: String::from("even"),
+                },
+                InputModule {
+                    module: wat2wasm(WAT_ODD).unwrap(),
+                    namespace: String::from("odd"),
+                },
+            ],
+        };
+
+        // Merge even & odd
+        let merged_wasm = merge(&merge_options).unwrap();
+
+        // Interpret even & odd
+        let mut store = Store::<()>::default();
+        let module = Module::from_binary(store.engine(), &merged_wasm).unwrap();
+        let instance = Instance::new(&mut store, &module, &[]).unwrap();
+
+        // Fetch `even` and `odd` export
+        let even = instance
+            .get_typed_func::<i32, i32>(&mut store, "even")
+            .unwrap();
+
+        let odd = instance
+            .get_typed_func::<i32, i32>(&mut store, "odd")
+            .unwrap();
+
+        assert_eq!(even.call(&mut store, 12345).unwrap(), 0);
+        assert_eq!(even.call(&mut store, 12346).unwrap(), 1);
+        assert_eq!(odd.call(&mut store, 12345).unwrap(), 1);
+        assert_eq!(odd.call(&mut store, 12346).unwrap(), 0);
+    }
+
+    #[test]
+    fn test_merge_fail() {
+        let merge_options = MergeOptions {
+            enable_multi_memory: true,
+            no_validate: false,
+            rename_export_conflicts: false,
+            input_modules: vec![
+                InputModule {
+                    module: vec![],
+                    namespace: String::from("foo"),
+                },
+                InputModule {
+                    module: vec![],
+                    namespace: String::from("bar"),
+                },
+            ],
+        };
+
+        let MergeError(reason) = merge(&merge_options).unwrap_err();
+        assert!(reason.contains("parse exception"));
+    }
+
+    #[test]
+    fn test_debug() {
+        let merge_error = MergeError("reason".into());
+        let merge_options = MergeOptions {
+            no_validate: false,
+            rename_export_conflicts: false,
+            enable_multi_memory: false,
+            input_modules: vec![],
+        };
+        let input_module = InputModule {
+            module: vec![],
+            namespace: "namespace".into(),
+        };
+
+        assert_eq!(format!("{merge_error:?}"), "MergeError(\"reason\")",);
+
+        assert_eq!(
+            format!("{merge_options:?}"),
+            concat!(
+                "MergeOptions { ",
+                /**/ "no_validate: false, ",
+                /**/ "rename_export_conflicts: false, ",
+                /**/ "enable_multi_memory: false, ",
+                /**/ "input_modules: [] ",
+                "}"
+            )
+        );
+
+        assert_eq!(
+            format!("{input_module:?}"),
+            concat!(
+                "InputModule { ",
+                /**/ "module: [], ",
+                /**/ "namespace: \"namespace\" ",
+                "}"
+            )
+        );
+    }
+}
