@@ -9,3 +9,8 @@ edition = "2021"
 wasabi_wasm = { git = "https://github.com/aaronmunsters/wasabi.git", branch = "candidate" }
 wasp-compiler = { path = "../wasp-compiler" }
 wastrumentation-instr-lib = { path = "../wastrumentation-instr-lib" }
+wasm-merge = { path = "../wasm-merge" }
+anyhow = "1.0.75"
+
+[dev-dependencies]
+wasmtime = "16.0.0"

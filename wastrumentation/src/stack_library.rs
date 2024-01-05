@@ -6,10 +6,15 @@
 //
 
 use self::stack_library_generator::*;
-use crate::INSTRUMENTATION_STACK_MODULE;
+use crate::instrument::INSTRUMENTATION_STACK_MODULE;
 use std::{collections::HashMap, fmt::Display};
 use wasabi_wasm::{Function, FunctionType, Idx, Module, RefType, ValType};
-use wastrumentation_instr_lib::{generate_lib, Signature, WasmType};
+
+use wastrumentation_instr_lib::{
+    generate_lib,
+    wasm_constructs::{RefType as LibGenRefType, Signature, WasmType},
+    Langauge,
+};
 
 // TODO: use some macro's here to generate most of the boilerplate -> this makes it also more maintainable
 // TODO: tie this together with the generation library, ie. get names from there!
@@ -40,7 +45,7 @@ impl StackLibrary {
             .map(WasabiFunctionType)
             .map(Into::into)
             .collect();
-        let assemblyscript_code = generate_lib(&signatures);
+        let assemblyscript_code = generate_lib(Langauge::AssemblyScript, &signatures);
         Self {
             signature_import_links,
             assemblyscript_code,
@@ -61,10 +66,10 @@ impl WasabiFunctionType<'_> {
         }
     }
 
-    fn convert_reftype(r: &RefType) -> wastrumentation_instr_lib::RefType {
+    fn convert_reftype(r: &RefType) -> LibGenRefType {
         match r {
-            RefType::ExternRef => wastrumentation_instr_lib::RefType::ExternRef,
-            RefType::FuncRef => wastrumentation_instr_lib::RefType::FuncRef,
+            RefType::ExternRef => LibGenRefType::ExternRef,
+            RefType::FuncRef => LibGenRefType::FuncRef,
         }
     }
 }
