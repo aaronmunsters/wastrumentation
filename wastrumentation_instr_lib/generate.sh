@@ -24,9 +24,6 @@ npx asc src_generated/lib.ts -o dist/wastrumentation_stack.wasm -O3 \
     --noExportMemory \
     --config ./node_modules/@assemblyscript/wasi-shim/asconfig.json
 
-# wasm-metadce dist/wastrumentation_stack.wasm --graph-file reachability.json -o dist/wastrumentation_stack.wasm
-# wasm2wat dist/wastrumentation_stack.wasm -o dist/wastrumentation_stack.wat
-
 # Compile the analysis
 npx asc src_generated/analysis.ts --textFile dist/analysis.wat -O3 \
     --disable bulk-memory \
@@ -40,8 +37,6 @@ npx asc src_generated/analysis.ts -o dist/analysis.wasm -O3 \
     --disable nontrapping-f2i \
     --runtime minimal \
     --config ./node_modules/@assemblyscript/wasi-shim/asconfig.json
-# Removed flag:    
-# --config ./node_modules/@assemblyscript/wasi-shim/asconfig.json
 
 # # DOCUMENTATION 
 #        compilation unit             npx options used                       reason why
