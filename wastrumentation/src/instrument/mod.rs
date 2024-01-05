@@ -91,7 +91,7 @@ impl FunctionInstrumentation {
         let results: &[ValType] = &ValTypeVec::from(wasp_exported_generic_apply_trap.results).0;
         // 0. GENERATE GENERIC APPLY
         let generic_apply_index = module.add_function_import(
-            FunctionType::new(&args, &results),
+            FunctionType::new(args, results),
             INSTRUMENTATION_ANALYSIS_MODULE.into(),
             wasp_exported_generic_apply_trap.name,
         );
@@ -136,7 +136,7 @@ impl FunctionInstrumentation {
             let signature_buffer_pointer_type = ValType::I32;
             let apply_type = FunctionType::new(&[signature_buffer_pointer_type], &[]);
 
-            let local_get_stack_ptr = || Local(LocalOp::Get, Idx::from(0 as usize));
+            let local_get_stack_ptr = || Local(LocalOp::Get, Idx::from(0_usize));
             let call_base = Call(uninstrumented_index);
             let call_stack_store_rets: Instr = Call(stack_library_for_target.ret_store_all);
 
@@ -245,8 +245,8 @@ impl FunctionInstrumentation {
             FunctionType::new(call_base_args, call_base_results),
             vec![],
             vec![
-                Local(LocalOp::Get, (1 as usize).into()), // f_apply
-                Local(LocalOp::Get, (0 as usize).into()), // sigv
+                Local(LocalOp::Get, 1_usize.into()), // f_apply
+                Local(LocalOp::Get, 0_usize.into()), // sigv
                 CallIndirect(
                     FunctionType::new(&[ValType::I32], &[]),
                     apply_table_index.into(),
@@ -258,7 +258,7 @@ impl FunctionInstrumentation {
         module
             .function_mut(call_base_idx)
             .export
-            .push(wasp_imported_generic_apply_base.name.into());
+            .push(wasp_imported_generic_apply_base.name);
         AssemblyScriptProgram {
             content: assemblyscript_code,
         }

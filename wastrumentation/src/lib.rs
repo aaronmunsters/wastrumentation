@@ -44,7 +44,7 @@ fn instrument(
     let InstrumentationResult {
         module,
         instrumentation_lib,
-    } = instrument::instrument(&input_program, wasp_interface);
+    } = instrument::instrument(input_program, wasp_interface);
     Ok((module, instrumentation_lib))
 }
 

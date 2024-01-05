@@ -20,11 +20,11 @@ fn main() -> Result<(), Error> {
     } = Cli::parse();
     // 1. Load WASP
     let wasp_source = std::fs::read_to_string(&wasp)
-        .expect(&format!("Failed to read {}", wasp.to_string_lossy()));
+        .unwrap_or_else(|e| panic!("Failed to read {}: {e:#?}", wasp.to_string_lossy()));
 
     // 2. Load input program
-    let input_program =
-        std::fs::read(&input).expect(&format!("Failed to read {}", input.to_string_lossy()));
+    let input_program = std::fs::read(&input)
+        .unwrap_or_else(|e| panic!("Failed to read {}: {e:#?}", input.to_string_lossy()));
 
     // 3. Instrument the module
     let instrumented_input =

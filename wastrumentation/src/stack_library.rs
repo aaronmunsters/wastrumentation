@@ -203,7 +203,7 @@ mod stack_library_generator {
     }
 }
 
-impl<'a> From<(FunctionType, &mut Module)> for SignatureStackLibrary {
+impl From<(FunctionType, &mut Module)> for SignatureStackLibrary {
     fn from((function_type, module): (FunctionType, &mut Module)) -> Self {
         let allocate_values_buffer_type =
             FunctionType::new(function_type.inputs(), &[ValType::I32]);

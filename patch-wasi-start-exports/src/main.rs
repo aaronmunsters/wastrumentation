@@ -10,27 +10,27 @@ fn main() {
     let mut relevant_joins = Vec::with_capacity(cli.joins.len());
 
     for join in cli.joins {
-        let (mut module, _offsets, _parse_issue) =
-            Module::from_file(&join.path).expect(&format!("Invalid wasm file: {}", &join.path));
+        let (mut module, _offsets, _parse_issue) = Module::from_file(&join.path)
+            .unwrap_or_else(|e| panic!("Invalid wasm file: {}: {e:#?}", &join.path));
         if let Some(name) = rename_wasi_export(&mut module, &join.name) {
             relevant_joins.push(ModuleStart {
                 module_name: join.name,
                 start_function: name,
             });
-            module
-                .to_file(&join.path)
-                .expect(&format!("Could not save _start rewrite for {}", &join.path));
+            module.to_file(&join.path).unwrap_or_else(|e| {
+                panic!("Could not save _start rewrite for {}: {e:#?}", &join.path)
+            });
         }
     }
 
-    let (mut module, _offsets, _parse_issue) = Module::from_file(&cli.entry).expect(&format!(
-        "Invalid wasm file: {}",
-        &cli.entry.to_string_lossy()
-    ));
+    let (mut module, _offsets, _parse_issue) = Module::from_file(&cli.entry)
+        .unwrap_or_else(|e| panic!("Invalid wasm file {}: {e:#?}", &cli.entry.to_string_lossy()));
 
     extend_start(&mut module, relevant_joins).expect("Failed to extend entry _start function.");
-    module.to_file(&cli.entry).expect(&format!(
-        "Could not save _start rewrite for {}",
-        &cli.entry.to_string_lossy()
-    ));
+    module.to_file(&cli.entry).unwrap_or_else(|e| {
+        panic!(
+            "Could not save _start rewrite for {}: {e:#?}",
+            &cli.entry.to_string_lossy()
+        )
+    });
 }

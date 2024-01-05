@@ -42,7 +42,7 @@ pub fn extend_start(module: &mut Module, starts: Vec<ModuleStart>) -> anyhow::Re
     let mut call_all_starts: Vec<Instr> = indices.iter().map(|index| Instr::Call(*index)).collect();
     call_all_starts.push(End);
 
-    let module_has_start = module.functions().into_iter().any(|(_index, function)| {
+    let module_has_start = module.functions().any(|(_index, function)| {
         function
             .export
             .iter()

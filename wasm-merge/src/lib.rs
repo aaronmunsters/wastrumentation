@@ -50,7 +50,7 @@ pub fn merge(merge_options: &MergeOptions) -> MergeResult {
         .map(|im @ InputModule { module, .. }| {
             let mut input_module = NamedTempFile::new().expect("Could not create temp output file");
             input_module
-                .write_all(&module)
+                .write_all(module)
                 .expect("Could not write module to temp file");
             let input_module_path = input_module.path().to_string_lossy().to_string();
             (im, input_module_path, input_module)
