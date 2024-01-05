@@ -2,13 +2,6 @@
     (global >>>GUEST>>>
         export let all_expectations_met: i32 = 0;
 
-        enum WasmType {
-          i32,
-          f32,
-          i64,
-          f64,
-        }
-
         class WasmValue {
           wasm_type: WasmType;
           wasm_value: i32;
@@ -25,6 +18,12 @@
           constructor(params: WasmValue[], results: WasmValue[]) {
             this.params = params;
             this.results = results;
+          }
+
+          validate_post_call(args: MutDynArgs, ress: MutDynRess): void {
+            // TODO:
+            // assert(args.length === this.params.length);
+            // assert(ress.length === this.results.length);
           }
         }
 
@@ -146,12 +145,7 @@
                   (results MutDynResults) >>>GUEST>>>
         func.apply();
         const current_expectation: CallExpectation = take_another_expectation();
-
-        // Check if arguments match
-        // TODO:
-        // Check if results match
-        // TODO:
-        
+        current_expectation.validate_post_call(args, results);        
     <<<GUEST<<<))
 
 

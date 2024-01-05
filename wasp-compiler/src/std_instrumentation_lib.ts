@@ -6,6 +6,29 @@ const TYPE_F32: i32 = 1;
 const TYPE_I64: i32 = 2;
 const TYPE_F64: i32 = 3;
 
+enum WasmType {
+    i32,
+    f32,
+    i64,
+    f64,
+}
+
+@inline()
+function deserialize_wasm_type(n: i32): WasmType {
+    switch(n) {
+        case 0:
+            return WasmType.i32;
+        case 1:
+            return WasmType.f32;
+        case 2:
+            return WasmType.i64;
+        case 3:
+            return WasmType.f64;
+        default:
+            unreachable();
+    }
+}
+
 @external("wastrumentation_stack", "wastrumentation_stack_load_i32")
 declare function wastrumentation_stack_load_i32(ptr: i32, offset: i32): i32;
 @external("wastrumentation_stack", "wastrumentation_stack_load_f32")
@@ -142,17 +165,41 @@ class MutDynArgsResults {
         this.checkBounds(this.resc, index);
         wastrumentation_memory_store<T>(this.sigv, value, this.ressOffsetTo[index]);
     }
+
+    getArgType(index: i32): WasmType {
+        this.checkBounds(this.argc, index);
+        const serialized_type: i32 = wastrumentation_memory_load<i32>(
+            this.sigtypv,
+            (0 + index)*sizeof<i32>(),
+        );
+        return deserialize_wasm_type(serialized_type);
+    }
+
+    getResType(index: i32): WasmType {
+        this.checkBounds(this.resc, index);
+        const serialized_type: i32 = wastrumentation_memory_load<i32>(
+            this.sigtypv,
+            (this.resc + index)*sizeof<i32>(),
+        );
+        return deserialize_wasm_type(serialized_type);
+    }
 }
 
 class MutDynArgs {
     mutDynArgsResults: MutDynArgsResults;
+    readonly length: i32;
 
     constructor(mutDynArgsResults: MutDynArgsResults) {
         this.mutDynArgsResults = mutDynArgsResults;
+        this.length = mutDynArgsResults.argc;
     }
 
     get<T>(index: i32): T  {
         return this.mutDynArgsResults.getArg<T>(index);
+    }
+
+    getType(index: i32): WasmType {
+        return this.mutDynArgsResults.getArgType(index);
     }
 
     set<T>(index: i32, value: T): void  {
@@ -162,13 +209,19 @@ class MutDynArgs {
 
 class MutDynRess {
     mutDynArgsResults: MutDynArgsResults;
+    readonly length: i32;
 
     constructor(mutDynArgsResults: MutDynArgsResults) {
         this.mutDynArgsResults = mutDynArgsResults;
+        this.length = mutDynArgsResults.resc;
     }
 
     get<T>(index: i32): T  {
         return this.mutDynArgsResults.getRes<T>(index);
+    }
+
+    getType(index: i32): WasmType {
+        return this.mutDynArgsResults.getResType(index);
     }
 
     set<T>(index: i32, value: T): void  {
