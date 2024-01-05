@@ -58,6 +58,7 @@ fn merge(
         no_validate: true,
         rename_export_conflicts: true,
         enable_multi_memory: true,
+        // FIXME: get rid of magic constants in this vec
         input_modules: vec![
             InputModule {
                 module: compiled_instrumentation_lib,
