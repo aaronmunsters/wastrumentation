@@ -7,17 +7,17 @@
         "wasi_enabled": false,
         "instrumentation_configurations": [{
             "analysis":"./analysis/call_stack.wasp",
-            "instrumentation_result": [
+            "instrumentation_results": [
                 {
                     "GlobalValueEquals": {
                         "identifier": "amount_of_calls",
-                        "result": {"I32": 20}
+                        "result": {"I32": 1}
                     }
                 },
                 {
                     "GlobalValueEquals": {
                         "identifier": "max_call_depth",
-                        "result": {"I32": 6}}
+                        "result": {"I32": 1}}
                 }
            ]
         }]
@@ -28,6 +28,21 @@
         "arguments":[{"I32":10}],
         "results":[{"I32":89}],
         "wasi_enabled": false,
-        "instrumentation_configurations": []
+        "instrumentation_configurations": [{
+            "analysis":"./analysis/call_stack.wasp",
+            "instrumentation_results": [
+                {
+                    "GlobalValueEquals": {
+                        "identifier": "amount_of_calls",
+                        "result": {"I32": 177}
+                    }
+                },
+                {
+                    "GlobalValueEquals": {
+                        "identifier": "max_call_depth",
+                        "result": {"I32": 10}}
+                }
+           ]
+        }]
     }
 ]

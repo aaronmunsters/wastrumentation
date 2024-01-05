@@ -1,9 +1,12 @@
 (aspect
-    (analysis-language ASSEMBLYSCRIPT)
     (global >>>GUEST>>>
-        export let call_count = 0;
-        export let call_depth_max = 0;
-        let call_stack = 0;
+        export let amount_of_calls: i32 = 0;
+        export let max_call_depth: i32 = 0;
+        let call_stack: i32 = 0;
+
+        function max<T>(a: T, b: T): T {
+            return a > b ? a : b;
+        }
     <<<GUEST<<<)
 
     (advice apply (func    WasmFunction)
@@ -20,9 +23,9 @@
         /* [1] */
         call_stack += 1;
         /* [2] */
-        call_depth_max = Math.max(call_depth_max, call_stack);
+        max_call_depth = max(max_call_depth, call_stack);
         /* [3] */
-        call_count += 1;
+        amount_of_calls += 1;
         func.apply();
         /* [4] */
         call_stack -= 1;

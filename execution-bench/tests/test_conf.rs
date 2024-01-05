@@ -16,7 +16,7 @@ pub struct TestConfiguration {
 #[serde(deny_unknown_fields)]
 pub struct InstrumentationConfiguration {
     pub analysis: PathBuf,
-    pub instrumentation_result: Vec<InstrumentationResult>,
+    pub instrumentation_results: Vec<InstrumentationResult>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
@@ -40,7 +40,7 @@ pub enum InstrumentationResult {
 pub struct CallYields {
     pub call: String,
     pub arguments: Vec<WasmValue>,
-    pub result: Vec<WasmValue>,
+    pub result: Vec<WasmValue>, //  TODO: rename to results
 }
 
 #[derive(Serialize, Deserialize, Debug)]
