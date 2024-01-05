@@ -47,6 +47,9 @@ pub fn merge(merge_options: &MergeOptions) -> MergeResult {
     let mut output_file = NamedTempFile::new().expect("Could not create temp output file");
     let output_file_path = output_file.path().to_string_lossy().to_string();
 
+    // FIXME: move this to separate file, splitting up functionality
+    // FIXME: this implementation shares constructs with wastrumentation-instr-lib (code-dupe)
+
     let flag_no_validate = if merge_options.no_validate {
         " -n "
     } else {
