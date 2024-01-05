@@ -6,6 +6,26 @@ use tempfile::NamedTempFile;
 
 pub type MergeResult = Result<Vec<u8>, MergeError>;
 
+/*
+# DOCUMENTATION
+#
+#  unit | npx options used *     | reason why
+#  -----|------------------------|----------------------------------
+#  both | (e) --config wasi-shim | ensure host is Wasi, not JavaScript [3]
+#  both | (e) --runtime minimal  | prevent default GC crash [2]
+#  xor  | (e) --noExportMemory   | used memory is not relevant to the outside
+#  xor  | (i) --ExportMemory     | memory must be exposed for WASI to work [1]
+#
+# * (e) = explicit, (i) = implicit
+#
+# SRC:
+# [1] https://github.com/bytecodealliance/wasmtime/issues/4985
+# [2] Not sure why, but binaryen merge crashes the default runtime with multi-memory
+# [3] https://github.com/AssemblyScript/wasi-shim
+#
+# TODO: Shift to self-implemented merge
+*/
+
 #[derive(Debug)]
 pub struct MergeError(pub String);
 
