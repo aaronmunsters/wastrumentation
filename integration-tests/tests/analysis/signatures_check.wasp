@@ -1,10 +1,10 @@
 (aspect
     (global >>>GUEST>>>
-        export let all_expectations_met: i32 = 0;
+        export let all_expectations_met: i32 = 1;
 
         class WasmValue {
-          wasm_type: WasmType;
-          wasm_value: i32;
+          readonly wasm_type: WasmType;
+          readonly wasm_value: i32;
 
           constructor(wasm_type: WasmType, wasm_value: i32) {
             this.wasm_type = wasm_type;
@@ -21,9 +21,8 @@
           }
 
           validate_post_call(args: MutDynArgs, ress: MutDynRess): void {
-            // TODO:
-            // assert(args.length === this.params.length);
-            // assert(ress.length === this.results.length);
+            assert(args.length === this.params.length);
+            assert(ress.length === this.results.length);
           }
         }
 
@@ -108,11 +107,10 @@
             new CallExpectation(
               [
                 new WasmValue(WasmType.i32, 6),
-              ],
-              [
                 new WasmValue(WasmType.i32, 66),
                 new WasmValue(WasmType.i32, 666),
               ],
+              [],
             ),
             // (call $i32_f32_i64_f64=>f64_i64_f32_i32 (i32.const 7) (f32.const 77) (i64.const 777) (f64.const 7777))
             new CallExpectation(
@@ -138,6 +136,8 @@
             // (call $assert (f64.eq (f64.const 7777)))
             expect_assertion_holds,
         ];
+
+        let count_I_trust = 15;
     <<<GUEST<<<)
 
     (advice apply (func    WasmFunction)
@@ -145,7 +145,7 @@
                   (results MutDynResults) >>>GUEST>>>
         func.apply();
         const current_expectation: CallExpectation = take_another_expectation();
-        current_expectation.validate_post_call(args, results);        
+        current_expectation.validate_post_call(args, results);
     <<<GUEST<<<))
 
 
