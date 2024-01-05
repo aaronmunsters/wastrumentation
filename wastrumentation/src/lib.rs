@@ -12,7 +12,7 @@ use anyhow::Result;
 mod instrument;
 mod stack_library;
 
-pub fn wastrument(input_program: WasmModule, wasp_source: &str) -> Result<WasmModule> {
+pub fn wastrument(input_program: &WasmModule, wasp_source: &str) -> Result<WasmModule> {
     // 1. Compile wasp_source
     let WaspCompilationResult {
         assemblyscript_program,
@@ -38,7 +38,7 @@ pub fn wastrument(input_program: WasmModule, wasp_source: &str) -> Result<WasmMo
 }
 
 fn instrument(
-    input_program: WasmModule,
+    input_program: &WasmModule,
     wasp_interface: WaspInterface,
 ) -> Result<(WasmModule, AssemblyScriptProgram)> {
     let InstrumentationResult {
@@ -144,7 +144,7 @@ mod tests {
             .unwrap();
 
         // Instrument the application
-        let instrumented_input = wastrument(input_program, SOURCE_CODE_WASP).unwrap();
+        let instrumented_input = wastrument(&input_program, SOURCE_CODE_WASP).unwrap();
 
         // Execute & check instrumentation
         #[derive(Default)]
