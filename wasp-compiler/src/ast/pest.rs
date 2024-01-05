@@ -126,6 +126,13 @@ mod tests {
     use pest::Parser;
 
     #[test]
+    #[should_panic]
+    fn fail_parse() {
+        let mut parse_tree = WaspParser::parse(Rule::wasp_input, "(aspect)").unwrap();
+        let WaspInput { records, _eoi } = WaspInput::from_pest(&mut parse_tree).unwrap();
+    }
+
+    #[test]
     fn aspect_global_empty() {
         let mut parse_tree = WaspParser::parse(Rule::wasp_input, "(aspect)").unwrap();
         let WaspInput { .. } = WaspInput::from_pest(&mut parse_tree).unwrap();
