@@ -1,6 +1,6 @@
 use test_conf::{InstrumentationResult, WasmValue};
-use wabt::wat2wasm;
 use wasi_common::pipe::WritePipe;
+use wasmer::wat2wasm;
 use wasmtime::*;
 use wasmtime_wasi::sync::WasiCtxBuilder;
 
@@ -81,7 +81,7 @@ impl TestConfiguration {
 
         let WatModule(input_program_wat) = WatModule::from_path(&input_program_path);
         let input_program_wasm =
-            wat2wasm(input_program_wat).expect("wat2wasm of input program failed");
+            wat2wasm(input_program_wat.as_bytes()).expect("wat2wasm of input program failed");
 
         Self::assert_uninstrumented(self, &input_program_wasm);
         Self::assert_instrumented(self, &input_program_wasm);

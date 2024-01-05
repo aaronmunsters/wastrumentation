@@ -44,5 +44,22 @@
                 }
            ]
         }]
+    },{
+        "input_program":"./wat/different_signatures.wat",
+        "input_entry_point":"execute_tests",
+        "arguments":[],
+        "results":[],
+        "wasi_enabled": false,
+        "instrumentation_configurations": [{
+            "analysis":"./analysis/signatures_check.wasp",
+            "instrumentation_results": [
+                {
+                    "GlobalValueEquals": {
+                        "identifier": "all_expectations_met",
+                        "result": {"I32": 1}
+                    }
+                }
+           ]
+        }]
     }
 ]

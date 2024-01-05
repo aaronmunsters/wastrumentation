@@ -1,0 +1,157 @@
+(aspect
+    (global >>>GUEST>>>
+        export let all_expectations_met: i32 = 0;
+
+        enum WasmType {
+          i32,
+          f32,
+          i64,
+          f64,
+        }
+
+        class WasmValue {
+          wasm_type: WasmType;
+          wasm_value: i32;
+
+          constructor(wasm_type: WasmType, wasm_value: i32) {
+            this.wasm_type = wasm_type;
+            this.wasm_value = wasm_value;
+          }
+        }
+
+        class CallExpectation {
+          params: WasmValue[];
+          results: WasmValue[];
+          constructor(params: WasmValue[], results: WasmValue[]) {
+            this.params = params;
+            this.results = results;
+          }
+        }
+
+        function take_another_expectation(): CallExpectation {
+          const next_up: CallExpectation = expectations[0];
+          expectations.shift();
+          assert(expectations.length >= 0);
+          if (expectations.length === 0) {
+            all_expectations_met = 1;
+          };
+          return next_up;
+        }
+
+        const expect_assertion_holds = new CallExpectation([new WasmValue(WasmType.i32, 1)], []);
+
+        const expectations = [
+            // (call $void=>void)
+            // new CallExpectation([], []), // FIXME: this one is completely skipped?
+            // (call $i32=>void (i32.const 123456))
+            new CallExpectation(
+              [new WasmValue(WasmType.i32, 123456)],
+              [],
+            ),
+            // (call $void=>i32)
+            new CallExpectation(
+              [],
+              [new WasmValue(WasmType.i32, 1)],
+            ),
+            // (call $assert (i32.eq (i32.const 1)))
+            expect_assertion_holds,
+            // (call $void=>i32_i32)
+            new CallExpectation(
+              [],
+              [new WasmValue(WasmType.i32, 2), new WasmValue(WasmType.i32, 2)],
+            ),
+            // (call $assert (i32.eq (i32.const 2)))
+            expect_assertion_holds,
+            // (call $assert (i32.eq (i32.const 2)))
+            expect_assertion_holds,
+            // (call $void=>i32_i32_i32)
+            new CallExpectation(
+              [],
+              [
+                new WasmValue(WasmType.i32, 3),
+                new WasmValue(WasmType.i32, 3),
+                new WasmValue(WasmType.i32, 3)
+              ],
+            ),
+            // (call $assert (i32.eq (i32.const 3)))
+            expect_assertion_holds,
+            // (call $assert (i32.eq (i32.const 3)))
+            expect_assertion_holds,
+            // (call $assert (i32.eq (i32.const 3)))
+            expect_assertion_holds,
+            // (call $i32=>i32_i32 (i32.const 4))
+            new CallExpectation(
+              [
+                new WasmValue(WasmType.i32, 4)
+              ],
+              [
+                new WasmValue(WasmType.i32, 4),
+                new WasmValue(WasmType.i32, 4),
+              ],
+            ),
+            // (call $assert (i32.eq (i32.const 4)))
+            expect_assertion_holds,
+            // (call $assert (i32.eq (i32.const 4)))
+            expect_assertion_holds,
+            // (call $i32_i32=>i32 (i32.const 5) (i32.const 55))
+            new CallExpectation(
+              [
+                new WasmValue(WasmType.i32, 5),
+                new WasmValue(WasmType.i32, 55),
+              ],
+              [
+                new WasmValue(WasmType.i32, 5),
+              ],
+            ),
+            // (call $assert (i32.eq (i32.const 5)))
+            expect_assertion_holds,
+            // (call $i32_i32_i32=>void (i32.const 6) (i32.const 66) (i32.const 666))
+            new CallExpectation(
+              [
+                new WasmValue(WasmType.i32, 6),
+              ],
+              [
+                new WasmValue(WasmType.i32, 66),
+                new WasmValue(WasmType.i32, 666),
+              ],
+            ),
+            // (call $i32_f32_i64_f64=>f64_i64_f32_i32 (i32.const 7) (f32.const 77) (i64.const 777) (f64.const 7777))
+            new CallExpectation(
+              [
+                new WasmValue(WasmType.i32, 7),
+                new WasmValue(WasmType.f32, 77),
+                new WasmValue(WasmType.i64, 777),
+                new WasmValue(WasmType.f64, 7777),
+              ],
+              [
+                new WasmValue(WasmType.f64, 7777),
+                new WasmValue(WasmType.i64, 777),
+                new WasmValue(WasmType.f32, 77),
+                new WasmValue(WasmType.i32, 7),
+              ],
+            ),
+            // (call $assert (i32.eq (i32.const 7)))
+            expect_assertion_holds,
+            // (call $assert (f32.eq (f32.const 77)))
+            expect_assertion_holds,
+            // (call $assert (i64.eq (i64.const 777)))
+            expect_assertion_holds,
+            // (call $assert (f64.eq (f64.const 7777)))
+            expect_assertion_holds,
+        ];
+    <<<GUEST<<<)
+
+    (advice apply (func    WasmFunction)
+                  (args    MutDynArgs)
+                  (results MutDynResults) >>>GUEST>>>
+        func.apply();
+        const current_expectation: CallExpectation = take_another_expectation();
+
+        // Check if arguments match
+        // TODO:
+        // Check if results match
+        // TODO:
+        
+    <<<GUEST<<<))
+
+
