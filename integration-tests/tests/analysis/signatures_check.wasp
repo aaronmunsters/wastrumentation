@@ -41,6 +41,7 @@
           }
 
           validate_post_call(args: MutDynArgs, ress: MutDynRess): void {
+            // TODO: remove code dupe below
             // Check args
             assert(args.length === this.params.length);
             for (let index = 0; index < this.params.length; index++) {
