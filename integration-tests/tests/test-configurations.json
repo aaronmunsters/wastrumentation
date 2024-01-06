@@ -1,6 +1,7 @@
 [
     {
-        "input_program":"./wat/add_three.wat",
+        "input_program":"./input-programs/wat/add_three.wat",
+        "input_program_type": "Wat",
         "input_entry_point":"add_three",
         "arguments":[{"I32":1}, {"I32":2}, {"I32":3}],
         "results":[{"I32":6}],
@@ -23,7 +24,8 @@
         }]
     },
     {
-        "input_program":"./wat/fib.wat",
+        "input_program":"./input-programs/wat/fib.wat",
+        "input_program_type": "Wat",
         "input_entry_point":"fib",
         "arguments":[{"I32":10}],
         "results":[{"I32":89}],
@@ -45,7 +47,8 @@
            ]
         }]
     },{
-        "input_program":"./wat/different_signatures.wat",
+        "input_program":"./input-programs/wat/different_signatures.wat",
+        "input_program_type": "Wat",
         "input_entry_point":"execute_tests",
         "arguments":[],
         "results":[],
@@ -58,6 +61,29 @@
                         "identifier": "all_expectations_met",
                         "result": {"I32": 1}
                     }
+                }
+           ]
+        }]
+    },{
+        "input_program":"./input-programs/assemblyscript/add-three.ts",
+        "input_program_type": "AssemblyScript",
+        "input_entry_point":"execute_tests",
+        "arguments":[],
+        "results":[],
+        "wasi_enabled": false,
+        "instrumentation_configurations": [{
+            "analysis":"./analysis/call_stack.wasp",
+            "instrumentation_results": [
+                {
+                    "GlobalValueEquals": {
+                        "identifier": "amount_of_calls",
+                        "result": {"I32": 981956}
+                    }
+                },
+                {
+                    "GlobalValueEquals": {
+                        "identifier": "max_call_depth",
+                        "result": {"I32": 255}}
                 }
            ]
         }]

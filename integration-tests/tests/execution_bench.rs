@@ -3,9 +3,19 @@ use wasi_common::pipe::WritePipe;
 use wasmer::wat2wasm;
 use wasmtime::*;
 use wasmtime_wasi::sync::WasiCtxBuilder;
+use wastrumentation_instr_lib::std_lib_compile::{
+    assemblyscript::compiler_options::{
+        CompilerOptions as AssemblScriptCompilerOptions, OptimizationStrategy, RuntimeStrategy,
+    },
+    CompilerOptions,
+};
 
 use crate::test_conf::{CallYields, GlobalValueEquals, TestConfiguration};
-use std::{fs::read_to_string, path::PathBuf, str::FromStr};
+use std::{
+    fs::{read, read_to_string},
+    path::PathBuf,
+    str::FromStr,
+};
 
 mod test_conf;
 
@@ -21,11 +31,19 @@ fn test_integration_configurations() {
     }
 }
 
-struct WatModule(pub String);
+struct WatModule(pub Vec<u8>);
 
-impl WatModule {
-    fn from_path(path: &PathBuf) -> Self {
-        Self(read_to_string(&path).expect(&format!("Could not open {}", path.display())))
+// TODO: change to TryInto
+impl Into<WatModule> for &TestConfiguration {
+    fn into(self) -> WatModule {
+        let mut path = PathBuf::from_str(TEST_RELATIVE_PATH).unwrap();
+        path.push(&self.input_program);
+
+        let content = read(&path).expect(&format!("Could not open {}", path.display()));
+        match &self.input_program_type {
+            test_conf::InputProgramType::Wat => self.into_wat(&content),
+            test_conf::InputProgramType::AssemblyScript => self.into_assemblyscript(&content),
+        }
     }
 }
 
@@ -76,15 +94,9 @@ impl TestConfiguration {
     }
 
     fn assert_behavior(&self) {
-        let mut input_program_path = PathBuf::from_str(TEST_RELATIVE_PATH).unwrap();
-        input_program_path.push(&self.input_program);
-
-        let WatModule(input_program_wat) = WatModule::from_path(&input_program_path);
-        let input_program_wasm =
-            wat2wasm(input_program_wat.as_bytes()).expect("wat2wasm of input program failed");
-
-        Self::assert_uninstrumented(self, &input_program_wasm);
-        Self::assert_instrumented(self, &input_program_wasm);
+        let WatModule(input_program) = self.into();
+        Self::assert_uninstrumented(self, &input_program);
+        Self::assert_instrumented(self, &input_program);
     }
 
     fn assert_uninstrumented(&self, input_program_wasm: &[u8]) {
@@ -167,6 +179,29 @@ impl TestConfiguration {
                 instrumentation_configuration.assert_outcome(&instance, &mut store);
             }
         }
+    }
+
+    fn into_wat(&self, content: &[u8]) -> WatModule {
+        let content: Vec<u8> = wat2wasm(&content)
+            .expect("wat2wasm of input program failed")
+            .into();
+        WatModule(content)
+    }
+
+    fn into_assemblyscript(&self, content: &[u8]) -> WatModule {
+        let source_code = String::from_utf8(content.to_vec()).unwrap();
+        let compiler_options = AssemblScriptCompilerOptions {
+            source_code,
+            optimization_strategy: OptimizationStrategy::O3,
+            enable_bulk_memory: false,
+            enable_sign_extension: false,
+            enable_nontrapping_f2i: false,
+            enable_export_memory: self.wasi_enabled,
+            enable_wasi_shim: self.wasi_enabled,
+            runtime: RuntimeStrategy::Minimal,
+        };
+        let content = compiler_options.compile().module().unwrap();
+        WatModule(content)
     }
 }
 

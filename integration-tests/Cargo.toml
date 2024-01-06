@@ -12,3 +12,4 @@ wastrumentation = { path = "../wastrumentation" }
 wasi-common = "15.0.1"
 wasmtime = "15.0.0"
 wasmtime-wasi = "15.0.0"
+wastrumentation-instr-lib = { path = "../wastrumentation-instr-lib" }
