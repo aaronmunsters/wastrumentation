@@ -1,6 +1,7 @@
 const NO_OFFSET: i32 = 0;
 
 // ENUMS for types
+// FIXME: can this and below be merged?
 const TYPE_I32: i32 = 0;
 const TYPE_F32: i32 = 1;
 const TYPE_I64: i32 = 2;
@@ -16,16 +17,16 @@ enum WasmType {
 @inline()
 function deserialize_wasm_type(n: i32): WasmType {
     switch(n) {
-        case 0:
+        case TYPE_I32:
             return WasmType.i32;
-        case 1:
+        case TYPE_F32:
             return WasmType.f32;
-        case 2:
+        case TYPE_I64:
             return WasmType.i64;
-        case 3:
+        case TYPE_F64:
             return WasmType.f64;
         default:
-            unreachable();
+            return unreachable();
     }
 }
 
@@ -170,7 +171,7 @@ class MutDynArgsResults {
         this.checkBounds(this.argc, index);
         const serialized_type: i32 = wastrumentation_memory_load<i32>(
             this.sigtypv,
-            (0 + index)*sizeof<i32>(),
+            (this.resc + index)*sizeof<i32>(),
         );
         return deserialize_wasm_type(serialized_type);
     }
@@ -179,7 +180,7 @@ class MutDynArgsResults {
         this.checkBounds(this.resc, index);
         const serialized_type: i32 = wastrumentation_memory_load<i32>(
             this.sigtypv,
-            (this.resc + index)*sizeof<i32>(),
+            (0 + index)*sizeof<i32>(),
         );
         return deserialize_wasm_type(serialized_type);
     }
