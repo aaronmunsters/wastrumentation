@@ -2,12 +2,16 @@
     {
         "input_program":"./input-programs/wat/add_three.wat",
         "input_program_type": "Wat",
-        "input_entry_point":"add_three",
-        "arguments":[{"I32":1}, {"I32":2}, {"I32":3}],
-        "results":[{"I32":6}],
         "wasi_enabled": false,
-        "instrumentation_configurations": [{
+        "uninstrumented_assertion": {
+            "input_entry_point":"add_three",
+            "arguments":[{"I32":1}, {"I32":2}, {"I32":3}],
+            "results":[{"I32":6}],
+            "post_execution_assertions": []
+        },
+        "instrumented_assertions": [{
             "analysis":"./analysis/call_stack.wasp",
+            "uninstrumented_assertion": "EqualToUninstrumentedAssertion",
             "instrumentation_results": [
                 {
                     "GlobalValueEquals": {
@@ -26,12 +30,16 @@
     {
         "input_program":"./input-programs/wat/fib.wat",
         "input_program_type": "Wat",
-        "input_entry_point":"fib",
-        "arguments":[{"I32":10}],
-        "results":[{"I32":89}],
         "wasi_enabled": false,
-        "instrumentation_configurations": [{
+        "uninstrumented_assertion": {
+            "input_entry_point":"fib",
+            "arguments":[{"I32":10}],
+            "results":[{"I32":89}],
+            "post_execution_assertions": []
+        },
+        "instrumented_assertions": [{
             "analysis":"./analysis/call_stack.wasp",
+            "uninstrumented_assertion": "EqualToUninstrumentedAssertion",
             "instrumentation_results": [
                 {
                     "GlobalValueEquals": {
@@ -46,15 +54,20 @@
                 }
            ]
         }]
-    },{
+    },
+    {
         "input_program":"./input-programs/wat/different_signatures.wat",
         "input_program_type": "Wat",
-        "input_entry_point":"execute_tests",
-        "arguments":[],
-        "results":[],
         "wasi_enabled": false,
-        "instrumentation_configurations": [{
+        "uninstrumented_assertion": {
+            "input_entry_point":"execute_tests",
+            "arguments":[],
+            "results":[],
+            "post_execution_assertions": []
+        },
+        "instrumented_assertions": [{
             "analysis":"./analysis/signatures_check.wasp",
+            "uninstrumented_assertion": "EqualToUninstrumentedAssertion",
             "instrumentation_results": [
                 {
                     "GlobalValueEquals": {
@@ -64,15 +77,20 @@
                 }
            ]
         }]
-    },{
+    },
+    {
         "input_program":"./input-programs/assemblyscript/add-three.ts",
         "input_program_type": "AssemblyScript",
-        "input_entry_point":"execute_tests",
-        "arguments":[],
-        "results":[],
         "wasi_enabled": false,
-        "instrumentation_configurations": [{
+        "uninstrumented_assertion": {
+            "input_entry_point":"execute_tests",
+            "arguments":[],
+            "results":[],
+            "post_execution_assertions": []
+        },
+        "instrumented_assertions": [{
             "analysis":"./analysis/call_stack.wasp",
+            "uninstrumented_assertion": "EqualToUninstrumentedAssertion",
             "instrumentation_results": [
                 {
                     "GlobalValueEquals": {

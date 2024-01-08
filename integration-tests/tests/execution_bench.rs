@@ -1,4 +1,4 @@
-use test_conf::{InstrumentationResult, WasmValue};
+use test_conf::{PostExecutionAssertion, WasmValue};
 use wasi_common::pipe::WritePipe;
 use wasmer::wat2wasm;
 use wasmtime::*;
@@ -86,11 +86,11 @@ impl TestConfiguration {
     }
 
     fn wasmtime_args(&self) -> Vec<Val> {
-        Self::as_wasmtime_values(&self.arguments)
+        Self::as_wasmtime_values(&self.uninstrumented_assertion.arguments)
     }
 
-    fn wasmtime_expected_results(&self) -> Vec<Val> {
-        Self::as_wasmtime_values(&self.results)
+    fn wasmtime_expected_uninstrumented_results(&self) -> Vec<Val> {
+        Self::as_wasmtime_values(&self.uninstrumented_assertion.results)
     }
 
     fn assert_behavior(&self) {
@@ -105,26 +105,29 @@ impl TestConfiguration {
         let module = Module::from_binary(&engine, &input_program_wasm).unwrap();
         let instance = Instance::new(&mut store, &module, &[]).unwrap();
 
-        let func = instance
-            .get_func(&mut store, &self.input_entry_point)
+        let func: Func = instance
+            .get_func(&mut store, &self.uninstrumented_assertion.input_entry_point)
             .expect(&format!(
                 "Cannot retrieve func {} from input program {}",
-                &self.input_entry_point,
+                &self.uninstrumented_assertion.input_entry_point,
                 &self.input_program.display(),
             ));
 
         let params = self.wasmtime_args();
-        let mut actual_results = self.wasmtime_expected_results();
+        let mut actual_results = self.wasmtime_expected_uninstrumented_results();
 
         func.call(store, &params, &mut actual_results).unwrap();
-        WasmValue::assert_equals_wasmtime_values(&self.results, &actual_results);
+        WasmValue::assert_equals_wasmtime_values(
+            &self.uninstrumented_assertion.results,
+            &actual_results,
+        );
     }
 
     fn assert_instrumented(&self, input_program_wasm: &[u8]) {
         let input_program_wasm = Vec::from(input_program_wasm);
-        for instrumentation_conf in &self.instrumentation_configurations {
+        for instrumented_assertion in &self.instrumented_assertions {
             let mut analysis_path = PathBuf::from_str(TEST_RELATIVE_PATH).unwrap();
-            analysis_path.push(&instrumentation_conf.analysis);
+            analysis_path.push(&instrumented_assertion.analysis);
 
             let input_analysis =
                 read_to_string(&analysis_path).expect(&format!("Could not open {analysis_path:?}"));
@@ -158,24 +161,33 @@ impl TestConfiguration {
 
             // Check instrumentation result
             let func = instance
-                .get_func(&mut store, &self.input_entry_point)
+                .get_func(&mut store, &self.uninstrumented_assertion.input_entry_point)
                 .expect(&format!(
                     "Cannot retrieve func {} from input program {}",
-                    &self.input_entry_point,
+                    &self.uninstrumented_assertion.input_entry_point,
                     self.input_program.display(),
                 ));
 
             let params = self.wasmtime_args();
-            let mut actual_results = self.wasmtime_expected_results();
+            let expected_results = match &instrumented_assertion.uninstrumented_assertion {
+                test_conf::UninstrumentedInstrumentedAssertion::EqualToUninstrumentedAssertion => {
+                    self.uninstrumented_assertion.results.clone()
+                }
+                test_conf::UninstrumentedInstrumentedAssertion::DifferentReturnValue(results) => {
+                    results.clone()
+                }
+            };
+
+            let mut actual_results = Self::as_wasmtime_values(&expected_results.clone());
 
             func.call(&mut store, &params, &mut actual_results).unwrap();
 
             // 5. check if output of instrumented input program matches
-            WasmValue::assert_equals_wasmtime_values(&self.results, &actual_results);
+            WasmValue::assert_equals_wasmtime_values(&expected_results, &actual_results);
 
             assert_eq!(store.data().abort_count, 1);
 
-            for instrumentation_configuration in &instrumentation_conf.instrumentation_results {
+            for instrumentation_configuration in &instrumented_assertion.instrumentation_results {
                 instrumentation_configuration.assert_outcome(&instance, &mut store);
             }
         }
@@ -205,7 +217,7 @@ impl TestConfiguration {
     }
 }
 
-impl InstrumentationResult {
+impl PostExecutionAssertion {
     fn assert_outcome(&self, instance: &Instance, store: &mut Store<AbortStore>) {
         match self {
             Self::CallYields(call_yields) => call_yields.assert_outcome(instance, store),
@@ -221,17 +233,17 @@ impl CallYields {
         let Self {
             call,
             arguments,
-            result,
+            results,
         } = self;
         let call = instance.get_func(store.as_context_mut(), call).unwrap();
         let params = TestConfiguration::as_wasmtime_values(&arguments);
-        let mut actual_results = TestConfiguration::as_wasmtime_values(&result);
+        let mut actual_results = TestConfiguration::as_wasmtime_values(&results);
 
         // Perform call
         call.call(store.as_context_mut(), &params, &mut actual_results)
             .unwrap();
 
-        WasmValue::assert_equals_wasmtime_values(&self.result, &actual_results);
+        WasmValue::assert_equals_wasmtime_values(&self.results, &actual_results);
     }
 }
 
