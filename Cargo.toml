@@ -7,6 +7,5 @@ members = [
     "wastrumentation-instr-lib",
     "wasp-compiler",
     "patch-wasi-start-exports",
-    "integration-tests",
     "wasm-merge",
 ]
