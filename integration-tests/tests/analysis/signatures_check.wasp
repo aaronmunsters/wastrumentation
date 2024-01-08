@@ -180,8 +180,6 @@
             // (call $assert (f64.eq (f64.const 7777)))
             expect_assertion_holds,
         ];
-
-        let count_I_trust = 15;
     <<<GUEST<<<)
 
     (advice apply (func    WasmFunction)
