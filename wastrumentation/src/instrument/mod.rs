@@ -114,13 +114,6 @@ impl FunctionInstrumentation {
                 .map(|(_, l)| l.type_)
                 .collect();
             let target_function_body = module.function(function_index).code().unwrap().body.clone();
-
-            if target_function_type.inputs().is_empty() && target_function_type.results().is_empty()
-            {
-                // TODO: call with 0 args
-                continue;
-            }
-
             let stack_library_for_target = signature_import_links
                 .get(&target_function_type)
                 .expect("Imported");

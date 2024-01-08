@@ -1,5 +1,53 @@
 
 @inline
+function allocate_ret_0_arg_0(): usize {
+    const to_allocate = 0; // constant folded
+    const stack_begin = stack_allocate(to_allocate); // inlined
+    
+    return stack_begin;
+}
+@inline
+function free_values_ret_0_arg_0(): void {
+    const to_deallocate = 0; // constant folded
+    stack_deallocate(to_deallocate); // inlined
+    return;
+}
+@inline
+function store_rets_ret_0_arg_0(stack_ptr: usize): void {
+    
+    return;
+}
+@inline
+function allocate_signature_types_buffer_ret_0_arg_0(): usize {
+    const to_allocate = sizeof<i32>() * 0;; // constant folded
+    const stack_begin = stack_allocate(to_allocate); // inlined
+    return stack_begin;
+}
+@inline
+function free_types_ret_0_arg_0(): void {
+    const to_deallocate = sizeof<i32>() * 0;; // constant folded
+    stack_deallocate(to_deallocate); // inlined
+    return;
+}
+export function allocate_ret__arg_(): usize {
+    return allocate_ret_0_arg_0();
+};
+
+export function free_values_ret__arg_(): void {
+    return free_values_ret_0_arg_0();
+};
+export function store_rets_ret__arg_(stack_ptr: usize): void {
+    return store_rets_ret_0_arg_0(stack_ptr);
+};
+export function allocate_types_ret__arg_(): usize {
+    const types_buffer = allocate_signature_types_buffer_ret_0_arg_0();
+    
+    return types_buffer;
+}
+export function free_types_ret__arg_(): void {
+    return free_types_ret_0_arg_0();
+};
+@inline
 function allocate_ret_2_arg_2<R0, R1, T0, T1>(a0: T0, a1: T1): usize {
     const to_allocate = sizeof<R0>() + sizeof<R1>() + sizeof<T0>() + sizeof<T1>(); // constant folded
     const stack_begin = stack_allocate(to_allocate); // inlined

@@ -32,9 +32,6 @@ impl StackLibrary {
                 if acc.contains_key(&function_type) {
                     return acc;
                 }
-                if function_type.results().is_empty() && function_type.inputs().is_empty() {
-                    return acc;
-                }
                 let stack_library =
                     SignatureStackLibrary::from_function_type_module(function_type, module);
                 acc.insert(function_type, stack_library);

@@ -111,13 +111,13 @@
                 {
                     "GlobalValueEquals": {
                         "identifier": "amount_of_calls",
-                        "result": {"I32": 981956}
+                        "result": {"I32": 981957}
                     }
                 },
                 {
                     "GlobalValueEquals": {
                         "identifier": "max_call_depth",
-                        "result": {"I32": 255}}
+                        "result": {"I32": 256}}
                 }
            ]
         }]
