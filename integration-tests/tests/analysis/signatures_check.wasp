@@ -40,53 +40,33 @@
             this.results = results;
           }
 
-          validate_post_call(args: MutDynArgs, ress: MutDynRess): void {
-            // TODO: remove code dupe below
-            // Check args
-            assert(args.length === this.params.length);
-            for (let index = 0; index < this.params.length; index++) {
-              const wasm_value = this.params[index];
-              assert(wasm_value.wasm_type === args.getType(index));
+          validate_post_call_values(expected_values: WasmValue[], actual_values: DynValues): void {
+            assert(actual_values.length === expected_values.length);
+            for (let index = 0; index < expected_values.length; index++) {
+              const wasm_value = expected_values[index];
+              assert(wasm_value.wasm_type === actual_values.getType(index));
               switch (wasm_value.wasm_type) {
                 case WasmType.i32:
-                  assert(wasm_value.as_i32() === args.get<i32>(index));
+                  assert(wasm_value.as_i32() === actual_values.get<i32>(index));
                   break;
                 case WasmType.f32:
-                  assert(wasm_value.as_f32() === args.get<f32>(index));
+                  assert(wasm_value.as_f32() === actual_values.get<f32>(index));
                   break;
                 case WasmType.i64:
-                  assert(wasm_value.as_i64() === args.get<i64>(index));
+                  assert(wasm_value.as_i64() === actual_values.get<i64>(index));
                   break;
                 case WasmType.f64:
-                  assert(wasm_value.as_f64() === args.get<f64>(index));
+                  assert(wasm_value.as_f64() === actual_values.get<f64>(index));
                   break;
                 default:
                   unreachable();
               }
             }
+          }
 
-            // Check ress
-            assert(ress.length === this.results.length);
-            for (let index = 0; index < this.results.length; index++) {
-              const wasm_value = this.results[index];
-              assert(wasm_value.wasm_type === ress.getType(index));
-              switch (wasm_value.wasm_type) {
-                case WasmType.i32:
-                  assert(wasm_value.as_i32() === ress.get<i32>(index));
-                  break;
-                case WasmType.f32:
-                  assert(wasm_value.as_f32() === ress.get<f32>(index));
-                  break;
-                case WasmType.i64:
-                  assert(wasm_value.as_i64() === ress.get<i64>(index));
-                  break;
-                case WasmType.f64:
-                  assert(wasm_value.as_f64() === ress.get<f64>(index));
-                  break;
-                default:
-                  unreachable();
-              }
-            }
+          validate_post_call(args: MutDynArgs, ress: MutDynRess): void {
+            this.validate_post_call_values(this.params, args);
+            this.validate_post_call_values(this.results, ress);
           }
         }
 

@@ -186,12 +186,24 @@ class MutDynArgsResults {
     }
 }
 
-class MutDynArgs {
-    mutDynArgsResults: MutDynArgsResults;
+abstract class DynValues {
+    protected mutDynArgsResults: MutDynArgsResults;
+    readonly length: i32;
+    
+    constructor(mutDynArgsResults: MutDynArgsResults) {
+        this.mutDynArgsResults = mutDynArgsResults;
+    }
+
+    abstract get<T>(index: i32): T
+    abstract getType(index: i32): WasmType
+    abstract set<T>(index: i32, value: T): void
+}
+
+class MutDynArgs extends DynValues {
     readonly length: i32;
 
     constructor(mutDynArgsResults: MutDynArgsResults) {
-        this.mutDynArgsResults = mutDynArgsResults;
+        super(mutDynArgsResults);
         this.length = mutDynArgsResults.argc;
     }
 
@@ -208,12 +220,11 @@ class MutDynArgs {
     }
 }
 
-class MutDynRess {
-    mutDynArgsResults: MutDynArgsResults;
+class MutDynRess extends DynValues {
     readonly length: i32;
 
     constructor(mutDynArgsResults: MutDynArgsResults) {
-        this.mutDynArgsResults = mutDynArgsResults;
+        super(mutDynArgsResults);
         this.length = mutDynArgsResults.resc;
     }
 

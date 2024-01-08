@@ -1,44 +1,30 @@
 (aspect
+    (global >>>GUEST>>>
+        function set_values_to_zero(values: DynValues): void {
+            for ( let index = 0; index < values.length; index++ ) {
+            switch ( values.getType(index) ) {
+                case WasmType.i32:
+                    values.set<i32>(index, 0);
+                    break;
+                case WasmType.f32:
+                    values.set<f32>(index, 0);
+                    break;
+                case WasmType.i64:
+                    values.set<i64>(index, 0);
+                    break;
+                case WasmType.f64:
+                    values.set<f64>(index, 0);
+                    break;
+                default:
+                    unreachable();
+                }
+            }
+        }
+        <<<GUEST<<<)
     (advice apply (func    WasmFunction)
                   (args    MutDynArgs)
                   (results MutDynResults) >>>GUEST>>>
-        for ( let arg_index = 0; arg_index < args.length; arg_index++ ) {
-            switch ( args.getType(arg_index) ) {
-                case WasmType.i32:
-                    args.set<i32>(arg_index, 0);
-                    break;
-                case WasmType.f32:
-                    args.set<f32>(arg_index, 0);
-                    break;
-                case WasmType.i64:
-                    args.set<i64>(arg_index, 0);
-                    break;
-                case WasmType.f64:
-                    args.set<f64>(arg_index, 0);
-                    break;
-                default:
-                    unreachable();
-            }
-        }
-
+        set_values_to_zero(args);
         func.apply();
-
-        for ( let res_index = 0; res_index < results.length; res_index++ ) {
-            switch ( results.getType(res_index) ) {
-                case WasmType.i32:
-                    results.set<i32>(res_index, 0);
-                    break;
-                case WasmType.f32:
-                    results.set<f32>(res_index, 0);
-                    break;
-                case WasmType.i64:
-                    results.set<i64>(res_index, 0);
-                    break;
-                case WasmType.f64:
-                    results.set<f64>(res_index, 0);
-                    break;
-                default:
-                    unreachable();
-            }
-        }
+        set_values_to_zero(results);
     <<<GUEST<<<))
