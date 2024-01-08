@@ -79,7 +79,7 @@
         }]
     },
     {
-        "input_program":"./input-programs/assemblyscript/add-three.ts",
+        "input_program":"./input-programs/assemblyscript/controlflow-recursive.ts",
         "input_program_type": "AssemblyScript",
         "wasi_enabled": false,
         "uninstrumented_assertion": {
