@@ -1,0 +1,6 @@
+(aspect
+    (advice apply (func    WasmFunction)
+                  (args    MutDynArgs)
+                  (results MutDynResults) >>>GUEST>>>
+        func.apply();
+    <<<GUEST<<<))

@@ -10,6 +10,10 @@
             "post_execution_assertions": []
         },
         "instrumented_assertions": [{
+            "analysis":"./analysis/forward.wasp",
+            "uninstrumented_assertion": "EqualToUninstrumentedAssertion",
+            "post_execution_assertions": []
+        },{
             "analysis":"./analysis/call_stack.wasp",
             "uninstrumented_assertion": "EqualToUninstrumentedAssertion",
             "post_execution_assertions": [
@@ -38,6 +42,10 @@
             "post_execution_assertions": []
         },
         "instrumented_assertions": [{
+            "analysis":"./analysis/forward.wasp",
+            "uninstrumented_assertion": "EqualToUninstrumentedAssertion",
+            "post_execution_assertions": []
+        },{
             "analysis":"./analysis/call_stack.wasp",
             "uninstrumented_assertion": "EqualToUninstrumentedAssertion",
             "post_execution_assertions": [
@@ -66,6 +74,10 @@
             "post_execution_assertions": []
         },
         "instrumented_assertions": [{
+            "analysis":"./analysis/forward.wasp",
+            "uninstrumented_assertion": "EqualToUninstrumentedAssertion",
+            "post_execution_assertions": []
+        },{
             "analysis":"./analysis/signatures_check.wasp",
             "uninstrumented_assertion": "EqualToUninstrumentedAssertion",
             "post_execution_assertions": [
@@ -89,6 +101,10 @@
             "post_execution_assertions": []
         },
         "instrumented_assertions": [{
+            "analysis":"./analysis/forward.wasp",
+            "uninstrumented_assertion": "EqualToUninstrumentedAssertion",
+            "post_execution_assertions": []
+        },{
             "analysis":"./analysis/call_stack.wasp",
             "uninstrumented_assertion": "EqualToUninstrumentedAssertion",
             "post_execution_assertions": [
@@ -117,6 +133,10 @@
             "post_execution_assertions": []
         },
         "instrumented_assertions": [{
+            "analysis":"./analysis/forward.wasp",
+            "uninstrumented_assertion": "EqualToUninstrumentedAssertion",
+            "post_execution_assertions": []
+        },{
             "analysis":"./analysis/set_arg_ret_to_zero.wasp",
             "uninstrumented_assertion": {
                 "DifferentReturnValue":[{"I32":0}]
