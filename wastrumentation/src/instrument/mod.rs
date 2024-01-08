@@ -264,9 +264,3 @@ impl FunctionInstrumentation {
         }
     }
 }
-
-#[cfg(test)]
-mod test {
-    // todo!
-    // - hashing function types does not collide on similar signature
-}

@@ -10,8 +10,6 @@ use cli::Cli;
 pub const INSTRUMENTATION_STACK_MODULE: &str = "wastrumentation_stack";
 pub const INSTRUMENTATION_ANALYSIS_MODULE: &str = "analysis";
 
-// TODO: implement tests
-
 fn main() -> Result<(), Error> {
     let Cli {
         wasp,

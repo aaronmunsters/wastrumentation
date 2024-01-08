@@ -317,3 +317,5 @@ impl From<(FunctionType, &mut Module)> for SignatureStackLibrary {
         }
     }
 }
+
+// TODO: For tests, test hashing function types does not collide on similar signature
