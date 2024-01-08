@@ -34,7 +34,7 @@ pub enum InputProgramType {
 pub struct InstrumentedAssertion {
     pub analysis: PathBuf,
     pub uninstrumented_assertion: UninstrumentedInstrumentedAssertion,
-    pub instrumentation_results: Vec<PostExecutionAssertion>,
+    pub post_execution_assertions: Vec<PostExecutionAssertion>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

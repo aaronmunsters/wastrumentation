@@ -187,7 +187,7 @@ impl TestConfiguration {
 
             assert_eq!(store.data().abort_count, 1);
 
-            for instrumentation_configuration in &instrumented_assertion.instrumentation_results {
+            for instrumentation_configuration in &instrumented_assertion.post_execution_assertions {
                 instrumentation_configuration.assert_outcome(&instance, &mut store);
             }
         }
