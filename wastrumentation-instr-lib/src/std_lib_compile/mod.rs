@@ -1,5 +1,5 @@
 pub mod assemblyscript;
-// FIXME: could this be a &'a [u8]
+
 pub type WasmModule = Vec<u8>;
 
 pub trait CompilerOptions {
