@@ -363,7 +363,7 @@ mod tests {
     use from_pest::FromPest;
     use pest::Parser;
 
-    const CORRECT_PROGRAM: &'static str = r#"
+    const CORRECT_PROGRAM: &str = r#"
         (aspect
             (advice apply (func    WasmFunction)
                           (args    Args)
@@ -597,7 +597,7 @@ mod tests {
     #[test]
     fn test_wasm_type() {
         let x = WasmType::I32;
-        let y = x.clone();
+        let y = x;
         format!("{x}, {y}");
     }
 }

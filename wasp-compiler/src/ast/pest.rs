@@ -409,7 +409,7 @@ mod tests {
         assert_eq!(WaspInput::from_pest(&mut parse_tree).unwrap(), expected);
     }
 
-    const CORRECT_PROGRAM: &'static str = r#"
+    const CORRECT_PROGRAM: &str = r#"
         (aspect
             (advice apply (func    WasmFunction)
                           (args    Args)

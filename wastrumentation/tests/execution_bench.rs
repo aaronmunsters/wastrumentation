@@ -19,7 +19,7 @@ use std::{
 
 mod test_conf;
 
-const TEST_RELATIVE_PATH: &'static str = "./tests/";
+const TEST_RELATIVE_PATH: &str = "./tests/";
 
 #[test]
 fn test_integration_configurations() {
@@ -34,15 +34,15 @@ fn test_integration_configurations() {
 struct WatModule(pub Vec<u8>);
 
 // TODO: change to TryInto
-impl Into<WatModule> for &TestConfiguration {
-    fn into(self) -> WatModule {
+impl From<&TestConfiguration> for WatModule {
+    fn from(val: &TestConfiguration) -> Self {
         let mut path = PathBuf::from_str(TEST_RELATIVE_PATH).unwrap();
-        path.push(&self.input_program);
+        path.push(&val.input_program);
 
-        let content = read(&path).expect(&format!("Could not open {}", path.display()));
-        match &self.input_program_type {
-            test_conf::InputProgramType::Wat => self.into_wat(&content),
-            test_conf::InputProgramType::AssemblyScript => self.into_assemblyscript(&content),
+        let content = read(&path).unwrap_or_else(|_| panic!("Could not open {}", path.display()));
+        match &val.input_program_type {
+            test_conf::InputProgramType::Wat => val.compile_as_wat(&content),
+            test_conf::InputProgramType::AssemblyScript => val.compile_as_assemblyscript(&content),
         }
     }
 }
@@ -52,13 +52,13 @@ struct AbortStore {
     abort_count: i32,
 }
 
-impl Into<Val> for &WasmValue {
-    fn into(self) -> Val {
-        match self {
-            &WasmValue::I32(v) => Val::I32(v),
-            &WasmValue::F32(v) => Val::F32(v),
-            &WasmValue::I64(v) => Val::I64(v),
-            &WasmValue::F64(v) => Val::F64(v),
+impl From<&WasmValue> for Val {
+    fn from(val: &WasmValue) -> Self {
+        match *val {
+            WasmValue::I32(v) => Val::I32(v),
+            WasmValue::F32(v) => Val::F32(v),
+            WasmValue::I64(v) => Val::I64(v),
+            WasmValue::F64(v) => Val::F64(v),
         }
     }
 }
@@ -102,16 +102,18 @@ impl TestConfiguration {
     fn assert_uninstrumented(&self, input_program_wasm: &[u8]) {
         let engine = Engine::new(&Config::default()).unwrap();
         let mut store = Store::new(&engine, ());
-        let module = Module::from_binary(&engine, &input_program_wasm).unwrap();
+        let module = Module::from_binary(&engine, input_program_wasm).unwrap();
         let instance = Instance::new(&mut store, &module, &[]).unwrap();
 
         let func: Func = instance
             .get_func(&mut store, &self.uninstrumented_assertion.input_entry_point)
-            .expect(&format!(
-                "Cannot retrieve func {} from input program {}",
-                &self.uninstrumented_assertion.input_entry_point,
-                &self.input_program.display(),
-            ));
+            .unwrap_or_else(|| {
+                panic!(
+                    "Cannot retrieve func {} from input program {}",
+                    &self.uninstrumented_assertion.input_entry_point,
+                    &self.input_program.display()
+                )
+            });
 
         let params = self.wasmtime_args();
         let mut actual_results = self.wasmtime_expected_uninstrumented_results();
@@ -129,8 +131,8 @@ impl TestConfiguration {
             let mut analysis_path = PathBuf::from_str(TEST_RELATIVE_PATH).unwrap();
             analysis_path.push(&instrumented_assertion.analysis);
 
-            let input_analysis =
-                read_to_string(&analysis_path).expect(&format!("Could not open {analysis_path:?}"));
+            let input_analysis = read_to_string(&analysis_path)
+                .unwrap_or_else(|_| panic!("Could not open {analysis_path:?}"));
 
             let instrumented_input =
                 wastrumentation::wastrument(&input_program_wasm, &input_analysis)
@@ -162,11 +164,13 @@ impl TestConfiguration {
             // Check instrumentation result
             let func = instance
                 .get_func(&mut store, &self.uninstrumented_assertion.input_entry_point)
-                .expect(&format!(
-                    "Cannot retrieve func {} from input program {}",
-                    &self.uninstrumented_assertion.input_entry_point,
-                    self.input_program.display(),
-                ));
+                .unwrap_or_else(|| {
+                    panic!(
+                        "Cannot retrieve func {} from input program {}",
+                        &self.uninstrumented_assertion.input_entry_point,
+                        self.input_program.display()
+                    )
+                });
 
             let params = self.wasmtime_args();
             let expected_results = match &instrumented_assertion.uninstrumented_assertion {
@@ -193,14 +197,14 @@ impl TestConfiguration {
         }
     }
 
-    fn into_wat(&self, content: &[u8]) -> WatModule {
-        let content: Vec<u8> = wat2wasm(&content)
+    fn compile_as_wat(&self, content: &[u8]) -> WatModule {
+        let content: Vec<u8> = wat2wasm(content)
             .expect("wat2wasm of input program failed")
             .into();
         WatModule(content)
     }
 
-    fn into_assemblyscript(&self, content: &[u8]) -> WatModule {
+    fn compile_as_assemblyscript(&self, content: &[u8]) -> WatModule {
         let source_code = String::from_utf8(content.to_vec()).unwrap();
         let compiler_options = AssemblScriptCompilerOptions {
             source_code,
@@ -236,8 +240,8 @@ impl CallYields {
             results,
         } = self;
         let call = instance.get_func(store.as_context_mut(), call).unwrap();
-        let params = TestConfiguration::as_wasmtime_values(&arguments);
-        let mut actual_results = TestConfiguration::as_wasmtime_values(&results);
+        let params = TestConfiguration::as_wasmtime_values(arguments);
+        let mut actual_results = TestConfiguration::as_wasmtime_values(results);
 
         // Perform call
         call.call(store.as_context_mut(), &params, &mut actual_results)
@@ -251,7 +255,7 @@ impl GlobalValueEquals {
     fn assert_outcome(&self, instance: &Instance, store: &mut Store<AbortStore>) {
         let Self { identifier, result } = self;
         let global = instance
-            .get_global(&mut store.as_context_mut(), &identifier)
+            .get_global(&mut store.as_context_mut(), identifier)
             .unwrap()
             .get(store.as_context_mut());
         result.assert_equals_wasmtime(&global);
@@ -298,8 +302,8 @@ fn test() {
     drop(store);
 
     assert_eq!(
-        results.get(0).unwrap().i32().unwrap(),
-        10 * 9 * 8 * 7 * 6 * 5 * 4 * 3 * 2 * 1
+        results.first().unwrap().i32().unwrap(),
+        10 * 9 * 8 * 7 * 6 * 5 * 4 * 3 * 2
     );
 
     let stdout_stream = stdout.try_into_inner().unwrap().into_inner();
