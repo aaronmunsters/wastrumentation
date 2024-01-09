@@ -9,31 +9,28 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: "-Dwarnings"
+  binaryen_version: 116
 
 jobs:
   build_test:
     runs-on: ubuntu-latest
-    env:
-      binaryen_version: 116
     steps:
       - uses: actions/checkout@v3
       - run: |
           wget https://github.com/WebAssembly/binaryen/releases/download/version_${binaryen_version}/binaryen-version_${binaryen_version}-x86_64-linux.tar.gz
           tar -xzvf binaryen-version_${binaryen_version}-x86_64-linux.tar.gz
-          export PATH=$PATH:$(pwd)/binaryen-version_${binaryen_version}/bin
+          export GITHUB_PATH=$GITHUB_PATH:$(pwd)/binaryen-version_${binaryen_version}/bin
       - run: cargo build --verbose
       - run: cargo test --verbose
 
   build_test_latest_deps:
     runs-on: ubuntu-latest
-    env:
-      binaryen_version: 116
     steps:
       - uses: actions/checkout@v3
       - run: |
           wget https://github.com/WebAssembly/binaryen/releases/download/version_${binaryen_version}/binaryen-version_${binaryen_version}-x86_64-linux.tar.gz
           tar -xzvf binaryen-version_${binaryen_version}-x86_64-linux.tar.gz
-          export PATH=$PATH:$(pwd)/binaryen-version_${binaryen_version}/bin
+          export GITHUB_PATH=$GITHUB_PATH:$(pwd)/binaryen-version_${binaryen_version}/bin
       - run: rustup update stable && rustup default stable
       - run: cargo update --verbose
       - run: cargo build --verbose
@@ -41,12 +38,6 @@ jobs:
 
   clippy_check:
     runs-on: ubuntu-latest
-    env:
-      binaryen_version: 116
     steps:
       - uses: actions/checkout@v3
-      - run: |
-          wget https://github.com/WebAssembly/binaryen/releases/download/version_${binaryen_version}/binaryen-version_${binaryen_version}-x86_64-linux.tar.gz
-          tar -xzvf binaryen-version_${binaryen_version}-x86_64-linux.tar.gz
-          export PATH=$PATH:$(pwd)/binaryen-version_${binaryen_version}/bin
       - run: cargo clippy --all-targets --all-features
