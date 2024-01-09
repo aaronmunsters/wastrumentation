@@ -11,11 +11,23 @@ env:
   RUSTFLAGS: "-Dwarnings"
 
 jobs:
+  # Reusable job that will be used by CI jobs below
+  install_binaryen:
+    runs-on: ubuntu-latest
+    env:
+      binaryen_version: 116
+    steps:
+      - name: Install Binaryen
+        run: &install_binaryen |
+          wget https://github.com/WebAssembly/binaryen/releases/download/version_${binaryen_version}/binaryen-version_${binaryen_version}-x86_64-linux.tar.gz
+          tar -xzvf binaryen-version_${binaryen_version}-x86_64-linux.tar.gz
+          export PATH=$PATH:$(pwd)/binaryen-version_${binaryen_version}/bin
+
   build_test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - run: sudo apt-get install -y binaryen
+      - run: *install_binaryen  # Reuse the install_binaryen anchor
       - run: cargo build --verbose
       - run: cargo test --verbose
 
@@ -24,7 +36,7 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v3
-      - run: sudo apt-get install -y binaryen
+      - run: *install_binaryen  # Reuse the install_binaryen anchor
       - run: rustup update stable && rustup default stable
       - run: cargo update --verbose
       - run: cargo build --verbose
@@ -34,5 +46,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Run Clippy
-        run: cargo clippy --all-targets --all-features
+      - run: *install_binaryen  # Reuse the install_binaryen anchor
+      - run: cargo clippy --all-targets --all-features
