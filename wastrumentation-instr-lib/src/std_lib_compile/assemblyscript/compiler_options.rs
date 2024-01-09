@@ -249,7 +249,7 @@ mod tests {
         };
 
         assert_eq!(
-            options.to_npx_command("path/to/source".into(), "path/to/output".into()),
+            options.to_npx_command("path/to/source", "path/to/output"),
             concat!(
                 "node ./node_modules/assemblyscript/bin/asc.js path/to/source ",
                 "-o path/to/output ",
@@ -270,7 +270,7 @@ mod tests {
         };
 
         assert_eq!(
-            options.to_npx_command("path/to/source".into(), "path/to/output".into()),
+            options.to_npx_command("path/to/source", "path/to/output"),
             concat!(
                 "node ./node_modules/assemblyscript/bin/asc.js path/to/source ",
                 "-o path/to/output ",
