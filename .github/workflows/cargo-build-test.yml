@@ -1,4 +1,4 @@
-name: Rust Cargo Build & Test
+name: Rust - Cargo Build, Test, Latest Dependencies & Clippy
 
 on:
   push:
@@ -8,15 +8,31 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-Dwarnings"
 
 jobs:
-  build:
-
+  build_test:
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v3
-    - name: Build
-      run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose
+      - uses: actions/checkout@v3
+      - run: sudo apt-get install -y binaryen
+      - run: cargo build --verbose
+      - run: cargo test --verbose
+
+  build_test_latest_deps:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+      - run: sudo apt-get install -y binaryen
+      - run: rustup update stable && rustup default stable
+      - run: cargo update --verbose
+      - run: cargo build --verbose
+      - run: cargo test --verbose
+
+  clippy_check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run Clippy
+        run: cargo clippy --all-targets --all-features
