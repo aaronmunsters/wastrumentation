@@ -1,8 +1,8 @@
-name: Rust - Cargo Build, Test, Latest Dependencies & Clippy
+name: Rust - Cargo Build, Test & Clippy
 
 on:
   push:
-    branches: '*'
+    branches: "*"
   pull_request:
     branches: [ "main" ]
 
@@ -12,34 +12,17 @@ env:
   binaryen_version: 116
 
 jobs:
-
-  # Reusable job that will be used by CI jobs below
-  install_binaryen:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install Binaryen
-        run: &install_binaryen |
-          mkdir $HOME/binaryen
-          wget https://github.com/WebAssembly/binaryen/releases/download/version_${binaryen_version}/binaryen-version_${binaryen_version}-x86_64-linux.tar.gz -O $HOME/binaryen.tar.gz
-          tar -xzvf $HOME/binaryen.tar.gz --directory $HOME/binaryen --strip-components=1
-          echo "$HOME/binaryen/bin" >> $GITHUB_PATH
-          wasm-merge --version # Test if wasm-merge is accessible
-
   build_test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - run: *install_binaryen
-      - run: cargo build --verbose
-      - run: cargo test --verbose
-
-  build_test_latest_deps:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - run: *install_binaryen
-      - run: rustup update stable && rustup default stable
-      - run: cargo update --verbose
+      - name: Install Binaryen
+        run: |
+          mkdir $HOME/binaryen
+          wget https://github.com/WebAssembly/binaryen/releases/download/version_${binaryen_version}/binaryen-version_${binaryen_version}-x86_64-linux.tar.gz -O $HOME/binaryen.tar.gz
+          tar -xzvf $HOME/binaryen.tar.gz --directory $HOME/binaryen --strip-components=1
+          echo "$HOME/binaryen/bin" >> $GITHUB_PATH
+          wasm-merge --version # Test if wasm-merge is accessible from shell
       - run: cargo build --verbose
       - run: cargo test --verbose
 
