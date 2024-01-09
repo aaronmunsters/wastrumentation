@@ -22,7 +22,8 @@ jobs:
           wget https://github.com/WebAssembly/binaryen/releases/download/version_${binaryen_version}/binaryen-version_${binaryen_version}-x86_64-linux.tar.gz -O $HOME/binaryen.tar.gz
           tar -xzvf $HOME/binaryen.tar.gz --directory $HOME/binaryen --strip-components=1
           echo "$HOME/binaryen/bin" >> $GITHUB_PATH
-          wasm-merge --version # Test if wasm-merge is accessible from shell
+      - name: Verify Binaryen installation
+        run: wasm-merge --version # Test if wasm-merge is accessible from shell
       - run: cargo build --verbose
       - run: cargo test --verbose
 
