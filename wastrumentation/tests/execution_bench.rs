@@ -1,3 +1,4 @@
+use rayon::prelude::*;
 use test_conf::{PostExecutionAssertion, WasmValue};
 use wasi_common::pipe::WritePipe;
 use wasmer::wat2wasm;
@@ -26,9 +27,9 @@ fn test_integration_configurations() {
     let test_configurations_json = include_str!("test-configurations.json");
     let test_configurations: Vec<TestConfiguration> =
         serde_json::from_str(test_configurations_json).unwrap();
-    for test_configuration in test_configurations {
-        test_configuration.assert_behavior();
-    }
+    test_configurations
+        .par_iter()
+        .for_each(|test_configuration| test_configuration.assert_behavior());
 }
 
 struct WatModule(pub Vec<u8>);
@@ -95,14 +96,14 @@ impl TestConfiguration {
 
     fn assert_behavior(&self) {
         let WatModule(input_program) = self.into();
-        Self::assert_uninstrumented(self, &input_program);
-        Self::assert_instrumented(self, &input_program);
+        let mut engine = Engine::new(Config::default().wasm_multi_memory(true)).unwrap();
+        Self::assert_uninstrumented(self, &input_program, &mut engine);
+        Self::assert_instrumented(self, &input_program, &mut engine);
     }
 
-    fn assert_uninstrumented(&self, input_program_wasm: &[u8]) {
-        let engine = Engine::new(&Config::default()).unwrap();
-        let mut store = Store::new(&engine, ());
-        let module = Module::from_binary(&engine, input_program_wasm).unwrap();
+    fn assert_uninstrumented(&self, input_program_wasm: &[u8], engine: &mut Engine) {
+        let mut store = Store::new(engine, ());
+        let module = Module::from_binary(engine, input_program_wasm).unwrap();
         let instance = Instance::new(&mut store, &module, &[]).unwrap();
 
         let func: Func = instance
@@ -125,7 +126,7 @@ impl TestConfiguration {
         );
     }
 
-    fn assert_instrumented(&self, input_program_wasm: &[u8]) {
+    fn assert_instrumented(&self, input_program_wasm: &[u8], engine: &mut Engine) {
         let input_program_wasm = Vec::from(input_program_wasm);
         for instrumented_assertion in &self.instrumented_assertions {
             let mut analysis_path = PathBuf::from_str(TEST_RELATIVE_PATH).unwrap();
@@ -139,8 +140,8 @@ impl TestConfiguration {
                     .expect("Instrumentation pass failed");
 
             // 4. execute instrumented input program
-            let mut store = Store::<AbortStore>::default();
-            let module = Module::from_binary(store.engine(), &instrumented_input).unwrap();
+            let mut store = Store::<AbortStore>::new(engine, AbortStore::default());
+            let module = Module::from_binary(engine, &instrumented_input).unwrap();
 
             let env_abort = Func::wrap(
                 &mut store,
