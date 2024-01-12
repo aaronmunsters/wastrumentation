@@ -35,7 +35,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: nextest
-          args: run --all-features --profile ci
+          args: run --all-features
 
   clippy_check:
     runs-on: ubuntu-latest
