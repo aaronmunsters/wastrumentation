@@ -1,16 +1,32 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-// FIXME: change to enum in which `wasi_enabled` is colocated with `InputProgramType`'s where wasi is an option
-
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct TestConfiguration {
-    pub input_program: PathBuf,
-    pub input_program_type: InputProgramType,
-    pub wasi_enabled: bool,
+    pub input_program: InputProgram,
     pub uninstrumented_assertion: UninstrumentedAssertion,
     pub instrumented_assertions: Vec<InstrumentedAssertion>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct InputProgram {
+    pub path: PathBuf,
+    pub r#type: ProgramType,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub enum ProgramType {
+    Wat,
+    AssemblyScript(AssemblyScript),
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct AssemblyScript {
+    pub wasi_enabled: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -33,6 +49,7 @@ pub enum InputProgramType {
 #[serde(deny_unknown_fields)]
 pub struct InstrumentedAssertion {
     pub analysis: PathBuf,
+    pub wasi_enabled: bool,
     pub uninstrumented_assertion: UninstrumentedInstrumentedAssertion,
     pub post_execution_assertions: Vec<PostExecutionAssertion>,
 }

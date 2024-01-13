@@ -1,8 +1,9 @@
 [
     {
-        "input_program":"./input-programs/wat/add_three.wat",
-        "input_program_type": "Wat",
-        "wasi_enabled": false,
+        "input_program": {
+            "path":"./input-programs/wat/add_three.wat",
+            "type": "Wat"
+        },
         "uninstrumented_assertion": {
             "input_entry_point":"add_three",
             "arguments":[{"I32":1}, {"I32":2}, {"I32":3}],
@@ -11,10 +12,12 @@
         },
         "instrumented_assertions": [{
             "analysis":"./analysis/forward.wasp",
+            "wasi_enabled": false,
             "uninstrumented_assertion": "EqualToUninstrumentedAssertion",
             "post_execution_assertions": []
         },{
             "analysis":"./analysis/call_stack.wasp",
+            "wasi_enabled": false,
             "uninstrumented_assertion": "EqualToUninstrumentedAssertion",
             "post_execution_assertions": [
                 {
@@ -32,9 +35,10 @@
         }]
     },
     {
-        "input_program":"./input-programs/wat/fib.wat",
-        "input_program_type": "Wat",
-        "wasi_enabled": false,
+        "input_program": {
+            "path":"./input-programs/wat/fib.wat",
+            "type": "Wat"
+        },
         "uninstrumented_assertion": {
             "input_entry_point":"fib",
             "arguments":[{"I32":10}],
@@ -43,10 +47,12 @@
         },
         "instrumented_assertions": [{
             "analysis":"./analysis/forward.wasp",
+            "wasi_enabled": false,
             "uninstrumented_assertion": "EqualToUninstrumentedAssertion",
             "post_execution_assertions": []
         },{
             "analysis":"./analysis/call_stack.wasp",
+            "wasi_enabled": false,
             "uninstrumented_assertion": "EqualToUninstrumentedAssertion",
             "post_execution_assertions": [
                 {
@@ -64,9 +70,10 @@
         }]
     },
     {
-        "input_program":"./input-programs/wat/different_signatures.wat",
-        "input_program_type": "Wat",
-        "wasi_enabled": false,
+        "input_program": {
+            "path":"./input-programs/wat/different_signatures.wat",
+            "type": "Wat"
+        },
         "uninstrumented_assertion": {
             "input_entry_point":"execute_tests",
             "arguments":[],
@@ -75,10 +82,12 @@
         },
         "instrumented_assertions": [{
             "analysis":"./analysis/forward.wasp",
+            "wasi_enabled": false,
             "uninstrumented_assertion": "EqualToUninstrumentedAssertion",
             "post_execution_assertions": []
         },{
             "analysis":"./analysis/signatures_check.wasp",
+            "wasi_enabled": false,
             "uninstrumented_assertion": "EqualToUninstrumentedAssertion",
             "post_execution_assertions": [
                 {
@@ -91,9 +100,14 @@
         }]
     },
     {
-        "input_program":"./input-programs/assemblyscript/controlflow-recursive.ts",
-        "input_program_type": "AssemblyScript",
-        "wasi_enabled": false,
+        "input_program": {
+            "path":"./input-programs/assemblyscript/controlflow-recursive.ts",
+            "type": {
+                "AssemblyScript": {
+                    "wasi_enabled": false
+                }
+            }
+        },
         "uninstrumented_assertion": {
             "input_entry_point":"execute_tests",
             "arguments":[],
@@ -102,10 +116,12 @@
         },
         "instrumented_assertions": [{
             "analysis":"./analysis/forward.wasp",
+            "wasi_enabled": false,
             "uninstrumented_assertion": "EqualToUninstrumentedAssertion",
             "post_execution_assertions": []
         },{
             "analysis":"./analysis/call_stack.wasp",
+            "wasi_enabled": false,
             "uninstrumented_assertion": "EqualToUninstrumentedAssertion",
             "post_execution_assertions": [
                 {
@@ -123,10 +139,14 @@
         }]
     },
     {
-        "input_program":"./input-programs/assemblyscript/simply_return.ts",
-        "input_program_type": "AssemblyScript",
-        "wasi_enabled": false,
-        "uninstrumented_assertion": {
+        "input_program": {
+            "path":"./input-programs/assemblyscript/simply_return.ts",
+            "type": {
+                "AssemblyScript": {
+                    "wasi_enabled": false
+                }
+            }
+        },"uninstrumented_assertion": {
             "input_entry_point":"main",
             "arguments":[],
             "results":[{"I32":10}],
@@ -134,10 +154,12 @@
         },
         "instrumented_assertions": [{
             "analysis":"./analysis/forward.wasp",
+            "wasi_enabled": false,
             "uninstrumented_assertion": "EqualToUninstrumentedAssertion",
             "post_execution_assertions": []
         },{
             "analysis":"./analysis/set_arg_ret_to_zero.wasp",
+            "wasi_enabled": false,
             "uninstrumented_assertion": {
                 "DifferentReturnValue":[{"I32":0}]
             },

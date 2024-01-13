@@ -1,5 +1,5 @@
 use rayon::prelude::*;
-use test_conf::{PostExecutionAssertion, WasmValue};
+use test_conf::{AssemblyScript, PostExecutionAssertion, WasmValue};
 use wasi_common::pipe::WritePipe;
 use wasmer::wat2wasm;
 use wasmtime::*;
@@ -36,14 +36,16 @@ struct WatModule(pub Vec<u8>);
 
 // TODO: change to TryInto
 impl From<&TestConfiguration> for WatModule {
-    fn from(val: &TestConfiguration) -> Self {
+    fn from(test_configuration: &TestConfiguration) -> Self {
         let mut path = PathBuf::from_str(TEST_RELATIVE_PATH).unwrap();
-        path.push(&val.input_program);
+        path.push(&test_configuration.input_program.path);
 
         let content = read(&path).unwrap_or_else(|_| panic!("Could not open {}", path.display()));
-        match &val.input_program_type {
-            test_conf::InputProgramType::Wat => val.compile_as_wat(&content),
-            test_conf::InputProgramType::AssemblyScript => val.compile_as_assemblyscript(&content),
+        match &test_configuration.input_program.r#type {
+            test_conf::ProgramType::Wat => test_configuration.compile_as_wat(&content),
+            test_conf::ProgramType::AssemblyScript(AssemblyScript { wasi_enabled }) => {
+                test_configuration.compile_as_assemblyscript(&content, *wasi_enabled)
+            }
         }
     }
 }
@@ -112,7 +114,7 @@ impl TestConfiguration {
                 panic!(
                     "Cannot retrieve func {} from input program {}",
                     &self.uninstrumented_assertion.input_entry_point,
-                    &self.input_program.display()
+                    &self.input_program.path.display()
                 )
             });
 
@@ -169,7 +171,7 @@ impl TestConfiguration {
                     panic!(
                         "Cannot retrieve func {} from input program {}",
                         &self.uninstrumented_assertion.input_entry_point,
-                        self.input_program.display()
+                        self.input_program.path.display()
                     )
                 });
 
@@ -205,7 +207,7 @@ impl TestConfiguration {
         WatModule(content)
     }
 
-    fn compile_as_assemblyscript(&self, content: &[u8]) -> WatModule {
+    fn compile_as_assemblyscript(&self, content: &[u8], wasi_enabled: bool) -> WatModule {
         let source_code = String::from_utf8(content.to_vec()).unwrap();
         let compiler_options = AssemblScriptCompilerOptions {
             source_code,
@@ -213,8 +215,8 @@ impl TestConfiguration {
             enable_bulk_memory: false,
             enable_sign_extension: false,
             enable_nontrapping_f2i: false,
-            enable_export_memory: self.wasi_enabled,
-            enable_wasi_shim: self.wasi_enabled,
+            enable_export_memory: wasi_enabled,
+            enable_wasi_shim: wasi_enabled,
             runtime: RuntimeStrategy::Minimal,
         };
         let content = compiler_options.compile().module().unwrap();
