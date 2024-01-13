@@ -13,12 +13,12 @@
         "instrumented_assertions": [{
             "analysis":"./analysis/forward.wasp",
             "wasi_enabled": false,
-            "uninstrumented_assertion": "EqualToUninstrumentedAssertion",
+            "input_program_assertion": "EqualToUninstrumented",
             "post_execution_assertions": []
         },{
             "analysis":"./analysis/call_stack.wasp",
             "wasi_enabled": false,
-            "uninstrumented_assertion": "EqualToUninstrumentedAssertion",
+            "input_program_assertion": "EqualToUninstrumented",
             "post_execution_assertions": [
                 {
                     "GlobalValueEquals": {
@@ -48,12 +48,12 @@
         "instrumented_assertions": [{
             "analysis":"./analysis/forward.wasp",
             "wasi_enabled": false,
-            "uninstrumented_assertion": "EqualToUninstrumentedAssertion",
+            "input_program_assertion": "EqualToUninstrumented",
             "post_execution_assertions": []
         },{
             "analysis":"./analysis/call_stack.wasp",
             "wasi_enabled": false,
-            "uninstrumented_assertion": "EqualToUninstrumentedAssertion",
+            "input_program_assertion": "EqualToUninstrumented",
             "post_execution_assertions": [
                 {
                     "GlobalValueEquals": {
@@ -83,12 +83,12 @@
         "instrumented_assertions": [{
             "analysis":"./analysis/forward.wasp",
             "wasi_enabled": false,
-            "uninstrumented_assertion": "EqualToUninstrumentedAssertion",
+            "input_program_assertion": "EqualToUninstrumented",
             "post_execution_assertions": []
         },{
             "analysis":"./analysis/signatures_check.wasp",
             "wasi_enabled": false,
-            "uninstrumented_assertion": "EqualToUninstrumentedAssertion",
+            "input_program_assertion": "EqualToUninstrumented",
             "post_execution_assertions": [
                 {
                     "GlobalValueEquals": {
@@ -117,12 +117,12 @@
         "instrumented_assertions": [{
             "analysis":"./analysis/forward.wasp",
             "wasi_enabled": false,
-            "uninstrumented_assertion": "EqualToUninstrumentedAssertion",
+            "input_program_assertion": "EqualToUninstrumented",
             "post_execution_assertions": []
         },{
             "analysis":"./analysis/call_stack.wasp",
             "wasi_enabled": false,
-            "uninstrumented_assertion": "EqualToUninstrumentedAssertion",
+            "input_program_assertion": "EqualToUninstrumented",
             "post_execution_assertions": [
                 {
                     "GlobalValueEquals": {
@@ -155,12 +155,12 @@
         "instrumented_assertions": [{
             "analysis":"./analysis/forward.wasp",
             "wasi_enabled": false,
-            "uninstrumented_assertion": "EqualToUninstrumentedAssertion",
+            "input_program_assertion": "EqualToUninstrumented",
             "post_execution_assertions": []
         },{
             "analysis":"./analysis/set_arg_ret_to_zero.wasp",
             "wasi_enabled": false,
-            "uninstrumented_assertion": {
+            "input_program_assertion": {
                 "DifferentReturnValue":[{"I32":0}]
             },
             "post_execution_assertions": []

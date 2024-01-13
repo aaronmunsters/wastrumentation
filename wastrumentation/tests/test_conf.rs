@@ -50,14 +50,14 @@ pub enum InputProgramType {
 pub struct InstrumentedAssertion {
     pub analysis: PathBuf,
     pub wasi_enabled: bool,
-    pub uninstrumented_assertion: UninstrumentedInstrumentedAssertion,
+    pub input_program_assertion: InputProgramAssertion,
     pub post_execution_assertions: Vec<PostExecutionAssertion>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
-pub enum UninstrumentedInstrumentedAssertion {
-    EqualToUninstrumentedAssertion,
+pub enum InputProgramAssertion {
+    EqualToUninstrumented,
     DifferentReturnValue(Vec<WasmValue>),
 }
 

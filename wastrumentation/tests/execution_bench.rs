@@ -1,5 +1,8 @@
 use rayon::prelude::*;
-use test_conf::{AssemblyScript, PostExecutionAssertion, WasmValue};
+use test_conf::{
+    AssemblyScript, InputProgram, InstrumentedAssertion, PostExecutionAssertion,
+    UninstrumentedAssertion, WasmValue,
+};
 use wasi_common::pipe::WritePipe;
 use wasmer::wat2wasm;
 use wasmtime::*;
@@ -11,7 +14,7 @@ use wastrumentation_instr_lib::std_lib_compile::{
     CompilerOptions,
 };
 
-use crate::test_conf::{CallYields, GlobalValueEquals, TestConfiguration};
+use crate::test_conf::{CallYields, GlobalValueEquals, InputProgramAssertion, TestConfiguration};
 use std::{
     fs::{read, read_to_string},
     path::PathBuf,
@@ -103,25 +106,30 @@ impl TestConfiguration {
         Self::assert_instrumented(self, &input_program, &mut engine);
     }
 
+    fn get_entry_point<T>(&self, instance: Instance, store: &mut Store<T>) -> Func {
+        let InputProgram { path, .. } = &self.input_program;
+        let UninstrumentedAssertion {
+            input_entry_point, ..
+        } = &self.uninstrumented_assertion;
+        instance
+            .get_func(store, input_entry_point)
+            .unwrap_or_else(|| {
+                panic!("Cannot retrieve func {input_entry_point:#?} from input program {path:#?}")
+            })
+    }
+
     fn assert_uninstrumented(&self, input_program_wasm: &[u8], engine: &mut Engine) {
         let mut store = Store::new(engine, ());
         let module = Module::from_binary(engine, input_program_wasm).unwrap();
         let instance = Instance::new(&mut store, &module, &[]).unwrap();
 
-        let func: Func = instance
-            .get_func(&mut store, &self.uninstrumented_assertion.input_entry_point)
-            .unwrap_or_else(|| {
-                panic!(
-                    "Cannot retrieve func {} from input program {}",
-                    &self.uninstrumented_assertion.input_entry_point,
-                    &self.input_program.path.display()
-                )
-            });
-
+        // Check uninstrumented
         let params = self.wasmtime_args();
         let mut actual_results = self.wasmtime_expected_uninstrumented_results();
 
-        func.call(store, &params, &mut actual_results).unwrap();
+        self.get_entry_point(instance, &mut store)
+            .call(store, &params, &mut actual_results)
+            .unwrap();
         WasmValue::assert_equals_wasmtime_values(
             &self.uninstrumented_assertion.results,
             &actual_results,
@@ -130,73 +138,101 @@ impl TestConfiguration {
 
     fn assert_instrumented(&self, input_program_wasm: &[u8], engine: &mut Engine) {
         let input_program_wasm = Vec::from(input_program_wasm);
-        for instrumented_assertion in &self.instrumented_assertions {
-            let mut analysis_path = PathBuf::from_str(TEST_RELATIVE_PATH).unwrap();
-            analysis_path.push(&instrumented_assertion.analysis);
-
-            let input_analysis = read_to_string(&analysis_path)
+        for instrumented_assertion @ InstrumentedAssertion {
+            analysis: analysis_path,
+            wasi_enabled,
+            ..
+        } in &self.instrumented_assertions
+        {
+            let full_analysis_path = PathBuf::from(TEST_RELATIVE_PATH).join(analysis_path);
+            let input_analysis = read_to_string(&full_analysis_path)
                 .unwrap_or_else(|_| panic!("Could not open {analysis_path:?}"));
-
             let instrumented_input =
                 wastrumentation::wastrument(&input_program_wasm, &input_analysis)
                     .expect("Instrumentation pass failed");
 
-            // 4. execute instrumented input program
-            let mut store = Store::<AbortStore>::new(engine, AbortStore::default());
-            let module = Module::from_binary(engine, &instrumented_input).unwrap();
-
-            let env_abort = Func::wrap(
-                &mut store,
-                |mut caller: Caller<'_, AbortStore>, _: i32, _: i32, _: i32, _: i32| {
-                    caller.data_mut().abort_count += 1;
-                },
-            );
-
-            let instance = Instance::new(&mut store, &module, &[env_abort.into()]).unwrap();
-
-            assert_eq!(store.data().abort_count, 0);
-            env_abort
-                .call(
-                    &mut store,
-                    &[Val::I32(0), Val::I32(0), Val::I32(0), Val::I32(0)],
-                    &mut [],
+            if *wasi_enabled {
+                self.assert_instrumented_including_wasi(
+                    instrumented_assertion,
+                    &instrumented_input,
+                    engine,
                 )
-                .unwrap();
-            assert_eq!(store.data().abort_count, 1);
-
-            // Check instrumentation result
-            let func = instance
-                .get_func(&mut store, &self.uninstrumented_assertion.input_entry_point)
-                .unwrap_or_else(|| {
-                    panic!(
-                        "Cannot retrieve func {} from input program {}",
-                        &self.uninstrumented_assertion.input_entry_point,
-                        self.input_program.path.display()
-                    )
-                });
-
-            let params = self.wasmtime_args();
-            let expected_results = match &instrumented_assertion.uninstrumented_assertion {
-                test_conf::UninstrumentedInstrumentedAssertion::EqualToUninstrumentedAssertion => {
-                    self.uninstrumented_assertion.results.clone()
-                }
-                test_conf::UninstrumentedInstrumentedAssertion::DifferentReturnValue(results) => {
-                    results.clone()
-                }
-            };
-
-            let mut actual_results = Self::as_wasmtime_values(&expected_results.clone());
-
-            func.call(&mut store, &params, &mut actual_results).unwrap();
-
-            // 5. check if output of instrumented input program matches
-            WasmValue::assert_equals_wasmtime_values(&expected_results, &actual_results);
-
-            assert_eq!(store.data().abort_count, 1);
-
-            for instrumentation_configuration in &instrumented_assertion.post_execution_assertions {
-                instrumentation_configuration.assert_outcome(&instance, &mut store);
+            } else {
+                self.assert_instrumented_excluding_wasi(
+                    instrumented_assertion,
+                    &instrumented_input,
+                    engine,
+                )
             }
+        }
+    }
+
+    fn assert_instrumented_including_wasi(
+        &self,
+        instrumented_assertion: &InstrumentedAssertion,
+        instrumented: &[u8],
+        engine: &mut Engine,
+    ) {
+        todo!()
+    }
+
+    fn assert_instrumented_excluding_wasi(
+        &self,
+        instrumented_assertion: &InstrumentedAssertion,
+        instrumented: &[u8],
+        engine: &mut Engine,
+    ) {
+        let InstrumentedAssertion {
+            post_execution_assertions,
+            input_program_assertion,
+            ..
+        } = instrumented_assertion;
+        // 4. execute instrumented input program
+        let mut store = Store::<AbortStore>::new(engine, AbortStore::default());
+        let module = Module::from_binary(engine, &instrumented).unwrap();
+
+        let env_abort = Func::wrap(
+            &mut store,
+            |mut caller: Caller<'_, AbortStore>, _: i32, _: i32, _: i32, _: i32| {
+                caller.data_mut().abort_count += 1;
+            },
+        );
+
+        let instance = Instance::new(&mut store, &module, &[env_abort.into()]).unwrap();
+
+        assert_eq!(store.data().abort_count, 0);
+        env_abort
+            .call(
+                &mut store,
+                &[Val::I32(0), Val::I32(0), Val::I32(0), Val::I32(0)],
+                &mut [],
+            )
+            .unwrap();
+        assert_eq!(store.data().abort_count, 1);
+
+        // Check instrumentation result
+        let params = self.wasmtime_args();
+        let expected_results = match input_program_assertion {
+            InputProgramAssertion::DifferentReturnValue(results) => results.clone(),
+            InputProgramAssertion::EqualToUninstrumented => {
+                self.uninstrumented_assertion.results.clone()
+            }
+        };
+
+        let mut actual_results = Self::as_wasmtime_values(&expected_results.clone());
+
+        // Call input program
+        self.get_entry_point(instance, &mut store)
+            .call(&mut store, &params, &mut actual_results)
+            .unwrap();
+
+        // 5. check if output of instrumented input program matches
+        WasmValue::assert_equals_wasmtime_values(&expected_results, &actual_results);
+
+        assert_eq!(store.data().abort_count, 1);
+
+        for instrumentation_configuration in post_execution_assertions {
+            instrumentation_configuration.assert_outcome(&instance, &mut store);
         }
     }
 
@@ -225,7 +261,7 @@ impl TestConfiguration {
 }
 
 impl PostExecutionAssertion {
-    fn assert_outcome(&self, instance: &Instance, store: &mut Store<AbortStore>) {
+    fn assert_outcome<T>(&self, instance: &Instance, store: &mut Store<T>) {
         match self {
             Self::CallYields(call_yields) => call_yields.assert_outcome(instance, store),
             Self::GlobalValueEquals(global_value_equals) => {
@@ -236,7 +272,7 @@ impl PostExecutionAssertion {
 }
 
 impl CallYields {
-    fn assert_outcome(&self, instance: &Instance, store: &mut Store<AbortStore>) {
+    fn assert_outcome<T>(&self, instance: &Instance, store: &mut Store<T>) {
         let Self {
             call,
             arguments,
@@ -255,7 +291,7 @@ impl CallYields {
 }
 
 impl GlobalValueEquals {
-    fn assert_outcome(&self, instance: &Instance, store: &mut Store<AbortStore>) {
+    fn assert_outcome<T>(&self, instance: &Instance, store: &mut Store<T>) {
         let Self { identifier, result } = self;
         let global = instance
             .get_global(&mut store.as_context_mut(), identifier)
