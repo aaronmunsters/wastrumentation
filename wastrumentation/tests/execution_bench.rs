@@ -107,7 +107,7 @@ impl WasiEngineSetup {
             .stderr(Box::new(stderr.clone()))
             .stdin(Box::new(stdin.clone()))
             .build();
-        let mut store = Store::new(&engine, wasi);
+        let store = Store::new(&engine, wasi);
 
         Self {
             store,
@@ -152,7 +152,11 @@ impl TestConfiguration {
 
     fn assert_uninstrumented(&self, input_program_wasm: &[u8]) {
         let WasiEngineSetup {
-            mut store, engine, ..
+            mut store,
+            engine,
+            stderr,
+            stdin,
+            stdout,
         } = WasiEngineSetup::new();
         let module = Module::from_binary(&engine, input_program_wasm).unwrap();
         let instance = Instance::new(&mut store, &module, &[]).unwrap();
@@ -168,6 +172,9 @@ impl TestConfiguration {
             &self.uninstrumented_assertion.results,
             &actual_results,
         );
+
+        // TODO: read from WASI if enabled
+        let (_, _, _) = (stderr, stdin, stdout);
     }
 
     fn assert_instrumented(&self, input_program_wasm: &[u8]) {
