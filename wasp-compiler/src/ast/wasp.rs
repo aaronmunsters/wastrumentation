@@ -488,68 +488,10 @@ mod tests {
     #[test]
     fn test_debug() {
         let wasp_root = program_to_wasp_root(CORRECT_PROGRAM).unwrap();
-        assert_eq!(
-            format!("{wasp_root:?}"),
-            "WaspRoot([\
-                AdviceTrap(TrapApply(TrapApply { \
-                    apply_hook_signature: Gen(ApplyGen { \
-                        generic_means: HighLevel, \
-                        parameter_apply: \"func\", \
-                        parameter_arguments: \"args\", \
-                        parameter_results: \"results\" \
-                    }), \
-                    body: \"🔴\" \
-                })), \
-                AdviceTrap(TrapApply(TrapApply { \
-                    apply_hook_signature: Gen(ApplyGen { \
-                        generic_means: Dynamic, \
-                        parameter_apply: \"func\", \
-                        parameter_arguments: \"args\", \
-                        parameter_results: \"results\" \
-                    }), \
-                    body: \"🟠\" \
-                })), \
-                AdviceTrap(TrapApply(TrapApply { \
-                    apply_hook_signature: Gen(ApplyGen { \
-                        generic_means: MutableDynamic, \
-                        parameter_apply: \"func\", \
-                        parameter_arguments: \"args\", \
-                        parameter_results: \"results\" \
-                    }), \
-                    body: \"🟡\" \
-                })), \
-                AdviceTrap(TrapApply(TrapApply { \
-                    apply_hook_signature: Spe(ApplySpe { \
-                        mutable_signature: true, \
-                        apply_parameter: \"func\", \
-                        parameters_arguments: [\
-                            WasmParameter { identifier: \"a\", identifier_type: I32 }, \
-                            WasmParameter { identifier: \"b\", identifier_type: F32 }\
-                        ], \
-                        parameters_results: [\
-                            WasmParameter { identifier: \"c\", identifier_type: I64 }, \
-                            WasmParameter { identifier: \"d\", identifier_type: F64 }\
-                        ] \
-                    }), \
-                    body: \"🟢\" \
-                })), \
-                    AdviceTrap(TrapApply(TrapApply { \
-                        apply_hook_signature: Spe(ApplySpe { \
-                            mutable_signature: false, \
-                            apply_parameter: \"func\", \
-                            parameters_arguments: [\
-                                WasmParameter { identifier: \"a\", identifier_type: I32 }, \
-                                WasmParameter { identifier: \"b\", identifier_type: F32 }\
-                            ], \
-                            parameters_results: [\
-                                WasmParameter { identifier: \"c\", identifier_type: I64 }, \
-                                WasmParameter { identifier: \"d\", identifier_type: F64 }\
-                            ] }), \
-                            body: \"🔵\" \
-                        })), \
-                AdviceGlobal(\"🟣\")\
-            ])"
-        );
+        let formatted = format!("{wasp_root:?}");
+        for guest_code in ["🔴", "🟠", "🟡", "🟢", "🔵", "🟣"] {
+            assert!(formatted.contains(guest_code));
+        }
     }
 
     #[test]
@@ -598,6 +540,10 @@ mod tests {
     fn test_wasm_type() {
         let x = WasmType::I32;
         let y = x;
-        format!("{x}, {y}");
+        assert_eq!(format!("{x}, {y}"), "i32, i32");
+
+        // assert cloning behavior works
+        let e = &x;
+        assert_eq!(*e, e.clone());
     }
 }

@@ -1,0 +1,32 @@
+Aspect Generic Apply
+
+=======
+
+(aspect
+  (advice apply (func    WasmFunction)
+                (args    Args)
+                (results Results)
+            >>>GUEST>>>global_function_count++;<<<GUEST<<<))
+
+=======
+
+(wasp_input
+  (wasp
+    (advice_definition
+      (advice_trap
+        (trap_signature
+          (trap_apply
+            (apply_hook_signature
+              (apply_gen
+                (apply_formal_wasm_f
+                  (identifier: "func"))
+                (apply_formal_argument
+                  (typed_argument
+                    (identifier: "args")
+                    (type_identifier: "Args")))
+                (apply_formal_result
+                  (typed_argument
+                    (identifier: "results")
+                    (type_identifier: "Results")))))
+            (GUEST_BLOCK: ">>>GUEST>>>global_function_count++;<<<GUEST<<<"))))))
+  (EOI: ""))

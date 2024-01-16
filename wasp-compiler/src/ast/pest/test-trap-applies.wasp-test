@@ -1,0 +1,132 @@
+Aspect Apply Specialised Intercession
+
+=======
+
+(aspect
+  (advice apply (func    WasmFunction)
+                (args    Args)
+                (results Results)
+          >>>GUEST>>>[🐇], [🔍], [🙆‍]<<<GUEST<<<)
+  (advice apply (func    WasmFunction)
+                (args    DynArgs)
+                (results DynResults)
+          >>>GUEST>>>[🐌], [🔍], [🙆‍]<<<GUEST<<<)
+  (advice apply (func    WasmFunction)
+                (args    MutDynArgs)
+                (results MutDynResults)
+          >>>GUEST>>>[🐌], [📝], [🙆‍]<<<GUEST<<<)
+  (advice apply (func    WasmFunction)
+                ((a I32) (b I32))
+                ((c F32) (d F32))
+          >>>GUEST>>>[🐇], [🔍], [🪖]<<<GUEST<<<)
+  (advice apply (func    WasmFunction)
+                (Mut (a I32) (b I32))
+                (Mut (c F32) (d F32))
+          >>>GUEST>>>[🐇], [📝], [🪖]<<<GUEST<<<))
+
+=======
+
+(wasp_input
+  (wasp
+    (advice_definition
+      (advice_trap
+        (trap_signature
+          (trap_apply
+            (apply_hook_signature
+              (apply_gen
+                (apply_formal_wasm_f
+                  (identifier: "func"))
+                (apply_formal_argument
+                  (typed_argument
+                    (identifier: "args")
+                    (type_identifier: "Args")))
+                (apply_formal_result
+                  (typed_argument
+                    (identifier: "results")
+                    (type_identifier: "Results")))))
+            (GUEST_BLOCK: ">>>GUEST>>>[🐇], [🔍], [🙆‍]<<<GUEST<<<")))))
+    (advice_definition
+      (advice_trap
+        (trap_signature
+          (trap_apply
+            (apply_hook_signature
+              (apply_gen
+                (apply_formal_wasm_f
+                  (identifier: "func"))
+                (apply_formal_argument
+                  (typed_argument
+                    (identifier: "args")
+                    (type_identifier: "DynArgs")))
+                (apply_formal_result
+                  (typed_argument
+                    (identifier: "results")
+                    (type_identifier: "DynResults")))))
+            (GUEST_BLOCK: ">>>GUEST>>>[🐌], [🔍], [🙆‍]<<<GUEST<<<")))))
+    (advice_definition
+      (advice_trap
+        (trap_signature
+          (trap_apply
+            (apply_hook_signature
+              (apply_gen
+                (apply_formal_wasm_f
+                  (identifier: "func"))
+                (apply_formal_argument
+                  (typed_argument
+                    (identifier: "args")
+                    (type_identifier: "MutDynArgs")))
+                (apply_formal_result
+                  (typed_argument
+                    (identifier: "results")
+                    (type_identifier: "MutDynResults")))))
+            (GUEST_BLOCK: ">>>GUEST>>>[🐌], [📝], [🙆‍]<<<GUEST<<<")))))
+    (advice_definition
+      (advice_trap
+        (trap_signature
+          (trap_apply
+            (apply_hook_signature
+              (apply_spe_intro
+                (apply_formal_wasm_f
+                  (identifier: "func"))
+                (apply_formal_argument
+                  (typed_argument
+                    (identifier: "a")
+                    (type_identifier: "I32")))
+                (apply_formal_argument
+                  (typed_argument
+                    (identifier: "b")
+                    (type_identifier: "I32")))
+                (apply_formal_result
+                  (typed_argument
+                    (identifier: "c")
+                    (type_identifier: "F32")))
+                (apply_formal_result
+                  (typed_argument
+                    (identifier: "d")
+                    (type_identifier: "F32")))))
+            (GUEST_BLOCK: ">>>GUEST>>>[🐇], [🔍], [🪖]<<<GUEST<<<")))))
+    (advice_definition
+      (advice_trap
+        (trap_signature
+          (trap_apply
+            (apply_hook_signature
+              (apply_spe_inter
+                (apply_formal_wasm_f
+                  (identifier: "func"))
+                (apply_formal_argument
+                  (typed_argument
+                    (identifier: "a")
+                    (type_identifier: "I32")))
+                (apply_formal_argument
+                  (typed_argument
+                    (identifier: "b")
+                    (type_identifier: "I32")))
+                (apply_formal_result
+                  (typed_argument
+                    (identifier: "c")
+                    (type_identifier: "F32")))
+                (apply_formal_result
+                  (typed_argument
+                    (identifier: "d")
+                    (type_identifier: "F32")))))
+            (GUEST_BLOCK: ">>>GUEST>>>[🐇], [📝], [🪖]<<<GUEST<<<"))))))
+  (EOI: ""))

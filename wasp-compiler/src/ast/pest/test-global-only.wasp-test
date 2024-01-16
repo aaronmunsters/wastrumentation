@@ -1,0 +1,15 @@
+Aspect Only Global Defined
+
+=======
+
+(aspect
+  (global >>>GUEST>>> console.log("Hello world!") <<<GUEST<<<))
+
+=======
+
+(wasp_input
+  (wasp
+    (advice_definition
+      (advice_global
+        (GUEST_BLOCK: ">>>GUEST>>> console.log(\"Hello world!\") <<<GUEST<<<"))))
+  (EOI: ""))

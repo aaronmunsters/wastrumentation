@@ -1,0 +1,11 @@
+Aspect Everything Empty
+
+=======
+
+(aspect)
+
+=======
+
+(wasp_input
+  (wasp: "(aspect)")
+  (EOI: ""))
