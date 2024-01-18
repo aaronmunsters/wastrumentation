@@ -198,7 +198,8 @@ mod tests {
 
     #[test]
     fn test_no_wasi() {
-        assert!(!CompilerOptions::no_wasi("/* source code here */".into()).enable_wasi_shim)
+        let conf = CompilerOptions::no_wasi("/* source code here */".into());
+        assert_eq!(!conf.enable_wasi_shim, true);
     }
 
     #[test]
