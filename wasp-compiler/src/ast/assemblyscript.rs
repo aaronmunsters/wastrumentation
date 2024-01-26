@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use indoc::indoc;
+
 use crate::{
     ast::wasp::{
         AdviceDefinition, ApplyGen, ApplyHookSignature, ApplySpe, TrapApply, TrapSignature,
@@ -59,16 +61,30 @@ impl TrapSignature {
 impl ApplyGen {
     fn to_assemblyscript(&self, body: &str) -> String {
         format!(
-            r#"
-            export function {GENERIC_APPLY_FUNCTION_NAME}(f_apply: i32, argc: i32, resc: i32, sigv: i32, sigtypv: i32): void {{
+            indoc! {r#"
+            export function {GENERIC_APPLY_FUNCTION_NAME}(
+                f_apply: i32,
+                argc: i32,
+                resc: i32,
+                sigv: i32,
+                sigtypv: i32,
+            ): void {{
                 let func = new WasmFunction(f_apply, sigv);
-                let argsResults = new MutDynArgsResults(argc, resc, sigv, sigtypv);
+                let argsResults = new MutDynArgsResults(
+                    argc,
+                    resc,
+                    sigv,
+                    sigtypv,
+                );
                 let args = new MutDynArgs(argsResults);
                 let results = new MutDynRess(argsResults);
                 {body}
-            }}
-            "#,
-        ).to_string()
+            }}"#
+            },
+            GENERIC_APPLY_FUNCTION_NAME = GENERIC_APPLY_FUNCTION_NAME,
+            body = body,
+        )
+        .to_string()
     }
 }
 
@@ -352,56 +368,72 @@ mod tests {
                 parameter_arguments: "args".to_string(),
                 parameter_results: "results".to_string(),
             }),
-            body: " console.log(args.get<i32>(0)); func.apply(); ".into(),
+            body: "console.log(args.get<i32>(0)); func.apply();".into(),
         });
 
-        assert_eq!(
-            ast.to_assemblyscript(),
-            r#"
-            export function generic_apply(f_apply: i32, argc: i32, resc: i32, sigv: i32, sigtypv: i32): void {
+        let expected = indoc! { r#"
+            export function generic_apply(
+                f_apply: i32,
+                argc: i32,
+                resc: i32,
+                sigv: i32,
+                sigtypv: i32,
+            ): void {
                 let func = new WasmFunction(f_apply, sigv);
-                let argsResults = new MutDynArgsResults(argc, resc, sigv, sigtypv);
+                let argsResults = new MutDynArgsResults(
+                    argc,
+                    resc,
+                    sigv,
+                    sigtypv,
+                );
                 let args = new MutDynArgs(argsResults);
                 let results = new MutDynRess(argsResults);
-                 console.log(args.get<i32>(0)); func.apply(); 
-            }
-            "#
-        )
+                console.log(args.get<i32>(0)); func.apply();
+            }"# };
+
+        assert_eq!(ast.to_assemblyscript(), expected);
     }
 
     #[test]
     fn from_input_program() {
-        let input_program = r#"
-        (aspect
-            (global >>>GUEST>>>
-                console.log("Hello world!");
-            <<<GUEST<<<)
-        
-            (advice apply (func    WasmFunction)
-                          (args    MutDynArgs)
-                          (results MutDynResults) >>>GUEST>>>
-                 console.log(args.get<i32>(0));
-                 func.apply();
-            <<<GUEST<<<)
-        )
-        "#;
-        let assemblyscript_program = AssemblyScriptProgram::try_from(input_program).unwrap();
-        let mut expected_outcome = String::from(STD_INSTRUMENTATION_LIB);
-        expected_outcome.push_str(
-            r#"
-                console.log("Hello world!");
+        let input_program = indoc! { r#"
+            (aspect
+                (global >>>GUEST>>>console.log("Hello world!");
+                <<<GUEST<<<)
             
-            export function generic_apply(f_apply: i32, argc: i32, resc: i32, sigv: i32, sigtypv: i32): void {
+                (advice apply (func    WasmFunction)
+                            (args    MutDynArgs)
+                            (results MutDynResults) >>>GUEST>>>
+                    console.log(args.get<i32>(0));
+                    func.apply();
+                <<<GUEST<<<))"# };
+        let assemblyscript_program = AssemblyScriptProgram::try_from(input_program).unwrap();
+        let expected_outcome = format!(
+            "{}{}",
+            STD_INSTRUMENTATION_LIB,
+            indoc! { r#"
+            console.log("Hello world!");
+                export function generic_apply(
+                f_apply: i32,
+                argc: i32,
+                resc: i32,
+                sigv: i32,
+                sigtypv: i32,
+            ): void {
                 let func = new WasmFunction(f_apply, sigv);
-                let argsResults = new MutDynArgsResults(argc, resc, sigv, sigtypv);
+                let argsResults = new MutDynArgsResults(
+                    argc,
+                    resc,
+                    sigv,
+                    sigtypv,
+                );
                 let args = new MutDynArgs(argsResults);
                 let results = new MutDynRess(argsResults);
                 
-                 console.log(args.get<i32>(0));
-                 func.apply();
-            
-            }
-            "#
+                    console.log(args.get<i32>(0));
+                    func.apply();
+                
+            }"# }
         );
 
         assert_eq!(assemblyscript_program.content, expected_outcome);

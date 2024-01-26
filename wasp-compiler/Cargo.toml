@@ -12,6 +12,7 @@ num-integer = "0.1.45"
 pest = "2.7.5"
 pest-ast = "0.3.4"
 pest_derive = "2.7.5"
+indoc = "2"
 
 [dev-dependencies]
 pest-test = "0.1.6"
