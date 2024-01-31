@@ -1,4 +1,4 @@
-use instrument::InstrumentationResult;
+use crate::instrument::InstrumentationResult;
 use wasm_merge::{InputModule, MergeOptions};
 use wasp_compiler::{
     ast::assemblyscript::AssemblyScriptProgram, compile as wasp_compile,
@@ -10,6 +10,7 @@ use wastrumentation_instr_lib::std_lib_compile::{CompilerOptions, WasmModule};
 use anyhow::Result;
 
 mod instrument;
+pub mod parse_nesting;
 mod stack_library;
 
 pub fn wastrument(input_program: &WasmModule, wasp_source: &str) -> Result<WasmModule> {

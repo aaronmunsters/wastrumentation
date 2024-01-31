@@ -5,9 +5,13 @@
 // store_arg_`arg-types`_args_`ret-types`_arg_`n` -> `n-type`
 //
 
+use crate::instrument::function_application::INSTRUMENTATION_STACK_MODULE;
+
 use self::stack_library_generator::*;
-use crate::instrument::INSTRUMENTATION_STACK_MODULE;
-use std::{collections::HashMap, fmt::Display};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt::Display,
+};
 use wasabi_wasm::{Function, FunctionType, Idx, Module, RefType, ValType};
 
 use wastrumentation_instr_lib::{
@@ -25,7 +29,7 @@ pub struct StackLibrary {
 }
 
 impl StackLibrary {
-    pub fn from_module(module: &mut Module, functions: &[Idx<Function>]) -> Self {
+    pub fn from_module(module: &mut Module, functions: &HashSet<Idx<Function>>) -> Self {
         let signature_import_links: HashMap<FunctionType, SignatureStackLibrary> =
             functions.iter().fold(HashMap::new(), |mut acc, index| {
                 let function_type = module.function(*index).type_;
