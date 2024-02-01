@@ -1,4 +1,8 @@
 use crate::instrument::InstrumentationResult;
+use instrument::function_application::{
+    INSTRUMENTATION_ANALYSIS_MODULE, INSTRUMENTATION_INSTRUMENTED_MODULE,
+    INSTRUMENTATION_STACK_MODULE,
+};
 use wasm_merge::{InputModule, MergeOptions};
 use wasp_compiler::{
     ast::assemblyscript::AssemblyScriptProgram, compile as wasp_compile,
@@ -58,19 +62,18 @@ fn merge(
         no_validate: true,
         rename_export_conflicts: true,
         enable_multi_memory: true,
-        // FIXME: get rid of magic constants in this vec
         input_modules: vec![
             InputModule {
                 module: compiled_instrumentation_lib,
-                namespace: "wastrumentation_stack".into(),
+                namespace: INSTRUMENTATION_STACK_MODULE.into(),
             },
             InputModule {
                 module: compiled_analysis,
-                namespace: "WASP_ANALYSIS".into(),
+                namespace: INSTRUMENTATION_ANALYSIS_MODULE.into(),
             },
             InputModule {
                 module: instrumented_input,
-                namespace: "instrumented_input".into(),
+                namespace: INSTRUMENTATION_INSTRUMENTED_MODULE.into(),
             },
         ],
     };

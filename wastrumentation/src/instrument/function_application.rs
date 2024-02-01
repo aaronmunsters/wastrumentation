@@ -23,6 +23,7 @@ use super::FunctionTypeConvertible;
 
 pub const INSTRUMENTATION_STACK_MODULE: &str = "wastrumentation_stack";
 pub const INSTRUMENTATION_ANALYSIS_MODULE: &str = "WASP_ANALYSIS";
+pub const INSTRUMENTATION_INSTRUMENTED_MODULE: &str = "instrumented_input";
 
 pub fn instrument(
     module: &mut Module,
