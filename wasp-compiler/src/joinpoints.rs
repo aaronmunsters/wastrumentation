@@ -183,6 +183,24 @@ mod tests {
     }
 
     #[test]
+    fn test_if_then_else() {
+        assert_eq!(
+            get_joinpoints(
+                r#"
+                (aspect
+                    (advice if_then_else (cond Condition)
+                        >>>GUEST>>>🟢<<<GUEST<<<))
+                "#,
+            ),
+            JoinPoints {
+                generic: false,
+                specialized: HashSet::new(),
+                if_then_else: true,
+            }
+        )
+    }
+
+    #[test]
     fn test_multiple() {
         assert_eq!(
             get_joinpoints(
@@ -200,6 +218,8 @@ mod tests {
                                   (Mut (a I32) (b F32))
                                   (Mut (c I64) (d F64))
                         >>>GUEST>>>🔵<<<GUEST<<<)
+                    (advice if_then_else (cond Condition)
+                        >>>GUEST>>>🟣<<<GUEST<<<)
                 )
                 "#,
             ),
@@ -218,7 +238,7 @@ mod tests {
                 .iter()
                 .cloned()
                 .collect(),
-                if_then_else: false,
+                if_then_else: true,
             }
         )
     }

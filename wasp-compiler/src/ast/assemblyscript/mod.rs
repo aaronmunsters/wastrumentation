@@ -95,7 +95,8 @@ impl ApplyGen {
                 let args = new MutDynArgs(argsResults);
                 let results = new MutDynRess(argsResults);
                 {body}
-            }}"#
+            }}
+            "#
             },
             GENERIC_APPLY_FUNCTION_NAME = GENERIC_APPLY_FUNCTION_NAME,
             body = body,
@@ -295,7 +296,8 @@ impl TrapIfThenElse {
                 {body}
                 // Fallback, if no return value
                 return path_kontinuation;
-            }}"#
+            }}
+            "#
             },
             SPECIALIZED_IF_THEN_ELSE_FUNCTION_NAME = SPECIALIZED_IF_THEN_ELSE_FUNCTION_NAME,
             body = body,
@@ -434,7 +436,31 @@ mod tests {
                 let args = new MutDynArgs(argsResults);
                 let results = new MutDynRess(argsResults);
                 console.log(args.get<i32>(0)); func.apply();
-            }"# };
+            }
+            "# };
+
+        assert_eq!(ast.to_assemblyscript(), expected);
+    }
+
+    #[test]
+    fn generate_if_then_else() {
+        let ast: TrapSignature = TrapSignature::TrapIfThenElse(TrapIfThenElse {
+            if_then_else_hook_signature: IfThenElseHookSignature {
+                parameter_condition: "cond".into(),
+            },
+            body: "console.log('ite');".into(),
+        });
+
+        let expected = indoc! { r#"
+        export function specialized_if_then_else_k(
+            path_kontinuation: i32,
+        ): i32 {
+            let cond = new ParameterCondition(path_kontinuation);
+            console.log('ite');
+            // Fallback, if no return value
+            return path_kontinuation;
+        }
+        "# };
 
         assert_eq!(ast.to_assemblyscript(), expected);
     }
@@ -451,11 +477,15 @@ mod tests {
                             (results MutDynResults) >>>GUEST>>>
                     console.log(args.get<i32>(0));
                     func.apply();
+                <<<GUEST<<<)
+                (advice if_then_else (cond Condition) >>>GUEST>>>
+                    console.log('ite');
                 <<<GUEST<<<))"# };
         let assemblyscript_program = AssemblyScriptProgram::try_from(input_program).unwrap();
         let expected_outcome = format!(
-            "{}{}",
+            "{}{}{}",
             STD_ANALYSIS_LIB_GENRIC_APPLY,
+            STD_ANALYSIS_LIB_IF_THEN_ELSE,
             indoc! { r#"
             console.log("Hello world!");
                 export function generic_apply(
@@ -478,7 +508,18 @@ mod tests {
                     console.log(args.get<i32>(0));
                     func.apply();
                 
-            }"# }
+            }
+            export function specialized_if_then_else_k(
+                path_kontinuation: i32,
+            ): i32 {
+                let cond = new ParameterCondition(path_kontinuation);
+                
+                    console.log('ite');
+                
+                // Fallback, if no return value
+                return path_kontinuation;
+            }
+            "# }
         );
 
         assert_eq!(assemblyscript_program.content, expected_outcome);

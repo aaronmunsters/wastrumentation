@@ -166,6 +166,7 @@ mod tests {
         tester.evaluate_strict("test-trap-apply-spe-inter").unwrap();
         tester.evaluate_strict("test-trap-apply-spe-intro").unwrap();
         tester.evaluate_strict("test-trap-applies").unwrap();
+        tester.evaluate_strict("test-trap-if-then-else").unwrap();
     }
 
     #[test]
@@ -192,7 +193,8 @@ mod tests {
                     (Mut (a I32) (b F32))
                     (Mut (c I64) (d F64))
           >>>GUEST>>>🔵<<<GUEST<<<)
-      (global >>>GUEST>>>🟣<<<GUEST<<<))"#;
+      (global >>>GUEST>>>🟣<<<GUEST<<<)
+      (advice if_then_else (cond Condition) >>>GUEST>>>[🧂]<<<GUEST<<<))"#;
         let mut parse_tree = WaspParser::parse(Rule::wasp_input, program_source).unwrap();
         let wasp_input = WaspInput::from_pest(&mut parse_tree).unwrap();
         let formatted = format!("{wasp_input:?}");

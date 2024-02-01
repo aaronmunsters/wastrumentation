@@ -1,0 +1,20 @@
+Aspect If Then Else
+
+=======
+
+(aspect
+  (advice if_then_else (cond Condition) >>>GUEST>>>[🧂]<<<GUEST<<<))
+
+=======
+
+(wasp_input
+  (wasp
+    (advice_definition
+      (advice_trap
+        (trap_signature
+          (trap_if_then_else
+            (if_then_else_hook_signature
+              (if_then_else_formal_condition
+                (identifier: "cond")))
+            (GUEST_BLOCK: ">>>GUEST>>>[🧂]<<<GUEST<<<"))))))
+  (EOI: ""))

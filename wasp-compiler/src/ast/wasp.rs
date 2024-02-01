@@ -428,7 +428,8 @@ mod tests {
                           (Mut (a I32) (b F32))
                           (Mut (c I64) (d F64))
                 >>>GUEST>>>🔵<<<GUEST<<<)
-            (global >>>GUEST>>>🟣<<<GUEST<<<))"#;
+            (global >>>GUEST>>>🟣<<<GUEST<<<)
+            (advice if_then_else (cond Condition) >>>GUEST>>>🧂<<<GUEST<<<))"#;
 
     fn program_to_wasp_root(program: &str) -> anyhow::Result<WaspRoot> {
         let mut pest_parse = WaspParser::parse(Rule::wasp_input, program).unwrap();
@@ -524,6 +525,12 @@ mod tests {
                     body: "🔵".into()
                 })),
                 AdviceDefinition::AdviceGlobal("🟣".into()),
+                AdviceDefinition::AdviceTrap(TrapSignature::TrapIfThenElse(TrapIfThenElse {
+                    if_then_else_hook_signature: IfThenElseHookSignature {
+                        parameter_condition: "cond".into()
+                    },
+                    body: "🧂".into()
+                }))
             ])
         )
     }
@@ -532,7 +539,7 @@ mod tests {
     fn test_debug() {
         let wasp_root = program_to_wasp_root(CORRECT_PROGRAM).unwrap();
         let formatted = format!("{wasp_root:?}");
-        for guest_code in ["🔴", "🟠", "🟡", "🟢", "🔵", "🟣"] {
+        for guest_code in ["🔴", "🟠", "🟡", "🟢", "🔵", "🟣", "🧂"] {
             assert!(formatted.contains(guest_code));
         }
     }
