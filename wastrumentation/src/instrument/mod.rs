@@ -82,11 +82,11 @@ impl From<Vec<WasmType>> for ValTypeVec {
 }
 
 trait FunctionTypeConvertible {
-    fn into_function_type(&self) -> FunctionType;
+    fn as_function_type(&self) -> FunctionType;
 }
 
 impl FunctionTypeConvertible for WasmExport {
-    fn into_function_type(&self) -> FunctionType {
+    fn as_function_type(&self) -> FunctionType {
         let WasmExport { args, results, .. } = self;
         let args: &[ValType] = &ValTypeVec::from(args.clone()).0;
         let results: &[ValType] = &ValTypeVec::from(results.clone()).0;
@@ -95,7 +95,7 @@ impl FunctionTypeConvertible for WasmExport {
 }
 
 impl FunctionTypeConvertible for WasmImport {
-    fn into_function_type(&self) -> FunctionType {
+    fn as_function_type(&self) -> FunctionType {
         let WasmImport { args, results, .. } = self;
         let args: &[ValType] = &ValTypeVec::from(args.clone()).0;
         let results: &[ValType] = &ValTypeVec::from(results.clone()).0;

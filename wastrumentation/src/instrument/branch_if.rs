@@ -29,7 +29,7 @@ pub fn instrument(
     if_then_else_trap_export: WasmExport,
 ) -> Result<(), BranchTransformationError> {
     let if_k_f_idx = module.add_function_import(
-        if_then_else_trap_export.into_function_type(),
+        if_then_else_trap_export.as_function_type(),
         INSTRUMENTATION_ANALYSIS_MODULE.to_string(),
         if_then_else_trap_export.name,
     );
@@ -55,7 +55,7 @@ pub fn instrument_bodies(
 
         let high_level_body: HighLevelBody = LowLevelBody(code.body.clone()).try_into()?;
         let high_level_body_transformed =
-            high_level_body.transform(&if_k_f_idx, &store_if_continuation);
+            high_level_body.transform(if_k_f_idx, &store_if_continuation);
         let LowLevelBody(transformed_low_level_body) = high_level_body_transformed.into();
 
         target_function.code = ImportOrPresent::Present(Code {
@@ -68,7 +68,7 @@ pub fn instrument_bodies(
 
 const TRANSFORM_COST_PER_INSTR: usize = 14; // Amount of constant instructions in transformation
 
-fn cost_for(body: &Vec<Instr>) -> usize {
+fn cost_for(body: &[Instr]) -> usize {
     body.iter()
         .map(|instr| -> usize {
             match instr {
@@ -100,7 +100,7 @@ impl HighLevelBody {
         if_k_f_idx: &Idx<Function>,
         store_if_continuation: &Idx<Local>,
     ) -> Vec<Instr> {
-        let mut result = Vec::with_capacity(cost_for(&body));
+        let mut result = Vec::with_capacity(cost_for(body));
         for instr in body {
             match instr {
                 Instr::If(type_, then, Some(else_)) => {
@@ -321,7 +321,7 @@ mod tests {
         let assert_outcome = |module: &wasabi_wasm::Module, assertions| {
             let engine = Engine::default();
             let mut store = Store::new(&engine, ());
-            let module = Module::new(&engine, &module.to_bytes().unwrap()).unwrap();
+            let module = Module::new(&engine, module.to_bytes().unwrap()).unwrap();
             let instance = Instance::new(&mut store, &module, &[]).unwrap();
             let main = instance
                 .get_typed_func::<i32, i32>(&mut store, "main")

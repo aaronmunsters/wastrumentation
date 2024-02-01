@@ -16,9 +16,9 @@ fn test_parse_simple() {
         vec![
             // Body begin
             If(FunctionType::empty()),
-            Const(I32(0.into())),
+            Const(I32(0)),
             Else,
-            Const(I32(1.into())),
+            Const(I32(1)),
             End,
             End, // Body end
         ]

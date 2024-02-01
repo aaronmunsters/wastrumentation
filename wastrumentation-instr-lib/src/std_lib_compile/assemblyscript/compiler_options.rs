@@ -199,7 +199,19 @@ mod tests {
     #[test]
     fn test_no_wasi() {
         let conf = CompilerOptions::no_wasi("/* source code here */".into());
-        assert_eq!(!conf.enable_wasi_shim, true);
+        assert_eq!(
+            conf.to_npx_command("source_path", "output_path"),
+            concat!(
+                "node ./node_modules/assemblyscript/bin/asc.js source_path ",
+                "-o output_path",
+                " -O3 ",
+                "--disable bulk-memory ",
+                "--disable sign-extension ",
+                "--disable nontrapping-f2i ",
+                "--runtime minimal ",
+                "--noExportMemory ",
+            )
+        );
     }
 
     #[test]

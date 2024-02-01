@@ -33,7 +33,7 @@ pub fn instrument(
 ) -> AssemblyScriptProgram {
     // 0. GENERATE GENERIC APPLY
     let generic_apply_index = module.add_function_import(
-        wasp_exported_generic_apply_trap.into_function_type(),
+        wasp_exported_generic_apply_trap.as_function_type(),
         INSTRUMENTATION_ANALYSIS_MODULE.into(),
         wasp_exported_generic_apply_trap.name,
     );
@@ -42,7 +42,7 @@ pub fn instrument(
     let StackLibrary {
         assemblyscript_code,
         signature_import_links,
-    } = StackLibrary::from_module(module, &pre_instrumentation_function_indices);
+    } = StackLibrary::from_module(module, pre_instrumentation_function_indices);
 
     // 2. Generate function instrumentation functionality
     let apply_table_index = module.tables.len();
@@ -180,7 +180,7 @@ pub fn instrument(
 
     // 2. Generate 'call_base'
     let call_base_idx = module.add_function(
-        wasp_imported_generic_apply_base.into_function_type(),
+        wasp_imported_generic_apply_base.as_function_type(),
         vec![],
         vec![
             Local(LocalOp::Get, 1_usize.into()), // f_apply
