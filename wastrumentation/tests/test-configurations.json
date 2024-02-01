@@ -205,5 +205,24 @@
             },
             "post_execution_assertions": []
         }]
+    },{
+        "input_program": {
+            "path":"./input-programs/wat/branch-2-ifs.wat",
+            "type": "Wat"
+        },
+        "uninstrumented_assertion": {
+            "input_entry_point":"main",
+            "arguments":[],
+            "results":[{"I32":4401001}],
+            "post_execution_assertions": []
+        },
+        "instrumented_assertions": [{
+            "analysis":"./analysis/if-then-else-alter.wasp",
+            "wasi_enabled": false,
+            "input_program_assertion": {
+                "DifferentReturnValue": [{"I32": 4400110}]
+            },
+            "post_execution_assertions": []
+        }]
     }
 ]
