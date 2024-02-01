@@ -16,11 +16,10 @@ mod stack_library;
 pub fn wastrument(input_program: &WasmModule, wasp_source: &str) -> Result<WasmModule> {
     // 1. Compile wasp_source
     let WaspCompilationResult {
-        assemblyscript_program,
+        analysis_source_code,
         wasp_interface,
         ..
     } = wasp_compile(wasp_source)?;
-    let analysis_source_code = assemblyscript_program;
     // 2. Instrument the input program
     let (instrumented_input, instrumentation_lib) = instrument(input_program, wasp_interface)?;
     // 3. Compile the analysis & instrumentation lib

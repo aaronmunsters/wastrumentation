@@ -1,0 +1,11 @@
+(aspect
+    (advice if_then_else (condition Condition) >>>GUEST>>>
+        // THEN => ELSE
+        if (condition.is_then) {
+            return condition.continue_else;
+        };
+        // ELSE => THEN
+        if (condition.is_else) {
+            return condition.continue_then;
+        };
+        <<<GUEST<<<))

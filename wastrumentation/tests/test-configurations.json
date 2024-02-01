@@ -165,5 +165,45 @@
             },
             "post_execution_assertions": []
         }]
+    },
+    {
+        "input_program": {
+            "path":"./input-programs/wat/branch-simple.wat",
+            "type": "Wat"
+        },
+        "uninstrumented_assertion": {
+            "input_entry_point":"main",
+            "arguments":[{"I32":0}],
+            "results":[{"I32":1}],
+            "post_execution_assertions": []
+        },
+        "instrumented_assertions": [{
+            "analysis":"./analysis/if-then-else-alter.wasp",
+            "wasi_enabled": false,
+            "input_program_assertion": {
+                "DifferentReturnValue": [{"I32": 2}]
+            },
+            "post_execution_assertions": []
+        }]
+    },
+    {
+        "input_program": {
+            "path":"./input-programs/wat/branch-simple.wat",
+            "type": "Wat"
+        },
+        "uninstrumented_assertion": {
+            "input_entry_point":"main",
+            "arguments":[{"I32":1}],
+            "results":[{"I32":2}],
+            "post_execution_assertions": []
+        },
+        "instrumented_assertions": [{
+            "analysis":"./analysis/if-then-else-alter.wasp",
+            "wasi_enabled": false,
+            "input_program_assertion": {
+                "DifferentReturnValue": [{"I32": 1}]
+            },
+            "post_execution_assertions": []
+        }]
     }
 ]

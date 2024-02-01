@@ -22,7 +22,8 @@ type_identifier = @{ ASCII_ALPHA_UPPER ~ ASCII_ALPHANUMERIC+ }
 
 // Advice traps
 trap_signature = {
-    trap_apply /* | more | trap | targets | here | ... */
+    trap_apply
+  | trap_if_then_else /* | more | trap | targets | here | ... */
 }
 
 // TRAP APPLY
@@ -40,3 +41,10 @@ apply_formal_wasm_f   = { "(" ~ identifier ~ "WasmFunction" ~ ")" }
 apply_formal_argument = { typed_argument }
 apply_formal_result   = { typed_argument }
 typed_argument        = { "(" ~ identifier ~ type_identifier ~ ")" }
+
+// TRAP IF_THEN_ELSE
+trap_if_then_else           = { "if_then_else" ~ if_then_else_hook_signature ~ GUEST_BLOCK }
+if_then_else_hook_signature = { if_then_else_formal_condition }
+
+// [ 🐇 ], [ 📝 ], [ 🪖 ]
+if_then_else_formal_condition = { "(" ~ identifier ~ "Condition" ~ ")" }

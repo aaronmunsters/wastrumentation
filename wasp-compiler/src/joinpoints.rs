@@ -8,6 +8,7 @@ use crate::ast::wasp::{
 pub struct JoinPoints {
     pub generic: bool,
     pub specialized: HashSet<SpecialisedJoinPoint>,
+    pub if_then_else: bool,
 }
 
 #[derive(Debug, Eq, PartialEq, Hash, Clone)]
@@ -23,6 +24,7 @@ impl JoinPoints {
                 self.specialized.insert(specialized_join_point);
             }
             JoinPoint::Generic => self.generic = true,
+            JoinPoint::IfThenElse => self.if_then_else = true,
         };
     }
 }
@@ -30,6 +32,7 @@ impl JoinPoints {
 enum JoinPoint {
     Generic,
     Specialised(SpecialisedJoinPoint),
+    IfThenElse,
 }
 
 impl WaspRoot {
@@ -52,6 +55,7 @@ impl TrapSignature {
     fn join_point(&self) -> JoinPoint {
         match self {
             TrapSignature::TrapApply(trap_apply) => trap_apply.apply_hook_signature.join_point(),
+            TrapSignature::TrapIfThenElse(_) => JoinPoint::IfThenElse,
         }
     }
 }
@@ -126,7 +130,8 @@ mod tests {
                     result_types: [F64], \
                     argument_types: [I32, F32, I64] \
                 }\
-            } \
+            }, \
+            if_then_else: false \
         }"
         )
     }
@@ -151,7 +156,8 @@ mod tests {
                 }]
                 .iter()
                 .cloned()
-                .collect()
+                .collect(),
+                if_then_else: false,
             }
         )
     }
@@ -170,7 +176,8 @@ mod tests {
             ),
             JoinPoints {
                 generic: true,
-                specialized: HashSet::new()
+                specialized: HashSet::new(),
+                if_then_else: false,
             }
         )
     }
@@ -210,7 +217,8 @@ mod tests {
                 ]
                 .iter()
                 .cloned()
-                .collect()
+                .collect(),
+                if_then_else: false,
             }
         )
     }

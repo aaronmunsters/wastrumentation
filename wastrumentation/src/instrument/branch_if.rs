@@ -17,33 +17,48 @@ use crate::parse_nesting::{HighLevelBody, Instr, LowLevelBody};
 use wasabi_wasm::{
     BinaryOp, Code, Function, Idx, ImportOrPresent, Local, LocalOp, Module, ValType,
 };
+use wasp_compiler::wasp_interface::WasmExport;
+
+use super::{function_application::INSTRUMENTATION_ANALYSIS_MODULE, FunctionTypeConvertible};
 
 type BranchTransformationError = &'static str;
 
-#[allow(unused)] // TODO: put to use
 pub fn instrument(
+    module: &mut Module,
+    target_functions: &HashSet<Idx<Function>>,
+    if_then_else_trap_export: WasmExport,
+) -> Result<(), BranchTransformationError> {
+    let if_k_f_idx = module.add_function_import(
+        if_then_else_trap_export.into_function_type(),
+        INSTRUMENTATION_ANALYSIS_MODULE.to_string(),
+        if_then_else_trap_export.name,
+    );
+
+    instrument_bodies(module, target_functions, &if_k_f_idx)
+}
+
+pub fn instrument_bodies(
     module: &mut Module,
     target_functions: &HashSet<Idx<Function>>,
     if_k_f_idx: &Idx<Function>,
 ) -> Result<(), BranchTransformationError> {
-    // This should really be the functions of interest!
-    for (idx, function) in module.functions_mut() {
-        if !target_functions.contains(&idx) {
-            continue;
-        }
-        if function.code().is_none() {
+    for target_function_idx in target_functions.iter() {
+        let target_function = module.function_mut(*target_function_idx);
+        if target_function.code().is_none() {
             continue;
         };
 
-        let store_if_continuation = function.add_fresh_local(ValType::I32);
-        let code = function.code_mut().expect("Just checked for presence");
+        let store_if_continuation = target_function.add_fresh_local(ValType::I32);
+        let code = target_function
+            .code_mut()
+            .expect("Just checked for presence");
 
         let high_level_body: HighLevelBody = LowLevelBody(code.body.clone()).try_into()?;
         let high_level_body_transformed =
-            high_level_body.transform(if_k_f_idx, &store_if_continuation);
+            high_level_body.transform(&if_k_f_idx, &store_if_continuation);
         let LowLevelBody(transformed_low_level_body) = high_level_body_transformed.into();
 
-        function.code = ImportOrPresent::Present(Code {
+        target_function.code = ImportOrPresent::Present(Code {
             body: transformed_low_level_body,
             locals: code.locals.clone(),
         });
@@ -122,12 +137,12 @@ impl HighLevelBody {
                                         Instr::Local(LocalOp::Get, *store_if_continuation),
                                         // STACK: [type_in, kontinuation]
                                         Instr::Const(wasabi_wasm::Val::I32(CSTM_KONTN)),
-                                        // STACK: [type_in, kontinuation, ELSE_KONTN]
+                                        // STACK: [type_in, kontinuation, CSTM_KONTN]
                                         Instr::Binary(wasabi_wasm::BinaryOp::I32Eq),
                                         // STACK: [type_in, condition]
                                         Instr::if_then_else(
                                             *type_,
-                                            vec![Instr::Unreachable], // vec![Instr::Call(if_k_f_idx)], // TODO:
+                                            vec![Instr::Unreachable], // vec![Instr::Call(cstm_kontn)], // TODO:
                                             vec![Instr::Unreachable],
                                         ),
                                     ],
@@ -136,39 +151,6 @@ impl HighLevelBody {
                         ),
                         // STACK: [type_out]
                     ]);
-                }
-                Instr::If(type_, then, None) => {
-                    result.extend_from_slice(&[
-                        // STACK: [type_in, condition]
-                        Instr::Call(*if_k_f_idx),
-                        // STACK: [type_in, kontinuation]
-                        Instr::Local(LocalOp::Tee, *store_if_continuation),
-                        // STACK: [type_in, kontinuation], local.store_if_continuation = kontinuation
-                        Instr::Const(wasabi_wasm::Val::I32(THEN_KONTN)),
-                        // STACK: [type_in, kontinuation, THEN_KONTN]
-                        Instr::Binary(wasabi_wasm::BinaryOp::I32Eq),
-                        // STACK: [type_in, condition]
-                        Instr::if_then_else(
-                            *type_,
-                            Self::transform_inner(then, if_k_f_idx, store_if_continuation),
-                            vec![
-                                // STACK: [type_in]
-                                Instr::Local(LocalOp::Get, *store_if_continuation),
-                                // STACK: [type_in, kontinuation]
-                                Instr::Const(wasabi_wasm::Val::I32(ELSE_KONTN)),
-                                // STACK: [type_in, kontinuation, ELSE_KONTN]
-                                Instr::Binary(wasabi_wasm::BinaryOp::I32Eq),
-                                // STACK: [type_in, condition]
-                                Instr::if_then_else(
-                                    *type_,
-                                    vec![Instr::Unreachable],
-                                    vec![Instr::Unreachable],
-                                ),
-                            ],
-                        ),
-                        // STACK: [type_out]
-                    ]);
-                    todo!("test this")
                 }
                 _ => result.push(instr.clone()),
             }
@@ -184,7 +166,7 @@ mod tests {
     use wasabi_wasm::{FunctionType, ValType};
     use wasmtime::{Engine, Instance, Module, Store};
 
-    use super::{instrument, *};
+    use super::*;
 
     #[derive(Debug)]
     struct BranchExpectation {
@@ -359,7 +341,7 @@ mod tests {
             vec![],
             instrumentation_body,
         );
-        instrument(
+        instrument_bodies(
             &mut wasm_module,
             &HashSet::from_iter(vec![0_usize.into()]),
             &if_k_f_idx,

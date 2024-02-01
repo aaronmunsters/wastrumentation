@@ -13,7 +13,7 @@ pub mod wasp_interface;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct CompilationResult {
-    pub assemblyscript_program: AssemblyScriptProgram,
+    pub analysis_source_code: AssemblyScriptProgram,
     pub join_points: JoinPoints,
     pub wasp_interface: WaspInterface,
 }
@@ -27,7 +27,7 @@ pub fn compile(wasp: &str) -> anyhow::Result<CompilationResult> {
     let assemblyscript_program = AssemblyScriptProgram::from(wasp_root);
 
     Ok(CompilationResult {
-        assemblyscript_program,
+        analysis_source_code: assemblyscript_program,
         join_points,
         wasp_interface,
     })
@@ -120,10 +120,11 @@ mod tests {
         assert_eq!(
             compile("(aspect)").unwrap(),
             CompilationResult {
-                assemblyscript_program: AssemblyScriptProgram { content: "".into() },
+                analysis_source_code: AssemblyScriptProgram { content: "".into() },
                 join_points: JoinPoints {
                     generic: false,
-                    specialized: [].into()
+                    specialized: [].into(),
+                    if_then_else: false,
                 },
                 wasp_interface: WaspInterface::default()
             }
@@ -156,24 +157,26 @@ mod tests {
     #[test]
     fn test_debug() {
         let compilation_result = CompilationResult {
-            assemblyscript_program: AssemblyScriptProgram { content: "".into() },
+            analysis_source_code: AssemblyScriptProgram { content: "".into() },
             join_points: JoinPoints {
                 generic: false,
                 specialized: [].into(),
+                if_then_else: false,
             },
             wasp_interface: WaspInterface::default(),
         };
         assert_eq!(
             format!("{compilation_result:?}"),
             "CompilationResult { \
-                assemblyscript_program: AssemblyScriptProgram { \
+                analysis_source_code: AssemblyScriptProgram { \
                     content: \"\" \
                 }, \
                 join_points: JoinPoints { \
                     generic: false, \
-                    specialized: {} \
+                    specialized: {}, \
+                    if_then_else: false \
                 }, \
-                wasp_interface: WaspInterface { inputs: [], outputs: [], generic_interface: None } \
+                wasp_interface: WaspInterface { inputs: [], outputs: [], generic_interface: None, if_then_else_trap: None } \
             }"
         );
     }

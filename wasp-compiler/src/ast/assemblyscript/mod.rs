@@ -4,15 +4,19 @@ use indoc::indoc;
 
 use crate::{
     ast::wasp::{
-        AdviceDefinition, ApplyGen, ApplyHookSignature, ApplySpe, TrapApply, TrapSignature,
-        WasmParameter, WasmType, WaspRoot,
+        AdviceDefinition, ApplyGen, ApplyHookSignature, ApplySpe, IfThenElseHookSignature,
+        TrapApply, TrapIfThenElse, TrapSignature, WasmParameter, WasmType, WaspRoot,
     },
-    wasp_interface::{WasmExport, WasmImport, GENERIC_APPLY_FUNCTION_NAME, TRANSFORMED_INPUT_NS},
+    wasp_interface::{
+        WasmExport, WasmImport, GENERIC_APPLY_FUNCTION_NAME,
+        SPECIALIZED_IF_THEN_ELSE_FUNCTION_NAME, TRANSFORMED_INPUT_NS,
+    },
 };
 
 use crate::util::Alphabetical;
 
-const STD_INSTRUMENTATION_LIB: &str = include_str!("../std_instrumentation_lib.ts");
+const STD_ANALYSIS_LIB_GENRIC_APPLY: &str = include_str!("std_analysis_lib_gen_apply.ts");
+const STD_ANALYSIS_LIB_IF_THEN_ELSE: &str = include_str!("std_analysis_lib_if_then_else.ts");
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct AssemblyScriptProgram {
@@ -21,17 +25,23 @@ pub struct AssemblyScriptProgram {
 
 impl From<WaspRoot> for AssemblyScriptProgram {
     fn from(wasp_root: WaspRoot) -> Self {
-        let mut program_content = if wasp_root.has_generic_apply() {
-            String::from(STD_INSTRUMENTATION_LIB)
-        } else {
-            String::new()
+        let mut program_analysis_content = String::new();
+
+        if wasp_root.instruments_generic_apply() {
+            program_analysis_content.push_str(STD_ANALYSIS_LIB_GENRIC_APPLY);
         };
+
+        if wasp_root.instruments_if_then_else() {
+            program_analysis_content.push_str(STD_ANALYSIS_LIB_IF_THEN_ELSE);
+        };
+
         let WaspRoot(advice_definitions) = wasp_root;
         for advice_definition in advice_definitions {
-            program_content.push_str(&advice_definition.to_assemblyscript())
+            program_analysis_content.push_str(&advice_definition.to_assemblyscript())
         }
+
         AssemblyScriptProgram {
-            content: program_content,
+            content: program_analysis_content,
         }
     }
 }
@@ -47,17 +57,23 @@ impl AdviceDefinition {
 
 impl TrapSignature {
     fn to_assemblyscript(&self) -> String {
-        let Self::TrapApply(TrapApply {
-            apply_hook_signature,
-            body,
-        }) = self;
-        match apply_hook_signature {
-            ApplyHookSignature::Gen(apply_gen) => apply_gen.to_assemblyscript(body),
-            ApplyHookSignature::Spe(apply_spe) => apply_spe.to_assemblyscript(body),
+        match self {
+            TrapSignature::TrapApply(TrapApply {
+                apply_hook_signature,
+                body,
+            }) => match apply_hook_signature {
+                ApplyHookSignature::Gen(apply_gen) => apply_gen.to_assemblyscript(body),
+                ApplyHookSignature::Spe(apply_spe) => apply_spe.to_assemblyscript(body),
+            },
+            TrapSignature::TrapIfThenElse(trap_if_then_else) => {
+                trap_if_then_else.to_assemblyscript()
+            }
         }
     }
 }
 
+// TODO: below the names `func`, `args`, `results` seem to be fixed?
+//       can the .wasp still user-define them?
 impl ApplyGen {
     fn to_assemblyscript(&self, body: &str) -> String {
         format!(
@@ -260,6 +276,35 @@ impl ApplySpe {
     }
 }
 
+impl TrapIfThenElse {
+    fn to_assemblyscript(&self) -> String {
+        let TrapIfThenElse {
+            if_then_else_hook_signature:
+                IfThenElseHookSignature {
+                    parameter_condition,
+                },
+            body,
+        } = &self;
+
+        format!(
+            indoc! {r#"
+            export function {SPECIALIZED_IF_THEN_ELSE_FUNCTION_NAME}(
+                path_kontinuation: i32,
+            ): i32 {{
+                let {parameter_condition} = new ParameterCondition(path_kontinuation);
+                {body}
+                // Fallback, if no return value
+                return path_kontinuation;
+            }}"#
+            },
+            SPECIALIZED_IF_THEN_ELSE_FUNCTION_NAME = SPECIALIZED_IF_THEN_ELSE_FUNCTION_NAME,
+            body = body,
+            parameter_condition = parameter_condition,
+        )
+        .to_string()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -410,7 +455,7 @@ mod tests {
         let assemblyscript_program = AssemblyScriptProgram::try_from(input_program).unwrap();
         let expected_outcome = format!(
             "{}{}",
-            STD_INSTRUMENTATION_LIB,
+            STD_ANALYSIS_LIB_GENRIC_APPLY,
             indoc! { r#"
             console.log("Hello world!");
                 export function generic_apply(

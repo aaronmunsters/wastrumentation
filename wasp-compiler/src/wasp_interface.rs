@@ -5,6 +5,7 @@ use crate::ast::wasp::{
 
 pub const TRANSFORMED_INPUT_NS: &str = "transformed_input";
 pub const GENERIC_APPLY_FUNCTION_NAME: &str = "generic_apply";
+pub const SPECIALIZED_IF_THEN_ELSE_FUNCTION_NAME: &str = "specialized_if_then_else_k";
 pub const CALL_BASE: &str = "call_base";
 
 #[derive(Debug, PartialEq, Eq, Default)]
@@ -12,6 +13,7 @@ pub struct WaspInterface {
     pub inputs: Vec<WasmImport>,
     pub outputs: Vec<WasmExport>,
     pub generic_interface: Option<(WasmExport, WasmImport)>,
+    pub if_then_else_trap: Option<WasmExport>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -56,6 +58,7 @@ impl From<&WaspRoot> for WaspInterface {
         let mut generic_interface = None;
         let mut wasm_imports: Vec<WasmImport> = Vec::new();
         let mut wasm_exports: Vec<WasmExport> = Vec::new();
+        let mut if_then_else_trap: Option<WasmExport> = None;
         let WaspRoot(advice_definitions) = wasp_root;
         for advice_definition in advice_definitions {
             if let AdviceDefinition::AdviceTrap(trap_signature) = advice_definition {
@@ -85,6 +88,15 @@ impl From<&WaspRoot> for WaspInterface {
                             parameters_results,
                         ));
                     }
+                    TrapSignature::TrapIfThenElse(_) => {
+                        if_then_else_trap = Some(WasmExport {
+                            name: SPECIALIZED_IF_THEN_ELSE_FUNCTION_NAME.into(),
+                            // path_kontinuation
+                            args: vec![I32],
+                            // path_kontinuation
+                            results: vec![I32],
+                        })
+                    }
                 }
             };
         }
@@ -92,6 +104,7 @@ impl From<&WaspRoot> for WaspInterface {
             inputs: wasm_imports,
             outputs: wasm_exports,
             generic_interface,
+            if_then_else_trap,
         }
     }
 }
@@ -163,7 +176,8 @@ mod tests {
             WaspInterface {
                 inputs: vec![],
                 outputs: vec![],
-                generic_interface: Some(WaspInterface::generic_apply_interface())
+                generic_interface: Some(WaspInterface::generic_apply_interface()),
+                if_then_else_trap: None,
             }
         );
     }
@@ -204,7 +218,8 @@ mod tests {
                     args: vec![I32],
                     results: vec![F32]
                 }],
-                generic_interface: None
+                generic_interface: None,
+                if_then_else_trap: None,
             }
         );
     }

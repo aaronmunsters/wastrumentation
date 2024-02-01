@@ -29,6 +29,7 @@ pub enum AdviceDefinition {
 #[derive(Debug, PartialEq, Eq)]
 pub enum TrapSignature {
     TrapApply(TrapApply),
+    TrapIfThenElse(TrapIfThenElse),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -66,6 +67,17 @@ pub struct ApplySpe {
     pub parameters_results: Vec<WasmParameter>,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub struct TrapIfThenElse {
+    pub if_then_else_hook_signature: IfThenElseHookSignature,
+    pub body: String,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct IfThenElseHookSignature {
+    pub parameter_condition: String,
+}
+
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum WasmType {
     I32,
@@ -87,7 +99,7 @@ impl WasmParameter {
 }
 
 impl WaspRoot {
-    pub fn has_generic_apply(&self) -> bool {
+    pub fn instruments_generic_apply(&self) -> bool {
         let Self(advice_definitions) = self;
         advice_definitions
             .iter()
@@ -98,6 +110,18 @@ impl WaspRoot {
                         apply_hook_signature: ApplyHookSignature::Gen(_),
                         ..
                     }))
+                )
+            })
+    }
+
+    pub fn instruments_if_then_else(&self) -> bool {
+        let Self(advice_definitions) = self;
+        advice_definitions
+            .iter()
+            .any(|advice_definition: &AdviceDefinition| {
+                matches!(
+                    advice_definition,
+                    AdviceDefinition::AdviceTrap(TrapSignature::TrapIfThenElse { .. })
                 )
             })
     }
@@ -148,6 +172,25 @@ impl TryFrom<pest_ast::TrapSignature> for TrapSignature {
                 apply_hook_signature: ApplyHookSignature::try_from(apply_hook_signature)?,
                 body,
             })),
+            pest_ast::TrapSignature::TrapIfThenElse(pest_ast::TrapIfThenElse {
+                if_then_else_hook_signature,
+                body,
+            }) => Ok(TrapSignature::TrapIfThenElse(TrapIfThenElse {
+                if_then_else_hook_signature: IfThenElseHookSignature::from(
+                    if_then_else_hook_signature,
+                ),
+                body,
+            })),
+        }
+    }
+}
+
+impl From<pest_ast::IfThenElseHookSignature> for IfThenElseHookSignature {
+    fn from(past_if_then_else_hook_signature: pest_ast::IfThenElseHookSignature) -> Self {
+        let pest_ast::IfThenElseFormalCondition(parameter_condition) =
+            past_if_then_else_hook_signature.if_then_else_formal_condition;
+        IfThenElseHookSignature {
+            parameter_condition,
         }
     }
 }
