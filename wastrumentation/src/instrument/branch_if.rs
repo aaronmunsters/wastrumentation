@@ -45,13 +45,10 @@ pub fn instrument_bodies(
     for target_function_idx in target_functions.iter() {
         let target_function = module.function_mut(*target_function_idx);
         if target_function.code().is_none() {
-            continue;
-        };
-
+            return Err("Attempt to instrument if-then-else on import function");
+        }
         let store_if_continuation = target_function.add_fresh_local(ValType::I32);
-        let code = target_function
-            .code_mut()
-            .expect("Just checked for presence");
+        let code = target_function.code_mut().unwrap(); // checked above
 
         let high_level_body: HighLevelBody = LowLevelBody(code.body.clone()).try_into()?;
         let high_level_body_transformed =
@@ -163,12 +160,11 @@ impl HighLevelBody {
 mod tests {
     use std::collections::HashSet;
 
-    use wasabi_wasm::{FunctionType, ValType};
+    use wasabi_wasm::{FunctionType, Val, ValType};
     use wasmtime::{Engine, Instance, Module, Store};
 
     use super::*;
 
-    #[derive(Debug)]
     struct BranchExpectation {
         input: i32,
         output: i32,
@@ -350,5 +346,180 @@ mod tests {
 
         // Execute uninstrumented:
         assert_outcome(&wasm_module, instrumented_assertions);
+    }
+
+    #[test]
+    fn test_faulty_pre_instrumentation() {
+        const MINI_PROGRAM: &str = r#"
+        (module
+          (func $foo
+            (i32.const 0)
+            (if
+              (then (i32.const 1))
+              (else (i32.const 2)))))"#;
+
+        let wasm_bytes = wasmer::wat2wasm(MINI_PROGRAM.as_bytes()).unwrap();
+        let (mut wasm_module, _, _) = wasabi_wasm::Module::from_bytes(&wasm_bytes).unwrap();
+
+        // this 'mimics' that instrumentation before has happened
+        // thus this faulty transformation is caught here
+        wasm_module
+            .function_mut(0_usize.into())
+            .code_mut()
+            .unwrap()
+            .body
+            .push(wasabi_wasm::Instr::Call(0_usize.into()));
+
+        assert_eq!(
+            Err("Expected low level body to terminate in `End`"),
+            instrument_bodies(
+                &mut wasm_module,
+                &HashSet::from_iter(vec![0_usize.into()]),
+                &0_usize.into(),
+            )
+        );
+    }
+
+    #[test]
+    fn test_faulty_import_instrumentation() {
+        const MINI_PROGRAM: &str = r#"
+        (module
+          (func $foo (import "bar" "foo")))"#;
+
+        let wasm_bytes = wasmer::wat2wasm(MINI_PROGRAM.as_bytes()).unwrap();
+        let (mut wasm_module, _, _) = wasabi_wasm::Module::from_bytes(&wasm_bytes).unwrap();
+
+        // Instrument
+        assert_eq!(
+            Err("Attempt to instrument if-then-else on import function"),
+            instrument_bodies(
+                &mut wasm_module,
+                &HashSet::from_iter(vec![0_usize.into()]),
+                &0_usize.into(),
+            )
+        );
+    }
+
+    #[test]
+    fn test_nested_ifs() {
+        const NESTED_PROGRAM: &str = r#"
+        (module
+          (func $main (param i32) (result i32)
+            (if (i32.eqz (local.get 0))
+              (then
+                (block
+                  (if (i32.eq (local.get 0) (i32.const 1))
+                    (then (block
+                      (if (i32.eq (local.get 0) (i32.const 2))
+                        (then (block
+                          (i32.const 42)))
+                        (else (i32.const 21)))))
+                    (else (i32.const 10)))))
+              (else
+                (i32.const 5))))
+          (export "nestedIfs" (func $main)))"#;
+
+        let wasm_bytes = wasmer::wat2wasm(NESTED_PROGRAM.as_bytes()).unwrap();
+        let (mut wasm_module, _, _) = wasabi_wasm::Module::from_bytes(&wasm_bytes).unwrap();
+
+        // Instrument
+        instrument_bodies(
+            &mut wasm_module,
+            &HashSet::from_iter(vec![0_usize.into()]),
+            &0_usize.into(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            HighLevelBody::try_from(LowLevelBody(
+                wasm_module
+                    .function(0_usize.into())
+                    .code()
+                    .unwrap()
+                    .body
+                    .clone()
+            ))
+            .unwrap(),
+            {
+                let type_ = FunctionType::new(&[], &[]);
+                use wasabi_wasm::BinaryOp::*;
+                use wasabi_wasm::UnaryOp::*;
+                use wasabi_wasm::Val::*;
+                use {super::Instr::*, super::LocalOp::*};
+                HighLevelBody(vec![
+                    Local(Get, 0_usize.into()),
+                    Unary(I32Eqz),
+                    Const(I32(0)),
+                    Binary(I32Eq),
+                    Call(0_usize.into()),
+                    Local(Tee, 1_usize.into()),
+                    Const(I32(0)),
+                    Binary(I32Eq),
+                    If(
+                        type_,
+                        vec![Block(
+                            type_,
+                            vec![
+                                Local(Get, 0_usize.into()),
+                                Const(I32(1)),
+                                Binary(I32Eq),
+                                If(
+                                    type_,
+                                    vec![Block(
+                                        type_,
+                                        vec![
+                                            Local(Get, 0_usize.into()),
+                                            Const(I32(2)),
+                                            Binary(I32Eq),
+                                            If(
+                                                type_,
+                                                vec![Block(type_, vec![Const(I32(42))])],
+                                                Some(vec![Const(I32(21))]),
+                                            ),
+                                        ],
+                                    )],
+                                    Some(vec![Const(I32(10))]),
+                                ),
+                            ],
+                        )],
+                        Some(vec![
+                            Local(Get, 1_usize.into()),
+                            Const(I32(1)),
+                            Binary(I32Eq),
+                            If(
+                                type_,
+                                vec![Const(I32(5))],
+                                Some(vec![
+                                    Local(Get, 1_usize.into()),
+                                    Const(I32(2)),
+                                    Binary(I32Eq),
+                                    If(type_, vec![Unreachable], Some(vec![Unreachable])),
+                                ]),
+                            ),
+                        ]),
+                    ),
+                ])
+            },
+        )
+    }
+
+    #[test]
+    fn compute_cost() {
+        let type_void_to_void = FunctionType::new(&[], &[]);
+        let instr_loop = || {
+            Instr::Loop(
+                type_void_to_void,
+                vec![Instr::Block(
+                    type_void_to_void,
+                    vec![Instr::Const(Val::I32(0))],
+                )],
+            )
+        };
+        let cost = cost_for(&[Instr::if_then_else(
+            type_void_to_void,
+            vec![instr_loop()],
+            vec![instr_loop()],
+        )]);
+        assert_eq!(cost, 16);
     }
 }
