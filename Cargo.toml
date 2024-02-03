@@ -3,9 +3,7 @@
 resolver = "2"
 members = [
     "wastrumentation",
-    "wastrumentation-cli",
     "wastrumentation-instr-lib",
     "wasp-compiler",
-    "patch-wasi-start-exports",
     "wasm-merge",
 ]
