@@ -4,12 +4,13 @@ use indoc::indoc;
 
 use crate::{
     ast::wasp::{
-        AdviceDefinition, ApplyGen, ApplyHookSignature, ApplySpe, IfThenElseHookSignature,
-        TrapApply, TrapIfThenElse, TrapSignature, WasmParameter, WasmType, WaspRoot,
+        AdviceDefinition, ApplyGen, ApplyHookSignature, ApplySpe, IfHookSignature, TrapApply,
+        TrapIfThen, TrapIfThenElse, TrapSignature, WasmParameter, WasmType, WaspRoot,
     },
     wasp_interface::{
         WasmExport, WasmImport, GENERIC_APPLY_FUNCTION_NAME,
-        SPECIALIZED_IF_THEN_ELSE_FUNCTION_NAME, TRANSFORMED_INPUT_NS,
+        SPECIALIZED_IF_THEN_ELSE_FUNCTION_NAME, SPECIALIZED_IF_THEN_FUNCTION_NAME,
+        TRANSFORMED_INPUT_NS,
     },
 };
 
@@ -65,6 +66,7 @@ impl TrapSignature {
                 ApplyHookSignature::Gen(apply_gen) => apply_gen.to_assemblyscript(body),
                 ApplyHookSignature::Spe(apply_spe) => apply_spe.to_assemblyscript(body),
             },
+            TrapSignature::TrapIfThen(trap_if_then) => trap_if_then.to_assemblyscript(),
             TrapSignature::TrapIfThenElse(trap_if_then_else) => {
                 trap_if_then_else.to_assemblyscript()
             }
@@ -277,13 +279,41 @@ impl ApplySpe {
     }
 }
 
+impl TrapIfThen {
+    fn to_assemblyscript(&self) -> String {
+        let TrapIfThen {
+            if_hook_signature: IfHookSignature {
+                parameter_condition,
+            },
+            body,
+        } = &self;
+
+        format!(
+            indoc! {r#"
+            export function {SPECIALIZED_IF_THEN_FUNCTION_NAME}(
+                path_kontinuation: i32,
+            ): i32 {{
+                let {parameter_condition} = new ParameterConditionIfThen(path_kontinuation);
+                {body}
+                // Fallback, if no return value
+                return path_kontinuation;
+            }}
+            "#
+            },
+            SPECIALIZED_IF_THEN_FUNCTION_NAME = SPECIALIZED_IF_THEN_FUNCTION_NAME,
+            body = body,
+            parameter_condition = parameter_condition,
+        )
+        .to_string()
+    }
+}
+
 impl TrapIfThenElse {
     fn to_assemblyscript(&self) -> String {
         let TrapIfThenElse {
-            if_then_else_hook_signature:
-                IfThenElseHookSignature {
-                    parameter_condition,
-                },
+            if_hook_signature: IfHookSignature {
+                parameter_condition,
+            },
             body,
         } = &self;
 
@@ -292,7 +322,7 @@ impl TrapIfThenElse {
             export function {SPECIALIZED_IF_THEN_ELSE_FUNCTION_NAME}(
                 path_kontinuation: i32,
             ): i32 {{
-                let {parameter_condition} = new ParameterCondition(path_kontinuation);
+                let {parameter_condition} = new ParameterConditionIfThenElse(path_kontinuation);
                 {body}
                 // Fallback, if no return value
                 return path_kontinuation;
@@ -445,7 +475,7 @@ mod tests {
     #[test]
     fn generate_if_then_else() {
         let ast: TrapSignature = TrapSignature::TrapIfThenElse(TrapIfThenElse {
-            if_then_else_hook_signature: IfThenElseHookSignature {
+            if_hook_signature: IfHookSignature {
                 parameter_condition: "cond".into(),
             },
             body: "console.log('ite');".into(),
@@ -455,7 +485,7 @@ mod tests {
         export function specialized_if_then_else_k(
             path_kontinuation: i32,
         ): i32 {
-            let cond = new ParameterCondition(path_kontinuation);
+            let cond = new ParameterConditionIfThenElse(path_kontinuation);
             console.log('ite');
             // Fallback, if no return value
             return path_kontinuation;
@@ -512,7 +542,7 @@ mod tests {
             export function specialized_if_then_else_k(
                 path_kontinuation: i32,
             ): i32 {
-                let cond = new ParameterCondition(path_kontinuation);
+                let cond = new ParameterConditionIfThenElse(path_kontinuation);
                 
                     console.log('ite');
                 

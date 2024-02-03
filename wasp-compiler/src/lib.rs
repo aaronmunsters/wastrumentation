@@ -121,11 +121,7 @@ mod tests {
             compile("(aspect)").unwrap(),
             CompilationResult {
                 analysis_source_code: AssemblyScriptProgram { content: "".into() },
-                join_points: JoinPoints {
-                    generic: false,
-                    specialized: [].into(),
-                    if_then_else: false,
-                },
+                join_points: JoinPoints::default(),
                 wasp_interface: WaspInterface::default()
             }
         );
@@ -158,11 +154,7 @@ mod tests {
     fn test_debug() {
         let compilation_result = CompilationResult {
             analysis_source_code: AssemblyScriptProgram { content: "".into() },
-            join_points: JoinPoints {
-                generic: false,
-                specialized: [].into(),
-                if_then_else: false,
-            },
+            join_points: JoinPoints::default(),
             wasp_interface: WaspInterface::default(),
         };
         assert_eq!(
@@ -174,9 +166,10 @@ mod tests {
                 join_points: JoinPoints { \
                     generic: false, \
                     specialized: {}, \
+                    if_then: false, \
                     if_then_else: false \
                 }, \
-                wasp_interface: WaspInterface { inputs: [], outputs: [], generic_interface: None, if_then_else_trap: None } \
+                wasp_interface: WaspInterface { inputs: [], outputs: [], generic_interface: None, if_then_trap: None, if_then_else_trap: None } \
             }"
         );
     }

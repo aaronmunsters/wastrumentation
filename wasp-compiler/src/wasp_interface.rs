@@ -5,14 +5,17 @@ use crate::ast::wasp::{
 
 pub const TRANSFORMED_INPUT_NS: &str = "transformed_input";
 pub const GENERIC_APPLY_FUNCTION_NAME: &str = "generic_apply";
+pub const SPECIALIZED_IF_THEN_FUNCTION_NAME: &str = "specialized_if_then_k";
 pub const SPECIALIZED_IF_THEN_ELSE_FUNCTION_NAME: &str = "specialized_if_then_else_k";
 pub const CALL_BASE: &str = "call_base";
 
+// TODO: are `inputs` and `outputs` used?
 #[derive(Debug, PartialEq, Eq, Default)]
 pub struct WaspInterface {
     pub inputs: Vec<WasmImport>,
     pub outputs: Vec<WasmExport>,
     pub generic_interface: Option<(WasmExport, WasmImport)>,
+    pub if_then_trap: Option<WasmExport>,
     pub if_then_else_trap: Option<WasmExport>,
 }
 
@@ -52,6 +55,16 @@ impl WaspInterface {
         )
     }
 
+    fn if_then_interface() -> WasmExport {
+        WasmExport {
+            name: SPECIALIZED_IF_THEN_FUNCTION_NAME.into(),
+            // path_kontinuation
+            args: vec![I32],
+            // path_kontinuation
+            results: vec![I32],
+        }
+    }
+
     fn if_then_else_interface() -> WasmExport {
         WasmExport {
             name: SPECIALIZED_IF_THEN_ELSE_FUNCTION_NAME.into(),
@@ -68,6 +81,7 @@ impl From<&WaspRoot> for WaspInterface {
         let mut generic_interface = None;
         let mut wasm_imports: Vec<WasmImport> = Vec::new();
         let mut wasm_exports: Vec<WasmExport> = Vec::new();
+        let mut if_then_trap: Option<WasmExport> = None;
         let mut if_then_else_trap: Option<WasmExport> = None;
         let WaspRoot(advice_definitions) = wasp_root;
         for advice_definition in advice_definitions {
@@ -98,6 +112,9 @@ impl From<&WaspRoot> for WaspInterface {
                             parameters_results,
                         ));
                     }
+                    TrapSignature::TrapIfThen(_) => {
+                        if_then_trap = Some(WaspInterface::if_then_interface())
+                    }
                     TrapSignature::TrapIfThenElse(_) => {
                         if_then_else_trap = Some(WaspInterface::if_then_else_interface())
                     }
@@ -108,6 +125,7 @@ impl From<&WaspRoot> for WaspInterface {
             inputs: wasm_imports,
             outputs: wasm_exports,
             generic_interface,
+            if_then_trap,
             if_then_else_trap,
         }
     }
@@ -116,7 +134,7 @@ impl From<&WaspRoot> for WaspInterface {
 #[cfg(test)]
 mod tests {
     use crate::ast::wasp::{
-        ApplyGen, GenericTarget, IfThenElseHookSignature, TrapIfThenElse, WasmParameter,
+        ApplyGen, GenericTarget, IfHookSignature, TrapIfThenElse, WasmParameter,
     };
 
     use super::*;
@@ -180,10 +198,8 @@ mod tests {
         assert_eq!(
             wasp_interface,
             WaspInterface {
-                inputs: vec![],
-                outputs: vec![],
                 generic_interface: Some(WaspInterface::generic_apply_interface()),
-                if_then_else_trap: None,
+                ..Default::default()
             }
         );
     }
@@ -223,8 +239,7 @@ mod tests {
                     args: vec![I32],
                     results: vec![F32]
                 }],
-                generic_interface: None,
-                if_then_else_trap: None,
+                ..Default::default()
             }
         );
     }
@@ -233,7 +248,7 @@ mod tests {
     fn test_generation_if_then_else() {
         let wasp_root = WaspRoot(vec![AdviceDefinition::AdviceTrap(
             TrapSignature::TrapIfThenElse(TrapIfThenElse {
-                if_then_else_hook_signature: IfThenElseHookSignature {
+                if_hook_signature: IfHookSignature {
                     parameter_condition: "condition".into(),
                 },
                 body: "trap body".into(),
@@ -244,10 +259,8 @@ mod tests {
         assert_eq!(
             wasp_interface,
             WaspInterface {
-                inputs: vec![],
-                outputs: vec![],
-                generic_interface: None,
                 if_then_else_trap: Some(WaspInterface::if_then_else_interface()),
+                ..Default::default()
             }
         );
     }

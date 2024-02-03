@@ -51,6 +51,7 @@ pub struct AdviceTrap(pub TrapSignature);
 #[pest_ast(rule(Rule::trap_signature))]
 pub enum TrapSignature {
     TrapApply(TrapApply),
+    TrapIfThen(TrapIfThen),
     TrapIfThenElse(TrapIfThenElse),
 }
 
@@ -107,22 +108,27 @@ pub struct ApplyFormalArgument(pub TypedArgument);
 pub struct ApplyFormalResult(pub TypedArgument);
 
 #[derive(Debug, FromPest)]
-#[pest_ast(rule(Rule::trap_if_then_else))]
-pub struct TrapIfThenElse {
-    pub if_then_else_hook_signature: IfThenElseHookSignature,
+#[pest_ast(rule(Rule::trap_if_then))]
+pub struct TrapIfThen {
+    pub if_hook_signature: IfHookSignature,
     #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter)))]
     pub body: String,
 }
 
 #[derive(Debug, FromPest)]
-#[pest_ast(rule(Rule::if_then_else_hook_signature))]
-pub struct IfThenElseHookSignature {
-    pub if_then_else_formal_condition: IfThenElseFormalCondition,
+#[pest_ast(rule(Rule::trap_if_then_else))]
+pub struct TrapIfThenElse {
+    pub if_hook_signature: IfHookSignature,
+    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter)))]
+    pub body: String,
 }
 
 #[derive(Debug, FromPest)]
-#[pest_ast(rule(Rule::if_then_else_formal_condition))]
-pub struct IfThenElseFormalCondition(#[pest_ast(inner(with(span_into_string)))] pub String);
+#[pest_ast(rule(Rule::if_hook_signature))]
+pub struct IfHookSignature {
+    #[pest_ast(inner(with(span_into_string)))]
+    pub parameter_identifier_condition: String,
+}
 
 #[derive(Debug, FromPest)]
 #[pest_ast(rule(Rule::typed_argument))]

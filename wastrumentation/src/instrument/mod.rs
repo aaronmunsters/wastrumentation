@@ -21,6 +21,12 @@ pub struct InstrumentationResult {
 }
 
 pub fn instrument(module: &[u8], wasp_interface: WaspInterface) -> InstrumentationResult {
+    let WaspInterface {
+        generic_interface,
+        if_then_else_trap,
+        if_then_trap,
+        .. // TODO: remove?
+    } = wasp_interface;
     let mut instrumentation_lib = String::new();
     let (mut module, _offsets, _issue) = Module::from_bytes(module).unwrap();
     let pre_instrumentation_function_indices: HashSet<Idx<Function>> = module
@@ -29,16 +35,27 @@ pub fn instrument(module: &[u8], wasp_interface: WaspInterface) -> Instrumentati
         .map(|(idx, _)| idx)
         .collect();
 
-    if let Some(if_then_else_trap_export) = wasp_interface.if_then_else_trap {
+    if let Some(trap_export) = if_then_trap {
         branch_if::instrument(
             &mut module,
             &pre_instrumentation_function_indices,
-            if_then_else_trap_export,
+            trap_export,
+            branch_if::Target::IfThen,
         )
-        .unwrap(); // TODO: handle
-    }
+        .unwrap() // TODO: handle
+    };
 
-    if let Some((generic_import, generic_export)) = wasp_interface.generic_interface {
+    if let Some(trap_export) = if_then_else_trap {
+        branch_if::instrument(
+            &mut module,
+            &pre_instrumentation_function_indices,
+            trap_export,
+            branch_if::Target::IfThenElse,
+        )
+        .unwrap() // TODO: handle
+    };
+
+    if let Some((generic_import, generic_export)) = generic_interface {
         let generic_function_instrumentation_lib = function_application::instrument(
             &mut module,
             &pre_instrumentation_function_indices,

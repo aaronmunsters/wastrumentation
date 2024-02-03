@@ -8,6 +8,7 @@ use crate::ast::wasp::{
 pub struct JoinPoints {
     pub generic: bool,
     pub specialized: HashSet<SpecialisedJoinPoint>,
+    pub if_then: bool,
     pub if_then_else: bool,
 }
 
@@ -24,6 +25,7 @@ impl JoinPoints {
                 self.specialized.insert(specialized_join_point);
             }
             JoinPoint::Generic => self.generic = true,
+            JoinPoint::IfThen => self.if_then = true,
             JoinPoint::IfThenElse => self.if_then_else = true,
         };
     }
@@ -32,6 +34,7 @@ impl JoinPoints {
 enum JoinPoint {
     Generic,
     Specialised(SpecialisedJoinPoint),
+    IfThen,
     IfThenElse,
 }
 
@@ -55,6 +58,7 @@ impl TrapSignature {
     fn join_point(&self) -> JoinPoint {
         match self {
             TrapSignature::TrapApply(trap_apply) => trap_apply.apply_hook_signature.join_point(),
+            TrapSignature::TrapIfThen(_) => JoinPoint::IfThen,
             TrapSignature::TrapIfThenElse(_) => JoinPoint::IfThenElse,
         }
     }
@@ -131,6 +135,7 @@ mod tests {
                     argument_types: [I32, F32, I64] \
                 }\
             }, \
+            if_then: false, \
             if_then_else: false \
         }"
         )
@@ -149,7 +154,6 @@ mod tests {
                 "#,
             ),
             JoinPoints {
-                generic: false,
                 specialized: [SpecialisedJoinPoint {
                     result_types: [WasmType::F64].into(),
                     argument_types: [WasmType::I32, WasmType::F32, WasmType::I64].into(),
@@ -157,7 +161,7 @@ mod tests {
                 .iter()
                 .cloned()
                 .collect(),
-                if_then_else: false,
+                ..Default::default()
             }
         )
     }
@@ -176,8 +180,7 @@ mod tests {
             ),
             JoinPoints {
                 generic: true,
-                specialized: HashSet::new(),
-                if_then_else: false,
+                ..Default::default()
             }
         )
     }
@@ -193,9 +196,8 @@ mod tests {
                 "#,
             ),
             JoinPoints {
-                generic: false,
-                specialized: HashSet::new(),
                 if_then_else: true,
+                ..Default::default()
             }
         )
     }
@@ -218,6 +220,8 @@ mod tests {
                                   (Mut (a I32) (b F32))
                                   (Mut (c I64) (d F64))
                         >>>GUEST>>>🔵<<<GUEST<<<)
+                    (advice if_then (cond Condition)
+                        >>>GUEST>>>🟠<<<GUEST<<<)
                     (advice if_then_else (cond Condition)
                         >>>GUEST>>>🟣<<<GUEST<<<)
                 )
@@ -238,6 +242,7 @@ mod tests {
                 .iter()
                 .cloned()
                 .collect(),
+                if_then: true,
                 if_then_else: true,
             }
         )

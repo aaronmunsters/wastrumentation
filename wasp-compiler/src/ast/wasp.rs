@@ -29,6 +29,7 @@ pub enum AdviceDefinition {
 #[derive(Debug, PartialEq, Eq)]
 pub enum TrapSignature {
     TrapApply(TrapApply),
+    TrapIfThen(TrapIfThen),
     TrapIfThenElse(TrapIfThenElse),
 }
 
@@ -68,13 +69,19 @@ pub struct ApplySpe {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct TrapIfThenElse {
-    pub if_then_else_hook_signature: IfThenElseHookSignature,
+pub struct TrapIfThen {
+    pub if_hook_signature: IfHookSignature,
     pub body: String,
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct IfThenElseHookSignature {
+pub struct TrapIfThenElse {
+    pub if_hook_signature: IfHookSignature,
+    pub body: String,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct IfHookSignature {
     pub parameter_condition: String,
 }
 
@@ -172,24 +179,28 @@ impl TryFrom<pest_ast::TrapSignature> for TrapSignature {
                 apply_hook_signature: ApplyHookSignature::try_from(apply_hook_signature)?,
                 body,
             })),
+            pest_ast::TrapSignature::TrapIfThen(pest_ast::TrapIfThen {
+                if_hook_signature,
+                body,
+            }) => Ok(TrapSignature::TrapIfThen(TrapIfThen {
+                if_hook_signature: IfHookSignature::from(if_hook_signature),
+                body,
+            })),
             pest_ast::TrapSignature::TrapIfThenElse(pest_ast::TrapIfThenElse {
-                if_then_else_hook_signature,
+                if_hook_signature,
                 body,
             }) => Ok(TrapSignature::TrapIfThenElse(TrapIfThenElse {
-                if_then_else_hook_signature: IfThenElseHookSignature::from(
-                    if_then_else_hook_signature,
-                ),
+                if_hook_signature: IfHookSignature::from(if_hook_signature),
                 body,
             })),
         }
     }
 }
 
-impl From<pest_ast::IfThenElseHookSignature> for IfThenElseHookSignature {
-    fn from(past_if_then_else_hook_signature: pest_ast::IfThenElseHookSignature) -> Self {
-        let pest_ast::IfThenElseFormalCondition(parameter_condition) =
-            past_if_then_else_hook_signature.if_then_else_formal_condition;
-        IfThenElseHookSignature {
+impl From<pest_ast::IfHookSignature> for IfHookSignature {
+    fn from(past_if_hook_signature: pest_ast::IfHookSignature) -> Self {
+        let parameter_condition = past_if_hook_signature.parameter_identifier_condition;
+        IfHookSignature {
             parameter_condition,
         }
     }
@@ -526,7 +537,7 @@ mod tests {
                 })),
                 AdviceDefinition::AdviceGlobal("🟣".into()),
                 AdviceDefinition::AdviceTrap(TrapSignature::TrapIfThenElse(TrapIfThenElse {
-                    if_then_else_hook_signature: IfThenElseHookSignature {
+                    if_hook_signature: IfHookSignature {
                         parameter_condition: "cond".into()
                     },
                     body: "🧂".into()

@@ -3,7 +3,8 @@ Aspect If Then Else
 =======
 
 (aspect
-  (advice if_then_else (cond Condition) >>>GUEST>>>[🧂]<<<GUEST<<<))
+  (advice if_then      (cond Condition) >>>GUEST>>>it  [🧂]<<<GUEST<<<)
+  (advice if_then_else (cond Condition) >>>GUEST>>>ite [🧂]<<<GUEST<<<))
 
 =======
 
@@ -12,9 +13,15 @@ Aspect If Then Else
     (advice_definition
       (advice_trap
         (trap_signature
+          (trap_if_then
+            (if_hook_signature
+              (identifier: "cond"))
+            (GUEST_BLOCK: ">>>GUEST>>>it  [🧂]<<<GUEST<<<")))))
+    (advice_definition
+      (advice_trap
+        (trap_signature
           (trap_if_then_else
-            (if_then_else_hook_signature
-              (if_then_else_formal_condition
-                (identifier: "cond")))
-            (GUEST_BLOCK: ">>>GUEST>>>[🧂]<<<GUEST<<<"))))))
+            (if_hook_signature
+              (identifier: "cond"))
+            (GUEST_BLOCK: ">>>GUEST>>>ite [🧂]<<<GUEST<<<"))))))
   (EOI: ""))
