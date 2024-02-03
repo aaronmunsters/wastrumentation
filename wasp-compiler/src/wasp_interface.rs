@@ -134,7 +134,7 @@ impl From<&WaspRoot> for WaspInterface {
 #[cfg(test)]
 mod tests {
     use crate::ast::wasp::{
-        ApplyGen, GenericTarget, IfHookSignature, TrapIfThenElse, WasmParameter,
+        ApplyGen, GenericTarget, IfHookSignature, TrapIfThen, TrapIfThenElse, WasmParameter,
     };
 
     use super::*;
@@ -239,6 +239,27 @@ mod tests {
                     args: vec![I32],
                     results: vec![F32]
                 }],
+                ..Default::default()
+            }
+        );
+    }
+
+    #[test]
+    fn test_generation_if_then() {
+        let wasp_root = WaspRoot(vec![AdviceDefinition::AdviceTrap(
+            TrapSignature::TrapIfThen(TrapIfThen {
+                if_hook_signature: IfHookSignature {
+                    parameter_condition: "condition".into(),
+                },
+                body: "trap body".into(),
+            }),
+        )]);
+        let wasp_interface = WaspInterface::from(&wasp_root);
+
+        assert_eq!(
+            wasp_interface,
+            WaspInterface {
+                if_then_trap: Some(WaspInterface::if_then_interface()),
                 ..Default::default()
             }
         );

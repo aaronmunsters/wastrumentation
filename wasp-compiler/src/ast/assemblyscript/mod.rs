@@ -17,7 +17,7 @@ use crate::{
 use crate::util::Alphabetical;
 
 const STD_ANALYSIS_LIB_GENRIC_APPLY: &str = include_str!("std_analysis_lib_gen_apply.ts");
-const STD_ANALYSIS_LIB_IF_THEN_ELSE: &str = include_str!("std_analysis_lib_if_then_else.ts");
+const STD_ANALYSIS_LIB_IF: &str = include_str!("std_analysis_lib_if.ts");
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct AssemblyScriptProgram {
@@ -32,8 +32,8 @@ impl From<WaspRoot> for AssemblyScriptProgram {
             program_analysis_content.push_str(STD_ANALYSIS_LIB_GENRIC_APPLY);
         };
 
-        if wasp_root.instruments_if_then_else() {
-            program_analysis_content.push_str(STD_ANALYSIS_LIB_IF_THEN_ELSE);
+        if wasp_root.instruments_if() {
+            program_analysis_content.push_str(STD_ANALYSIS_LIB_IF);
         };
 
         let WaspRoot(advice_definitions) = wasp_root;
@@ -473,6 +473,29 @@ mod tests {
     }
 
     #[test]
+    fn generate_if_then() {
+        let ast: TrapSignature = TrapSignature::TrapIfThen(TrapIfThen {
+            if_hook_signature: IfHookSignature {
+                parameter_condition: "cond".into(),
+            },
+            body: "console.log('it');".into(),
+        });
+
+        let expected = indoc! { r#"
+        export function specialized_if_then_k(
+            path_kontinuation: i32,
+        ): i32 {
+            let cond = new ParameterConditionIfThen(path_kontinuation);
+            console.log('it');
+            // Fallback, if no return value
+            return path_kontinuation;
+        }
+        "# };
+
+        assert_eq!(ast.to_assemblyscript(), expected);
+    }
+
+    #[test]
     fn generate_if_then_else() {
         let ast: TrapSignature = TrapSignature::TrapIfThenElse(TrapIfThenElse {
             if_hook_signature: IfHookSignature {
@@ -515,7 +538,7 @@ mod tests {
         let expected_outcome = format!(
             "{}{}{}",
             STD_ANALYSIS_LIB_GENRIC_APPLY,
-            STD_ANALYSIS_LIB_IF_THEN_ELSE,
+            STD_ANALYSIS_LIB_IF,
             indoc! { r#"
             console.log("Hello world!");
                 export function generic_apply(

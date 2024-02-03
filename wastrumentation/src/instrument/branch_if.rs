@@ -1,7 +1,11 @@
 const THEN_KONTN: i32 = 0;
 const ELSE_KONTN: i32 = 1;
-const SKIP_KONTN: i32 = 2;
-const CSTM_KONTN: i32 = 3;
+const SKIP_KONTN: i32 = 1;
+
+// TODO:
+// IDEA: Allow for 'custom continuation', in which instrumentation platform
+//       jumps to custom branch bevaviour and not only the behavior present
+//       in the input program.
 
 /// Boolean values in WebAssembly are represented as values of type `i32`.
 /// In a boolean context, such as a `br_if` condition, any non-zero value
@@ -24,7 +28,7 @@ use super::{function_application::INSTRUMENTATION_ANALYSIS_MODULE, FunctionTypeC
 
 type BranchTransformationError = &'static str;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum Target {
     IfThen,
     IfThenElse,
@@ -141,20 +145,7 @@ impl HighLevelBody {
                                 Instr::if_then_else(
                                     *type_,
                                     vec![], // Do nothing
-                                    vec![
-                                        // STACK: [type_in]
-                                        Instr::Local(LocalOp::Get, *store_if_continuation),
-                                        // STACK: [type_in, kontinuation]
-                                        Instr::Const(wasabi_wasm::Val::I32(CSTM_KONTN)),
-                                        // STACK: [type_in, kontinuation, CSTM_KONTN]
-                                        Instr::Binary(wasabi_wasm::BinaryOp::I32Eq),
-                                        // STACK: [type_in, condition]
-                                        Instr::if_then_else(
-                                            *type_,
-                                            vec![Instr::Unreachable], // vec![Instr::Call(cstm_kontn)], // TODO:
-                                            vec![Instr::Unreachable],
-                                        ),
-                                    ],
+                                    vec![Instr::Unreachable],
                                 ),
                             ],
                         ),
@@ -195,20 +186,7 @@ impl HighLevelBody {
                                         store_if_continuation,
                                         target,
                                     ),
-                                    vec![
-                                        // STACK: [type_in]
-                                        Instr::Local(LocalOp::Get, *store_if_continuation),
-                                        // STACK: [type_in, kontinuation]
-                                        Instr::Const(wasabi_wasm::Val::I32(CSTM_KONTN)),
-                                        // STACK: [type_in, kontinuation, CSTM_KONTN]
-                                        Instr::Binary(wasabi_wasm::BinaryOp::I32Eq),
-                                        // STACK: [type_in, condition]
-                                        Instr::if_then_else(
-                                            *type_,
-                                            vec![Instr::Unreachable], // vec![Instr::Call(cstm_kontn)], // TODO:
-                                            vec![Instr::Unreachable],
-                                        ),
-                                    ],
+                                    vec![Instr::Unreachable],
                                 ),
                             ],
                         ),
@@ -620,6 +598,13 @@ mod tests {
         let post_instrumentation_ifs_count = count_ifs(&transformed_body);
 
         assert_eq!(pre_instr_if_count, 3);
-        assert_eq!(post_instrumentation_ifs_count, pre_instr_if_count * 3)
+        assert_eq!(post_instrumentation_ifs_count, pre_instr_if_count * 2)
+    }
+
+    #[test]
+    fn test_target() {
+        let target = Target::IfThen;
+        assert_eq!(target.clone(), target);
+        assert_eq!(format!("{target:?}"), "IfThen");
     }
 }

@@ -1,7 +1,6 @@
 const THEN_KONTN: i32 = 0;
 const ELSE_KONTN: i32 = 1;
-const SKIP_KONTN: i32 = 2;
-const CSTM_KONTN: i32 = 3;
+const SKIP_KONTN: i32 = 1;
 
 class ParameterConditionIfThen {
     readonly continuation: i32;

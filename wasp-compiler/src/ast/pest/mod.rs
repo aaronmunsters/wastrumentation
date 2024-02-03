@@ -200,11 +200,12 @@ mod tests {
                     (Mut (c I64) (d F64))
           >>>GUEST>>>🔵<<<GUEST<<<)
       (global >>>GUEST>>>🟣<<<GUEST<<<)
+      (advice if_then      (cond Condition) >>>GUEST>>>[🌶]<<<GUEST<<<)
       (advice if_then_else (cond Condition) >>>GUEST>>>[🧂]<<<GUEST<<<))"#;
         let mut parse_tree = WaspParser::parse(Rule::wasp_input, program_source).unwrap();
         let wasp_input = WaspInput::from_pest(&mut parse_tree).unwrap();
         let formatted = format!("{wasp_input:?}");
-        for guest_code in ["🔴", "🟠", "🟡", "🟢", "🔵", "🟣"] {
+        for guest_code in ["🔴", "🟠", "🟡", "🟢", "🔵", "🟣", "🌶", "🧂"] {
             assert!(formatted.contains(guest_code))
         }
     }

@@ -121,12 +121,15 @@ impl WaspRoot {
             })
     }
 
-    pub fn instruments_if_then_else(&self) -> bool {
+    pub fn instruments_if(&self) -> bool {
         let Self(advice_definitions) = self;
         advice_definitions
             .iter()
             .any(|advice_definition: &AdviceDefinition| {
                 matches!(
+                    advice_definition,
+                    AdviceDefinition::AdviceTrap(TrapSignature::TrapIfThen { .. })
+                ) || matches!(
                     advice_definition,
                     AdviceDefinition::AdviceTrap(TrapSignature::TrapIfThenElse { .. })
                 )
@@ -440,7 +443,8 @@ mod tests {
                           (Mut (c I64) (d F64))
                 >>>GUEST>>>🔵<<<GUEST<<<)
             (global >>>GUEST>>>🟣<<<GUEST<<<)
-            (advice if_then_else (cond Condition) >>>GUEST>>>🧂<<<GUEST<<<))"#;
+            (advice if_then      (cond Condition) >>>GUEST>>>then 🧂<<<GUEST<<<)
+            (advice if_then_else (cond Condition) >>>GUEST>>>then 🧂 else 🌶️<<<GUEST<<<))"#;
 
     fn program_to_wasp_root(program: &str) -> anyhow::Result<WaspRoot> {
         let mut pest_parse = WaspParser::parse(Rule::wasp_input, program).unwrap();
@@ -536,11 +540,17 @@ mod tests {
                     body: "🔵".into()
                 })),
                 AdviceDefinition::AdviceGlobal("🟣".into()),
+                AdviceDefinition::AdviceTrap(TrapSignature::TrapIfThen(TrapIfThen {
+                    if_hook_signature: IfHookSignature {
+                        parameter_condition: "cond".into()
+                    },
+                    body: "then 🧂".into()
+                })),
                 AdviceDefinition::AdviceTrap(TrapSignature::TrapIfThenElse(TrapIfThenElse {
                     if_hook_signature: IfHookSignature {
                         parameter_condition: "cond".into()
                     },
-                    body: "🧂".into()
+                    body: "then 🧂 else 🌶️".into()
                 }))
             ])
         )

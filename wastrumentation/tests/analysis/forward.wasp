@@ -1,4 +1,13 @@
 (aspect
+    (advice if_then (condition Condition) >>>GUEST>>>
+        if (condition.is_then) {
+            return condition.continue_then;
+        };
+        if (condition.is_skip) {
+            return condition.continue_skip;
+        };
+    <<<GUEST<<<)
+
     (advice if_then_else (condition Condition) >>>GUEST>>>
         if (condition.is_then) {
             return condition.continue_then;

@@ -168,7 +168,7 @@
     },
     {
         "input_program": {
-            "path":"./input-programs/wat/branch-simple.wat",
+            "path":"./input-programs/wat/if-then-else-simple.wat",
             "type": "Wat"
         },
         "uninstrumented_assertion": {
@@ -178,6 +178,11 @@
             "post_execution_assertions": []
         },
         "instrumented_assertions": [{
+            "analysis":"./analysis/forward.wasp",
+            "wasi_enabled": false,
+            "input_program_assertion": "EqualToUninstrumented",
+            "post_execution_assertions": []
+        },{
             "analysis":"./analysis/if-then-else-alter.wasp",
             "wasi_enabled": false,
             "input_program_assertion": {
@@ -188,7 +193,7 @@
     },
     {
         "input_program": {
-            "path":"./input-programs/wat/branch-simple.wat",
+            "path":"./input-programs/wat/if-then-else-simple.wat",
             "type": "Wat"
         },
         "uninstrumented_assertion": {
@@ -207,7 +212,7 @@
         }]
     },{
         "input_program": {
-            "path":"./input-programs/wat/branch-2-ifs.wat",
+            "path":"./input-programs/wat/if-then-else-2-times.wat",
             "type": "Wat"
         },
         "uninstrumented_assertion": {
@@ -217,10 +222,53 @@
             "post_execution_assertions": []
         },
         "instrumented_assertions": [{
+            "analysis":"./analysis/forward.wasp",
+            "wasi_enabled": false,
+            "input_program_assertion": "EqualToUninstrumented",
+            "post_execution_assertions": []
+        },{
             "analysis":"./analysis/if-then-else-alter.wasp",
             "wasi_enabled": false,
             "input_program_assertion": {
                 "DifferentReturnValue": [{"I32": 4400110}]
+            },
+            "post_execution_assertions": []
+        }]
+    },{
+        "input_program": {
+            "path":"./input-programs/wat/if-then-simple.wat",
+            "type": "Wat"
+        },
+        "uninstrumented_assertion": {
+            "input_entry_point":"main",
+            "arguments":[{"I32":0}],
+            "results":[{"I32":1}],
+            "post_execution_assertions": []
+        },
+        "instrumented_assertions": [{
+            "analysis":"./analysis/if-then-alter.wasp",
+            "wasi_enabled": false,
+            "input_program_assertion": {
+                "DifferentReturnValue": [{"I32": 2}]
+            },
+            "post_execution_assertions": []
+        }]
+    },{
+        "input_program": {
+            "path":"./input-programs/wat/if-then-simple.wat",
+            "type": "Wat"
+        },
+        "uninstrumented_assertion": {
+            "input_entry_point":"main",
+            "arguments":[{"I32":1}],
+            "results":[{"I32":2}],
+            "post_execution_assertions": []
+        },
+        "instrumented_assertions": [{
+            "analysis":"./analysis/if-then-alter.wasp",
+            "wasi_enabled": false,
+            "input_program_assertion": {
+                "DifferentReturnValue": [{"I32": 1}]
             },
             "post_execution_assertions": []
         }]
