@@ -43,7 +43,8 @@ apply_formal_argument = { typed_argument }
 apply_formal_result   = { typed_argument }
 typed_argument        = { "(" ~ identifier ~ type_identifier ~ ")" }
 
+branch_formal_condition = { "(" ~ identifier ~ "Condition" ~ ")" }
+
 // TRAP IF - [ 🐇 ], [ 📝 ], [ 🪖 ]
-trap_if_then      = { "if_then" ~ if_hook_signature ~ GUEST_BLOCK }
-trap_if_then_else = { "if_then_else" ~ if_hook_signature ~ GUEST_BLOCK }
-if_hook_signature = { "(" ~ identifier ~ "Condition" ~ ")" }
+trap_if_then      = { "if_then" ~ branch_formal_condition ~ GUEST_BLOCK }
+trap_if_then_else = { "if_then_else" ~ branch_formal_condition ~ GUEST_BLOCK }

@@ -70,18 +70,18 @@ pub struct ApplySpe {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct TrapIfThen {
-    pub if_hook_signature: IfHookSignature,
+    pub branch_formal_condition: BranchFormalCondition,
     pub body: String,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct TrapIfThenElse {
-    pub if_hook_signature: IfHookSignature,
+    pub branch_formal_condition: BranchFormalCondition,
     pub body: String,
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct IfHookSignature {
+pub struct BranchFormalCondition {
     pub parameter_condition: String,
 }
 
@@ -183,27 +183,27 @@ impl TryFrom<pest_ast::TrapSignature> for TrapSignature {
                 body,
             })),
             pest_ast::TrapSignature::TrapIfThen(pest_ast::TrapIfThen {
-                if_hook_signature,
+                branch_formal_condition,
                 body,
             }) => Ok(TrapSignature::TrapIfThen(TrapIfThen {
-                if_hook_signature: IfHookSignature::from(if_hook_signature),
+                branch_formal_condition: BranchFormalCondition::from(branch_formal_condition),
                 body,
             })),
             pest_ast::TrapSignature::TrapIfThenElse(pest_ast::TrapIfThenElse {
-                if_hook_signature,
+                branch_formal_condition,
                 body,
             }) => Ok(TrapSignature::TrapIfThenElse(TrapIfThenElse {
-                if_hook_signature: IfHookSignature::from(if_hook_signature),
+                branch_formal_condition: BranchFormalCondition::from(branch_formal_condition),
                 body,
             })),
         }
     }
 }
 
-impl From<pest_ast::IfHookSignature> for IfHookSignature {
-    fn from(past_if_hook_signature: pest_ast::IfHookSignature) -> Self {
-        let parameter_condition = past_if_hook_signature.parameter_identifier_condition;
-        IfHookSignature {
+impl From<pest_ast::BranchFormalCondition> for BranchFormalCondition {
+    fn from(past_branch_formal_condition: pest_ast::BranchFormalCondition) -> Self {
+        let parameter_condition = past_branch_formal_condition.parameter_identifier_condition;
+        BranchFormalCondition {
             parameter_condition,
         }
     }
@@ -541,13 +541,13 @@ mod tests {
                 })),
                 AdviceDefinition::AdviceGlobal("🟣".into()),
                 AdviceDefinition::AdviceTrap(TrapSignature::TrapIfThen(TrapIfThen {
-                    if_hook_signature: IfHookSignature {
+                    branch_formal_condition: BranchFormalCondition {
                         parameter_condition: "cond".into()
                     },
                     body: "then 🧂".into()
                 })),
                 AdviceDefinition::AdviceTrap(TrapSignature::TrapIfThenElse(TrapIfThenElse {
-                    if_hook_signature: IfHookSignature {
+                    branch_formal_condition: BranchFormalCondition {
                         parameter_condition: "cond".into()
                     },
                     body: "then 🧂 else 🌶️".into()

@@ -4,7 +4,7 @@ use indoc::indoc;
 
 use crate::{
     ast::wasp::{
-        AdviceDefinition, ApplyGen, ApplyHookSignature, ApplySpe, IfHookSignature, TrapApply,
+        AdviceDefinition, ApplyGen, ApplyHookSignature, ApplySpe, BranchFormalCondition, TrapApply,
         TrapIfThen, TrapIfThenElse, TrapSignature, WasmParameter, WasmType, WaspRoot,
     },
     wasp_interface::{
@@ -282,9 +282,10 @@ impl ApplySpe {
 impl TrapIfThen {
     fn to_assemblyscript(&self) -> String {
         let TrapIfThen {
-            if_hook_signature: IfHookSignature {
-                parameter_condition,
-            },
+            branch_formal_condition:
+                BranchFormalCondition {
+                    parameter_condition,
+                },
             body,
         } = &self;
 
@@ -311,9 +312,10 @@ impl TrapIfThen {
 impl TrapIfThenElse {
     fn to_assemblyscript(&self) -> String {
         let TrapIfThenElse {
-            if_hook_signature: IfHookSignature {
-                parameter_condition,
-            },
+            branch_formal_condition:
+                BranchFormalCondition {
+                    parameter_condition,
+                },
             body,
         } = &self;
 
@@ -475,7 +477,7 @@ mod tests {
     #[test]
     fn generate_if_then() {
         let ast: TrapSignature = TrapSignature::TrapIfThen(TrapIfThen {
-            if_hook_signature: IfHookSignature {
+            branch_formal_condition: BranchFormalCondition {
                 parameter_condition: "cond".into(),
             },
             body: "console.log('it');".into(),
@@ -498,7 +500,7 @@ mod tests {
     #[test]
     fn generate_if_then_else() {
         let ast: TrapSignature = TrapSignature::TrapIfThenElse(TrapIfThenElse {
-            if_hook_signature: IfHookSignature {
+            branch_formal_condition: BranchFormalCondition {
                 parameter_condition: "cond".into(),
             },
             body: "console.log('ite');".into(),

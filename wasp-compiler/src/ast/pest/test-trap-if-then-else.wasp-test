@@ -14,14 +14,14 @@ Aspect If Then Else
       (advice_trap
         (trap_signature
           (trap_if_then
-            (if_hook_signature
+            (branch_formal_condition
               (identifier: "cond"))
             (GUEST_BLOCK: ">>>GUEST>>>it  [🧂]<<<GUEST<<<")))))
     (advice_definition
       (advice_trap
         (trap_signature
           (trap_if_then_else
-            (if_hook_signature
+            (branch_formal_condition
               (identifier: "cond"))
             (GUEST_BLOCK: ">>>GUEST>>>ite [🧂]<<<GUEST<<<"))))))
   (EOI: ""))

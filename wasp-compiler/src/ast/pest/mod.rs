@@ -110,7 +110,7 @@ pub struct ApplyFormalResult(pub TypedArgument);
 #[derive(Debug, FromPest)]
 #[pest_ast(rule(Rule::trap_if_then))]
 pub struct TrapIfThen {
-    pub if_hook_signature: IfHookSignature,
+    pub branch_formal_condition: BranchFormalCondition,
     #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter)))]
     pub body: String,
 }
@@ -118,14 +118,14 @@ pub struct TrapIfThen {
 #[derive(Debug, FromPest)]
 #[pest_ast(rule(Rule::trap_if_then_else))]
 pub struct TrapIfThenElse {
-    pub if_hook_signature: IfHookSignature,
+    pub branch_formal_condition: BranchFormalCondition,
     #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter)))]
     pub body: String,
 }
 
 #[derive(Debug, FromPest)]
-#[pest_ast(rule(Rule::if_hook_signature))]
-pub struct IfHookSignature {
+#[pest_ast(rule(Rule::branch_formal_condition))]
+pub struct BranchFormalCondition {
     #[pest_ast(inner(with(span_into_string)))]
     pub parameter_identifier_condition: String,
 }
