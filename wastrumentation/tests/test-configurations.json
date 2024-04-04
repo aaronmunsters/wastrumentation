@@ -246,6 +246,11 @@
             "post_execution_assertions": []
         },
         "instrumented_assertions": [{
+            "analysis":"./analysis/forward.wasp",
+            "wasi_enabled": false,
+            "input_program_assertion": "EqualToUninstrumented",
+            "post_execution_assertions": []
+        },{
             "analysis":"./analysis/if-then-alter.wasp",
             "wasi_enabled": false,
             "input_program_assertion": {
