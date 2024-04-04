@@ -24,7 +24,8 @@ type_identifier = @{ ASCII_ALPHA_UPPER ~ ASCII_ALPHANUMERIC+ }
 trap_signature = {
     trap_apply
   | trap_if_then
-  | trap_if_then_else /* | more | trap | targets | here | ... */
+  | trap_if_then_else
+  | trap_br_if /* | more | trap | targets | here | ... */
 }
 
 // TRAP APPLY
@@ -44,7 +45,11 @@ apply_formal_result   = { typed_argument }
 typed_argument        = { "(" ~ identifier ~ type_identifier ~ ")" }
 
 branch_formal_condition = { "(" ~ identifier ~ "Condition" ~ ")" }
+branch_formal_label     = { "(" ~ identifier ~ "Label" ~ ")" }
 
 // TRAP IF - [ 🐇 ], [ 📝 ], [ 🪖 ]
 trap_if_then      = { "if_then" ~ branch_formal_condition ~ GUEST_BLOCK }
 trap_if_then_else = { "if_then_else" ~ branch_formal_condition ~ GUEST_BLOCK }
+
+// TRAP IF-BR - [ 🐇 ], [ 📝 ], [ 🪖 ]
+trap_br_if = { "br_if" ~ branch_formal_condition ~ branch_formal_label ~ GUEST_BLOCK }

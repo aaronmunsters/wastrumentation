@@ -25,6 +25,7 @@ pub fn instrument(module: &[u8], wasp_interface: WaspInterface) -> Instrumentati
         generic_interface,
         if_then_else_trap,
         if_then_trap,
+        br_if_trap,
         .. // TODO: remove?
     } = wasp_interface;
     let mut instrumentation_lib = String::new();
@@ -65,6 +66,16 @@ pub fn instrument(module: &[u8], wasp_interface: WaspInterface) -> Instrumentati
 
         instrumentation_lib.push_str(&generic_function_instrumentation_lib.content);
     };
+
+    if let Some(trap_export) = br_if_trap {
+        branch_if::instrument(
+            &mut module,
+            &pre_instrumentation_function_indices,
+            trap_export,
+            branch_if::Target::BrIf,
+        )
+        .unwrap() // TODO: handle
+    }
 
     InstrumentationResult {
         instrumentation_lib: AssemblyScriptProgram {

@@ -7,6 +7,7 @@ pub const TRANSFORMED_INPUT_NS: &str = "transformed_input";
 pub const GENERIC_APPLY_FUNCTION_NAME: &str = "generic_apply";
 pub const SPECIALIZED_IF_THEN_FUNCTION_NAME: &str = "specialized_if_then_k";
 pub const SPECIALIZED_IF_THEN_ELSE_FUNCTION_NAME: &str = "specialized_if_then_else_k";
+pub const SPECIALIZED_BR_IF_FUNCTION_NAME: &str = "specialized_br_if";
 pub const CALL_BASE: &str = "call_base";
 
 // TODO: are `inputs` and `outputs` used?
@@ -17,6 +18,7 @@ pub struct WaspInterface {
     pub generic_interface: Option<(WasmExport, WasmImport)>,
     pub if_then_trap: Option<WasmExport>,
     pub if_then_else_trap: Option<WasmExport>,
+    pub br_if_trap: Option<WasmExport>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -74,6 +76,17 @@ impl WaspInterface {
             results: vec![I32],
         }
     }
+
+    fn br_if_interface() -> WasmExport {
+        WasmExport {
+            name: SPECIALIZED_BR_IF_FUNCTION_NAME.into(),
+            // path_kontinuation, label
+            // TODO: is `label` interesting? This value does not change at runtime
+            args: vec![I32, I32],
+            // path_kontinuation
+            results: vec![I32],
+        }
+    }
 }
 
 impl From<&WaspRoot> for WaspInterface {
@@ -83,6 +96,7 @@ impl From<&WaspRoot> for WaspInterface {
         let mut wasm_exports: Vec<WasmExport> = Vec::new();
         let mut if_then_trap: Option<WasmExport> = None;
         let mut if_then_else_trap: Option<WasmExport> = None;
+        let mut br_if_trap: Option<WasmExport> = None;
         let WaspRoot(advice_definitions) = wasp_root;
         for advice_definition in advice_definitions {
             if let AdviceDefinition::AdviceTrap(trap_signature) = advice_definition {
@@ -118,6 +132,9 @@ impl From<&WaspRoot> for WaspInterface {
                     TrapSignature::TrapIfThenElse(_) => {
                         if_then_else_trap = Some(WaspInterface::if_then_else_interface())
                     }
+                    TrapSignature::TrapBrIf(_) => {
+                        br_if_trap = Some(WaspInterface::br_if_interface())
+                    }
                 }
             };
         }
@@ -127,6 +144,7 @@ impl From<&WaspRoot> for WaspInterface {
             generic_interface,
             if_then_trap,
             if_then_else_trap,
+            br_if_trap,
         }
     }
 }

@@ -53,6 +53,7 @@ pub enum TrapSignature {
     TrapApply(TrapApply),
     TrapIfThen(TrapIfThen),
     TrapIfThenElse(TrapIfThenElse),
+    TrapBrIf(TrapBrIf),
 }
 
 #[derive(Debug, FromPest)]
@@ -124,10 +125,26 @@ pub struct TrapIfThenElse {
 }
 
 #[derive(Debug, FromPest)]
+#[pest_ast(rule(Rule::trap_br_if))]
+pub struct TrapBrIf {
+    pub branch_formal_condition: BranchFormalCondition,
+    pub branch_formal_label: BranchFormalLabel,
+    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter)))]
+    pub body: String,
+}
+
+#[derive(Debug, FromPest)]
 #[pest_ast(rule(Rule::branch_formal_condition))]
 pub struct BranchFormalCondition {
     #[pest_ast(inner(with(span_into_string)))]
     pub parameter_identifier_condition: String,
+}
+
+#[derive(Debug, FromPest)]
+#[pest_ast(rule(Rule::branch_formal_label))]
+pub struct BranchFormalLabel {
+    #[pest_ast(inner(with(span_into_string)))]
+    pub parameter_identifier_label: String,
 }
 
 #[derive(Debug, FromPest)]
@@ -172,6 +189,7 @@ mod tests {
         tester.evaluate_strict("test-trap-apply-spe-inter").unwrap();
         tester.evaluate_strict("test-trap-apply-spe-intro").unwrap();
         tester.evaluate_strict("test-trap-applies").unwrap();
+        tester.evaluate_strict("test-trap-br-if").unwrap();
         tester.evaluate_strict("test-trap-if-then-else").unwrap();
     }
 

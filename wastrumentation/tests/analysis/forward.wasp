@@ -17,6 +17,16 @@
         };
     <<<GUEST<<<)
 
+    (advice br_if (condition Condition)
+                  (label     Label) >>>GUEST>>>
+        if (condition.is_branch) {
+            return condition.continue_branch;
+        };
+        if (condition.is_skip) {
+            return condition.continue_skip;
+        };
+    <<<GUEST<<<)
+
     (advice apply (func    WasmFunction)
                   (args    MutDynArgs)
                   (results MutDynResults) >>>GUEST>>>

@@ -1,0 +1,21 @@
+Aspect If Then Else
+
+=======
+
+(aspect
+  (advice br_if (cond Condition) (label Label) >>>GUEST>>>it  [🧂]<<<GUEST<<<))
+
+=======
+
+(wasp_input
+  (wasp
+    (advice_definition
+      (advice_trap
+        (trap_signature
+          (trap_br_if
+            (branch_formal_condition
+              (identifier: "cond"))
+            (branch_formal_label
+              (identifier: "label"))
+            (GUEST_BLOCK: ">>>GUEST>>>it  [🧂]<<<GUEST<<<"))))))
+  (EOI: ""))

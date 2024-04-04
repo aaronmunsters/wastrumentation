@@ -20,7 +20,7 @@ use std::collections::HashSet;
 
 use crate::parse_nesting::{HighLevelBody, Instr, LowLevelBody};
 use wasabi_wasm::{
-    BinaryOp, Code, Function, Idx, ImportOrPresent, Local, LocalOp, Module, ValType,
+    BinaryOp, Code, Function, Idx, ImportOrPresent, Local, LocalOp, Module, Val, ValType,
 };
 use wasp_compiler::wasp_interface::WasmExport;
 
@@ -32,6 +32,7 @@ type BranchTransformationError = &'static str;
 pub enum Target {
     IfThen,
     IfThenElse,
+    BrIf,
 }
 
 pub fn instrument(
@@ -76,9 +77,11 @@ pub fn instrument_bodies(
     Ok(())
 }
 
+// TODO: Correct this / determine this up front
 // Amount of constant instructions in transformation
 const TRANSFORM_COST_PER_IF_THEN_INSTR: usize = 17;
 const TRANSFORM_COST_PER_IF_THEN_ELSE_INSTR: usize = 17;
+const TRANSFORM_COST_PER_BR_IF: usize = 17;
 
 fn cost_for(body: &[Instr]) -> usize {
     body.iter()
@@ -88,6 +91,7 @@ fn cost_for(body: &[Instr]) -> usize {
                 Instr::Block(_, body) => cost_for(body),
                 Instr::If(_, _, None) => TRANSFORM_COST_PER_IF_THEN_INSTR,
                 Instr::If(_, _, Some(_)) => TRANSFORM_COST_PER_IF_THEN_ELSE_INSTR,
+                Instr::BrIf(_) => TRANSFORM_COST_PER_BR_IF,
                 _ => 1,
             }
         })
@@ -107,6 +111,7 @@ impl HighLevelBody {
         Self(transformed_body)
     }
 
+    // TODO: Is is possible to drop the equality check?
     fn transform_inner(
         body: &Vec<Instr>,
         if_k_f_idx: &Idx<Function>,
@@ -191,6 +196,27 @@ impl HighLevelBody {
                             ],
                         ),
                         // STACK: [type_out]
+                    ]);
+                }
+                (Target::BrIf, Instr::BrIf(label)) => {
+                    result.extend_from_slice(&[
+                        // STACK: [condition]
+                        Instr::Const(wasabi_wasm::Val::I32(WASM_FALSE)),
+                        // STACK: [condition, false]
+                        Instr::Binary(BinaryOp::I32Eq),
+                        // STACK: [PATH_KONTN]
+                        Instr::Const(Val::I32(label.to_u32() as i32)),
+                        // STACK: [PATH_KONTN, label]
+                        Instr::Call(*if_k_f_idx),
+                        // STACK: [kontinuation]
+                        Instr::Local(LocalOp::Tee, *store_if_continuation),
+                        // STACK: [kontinuation], local.store_if_continuation = kontinuation
+                        Instr::Const(wasabi_wasm::Val::I32(THEN_KONTN)),
+                        // STACK: [kontinuation, THEN_KONTN]
+                        Instr::Binary(wasabi_wasm::BinaryOp::I32Eq),
+                        // STACK: [condition]
+                        Instr::BrIf(*label),
+                        // STACK: []
                     ]);
                 }
                 (target, Instr::Loop(type_, body)) => result.push(Instr::Loop(

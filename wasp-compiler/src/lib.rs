@@ -167,9 +167,10 @@ mod tests {
                     generic: false, \
                     specialized: {}, \
                     if_then: false, \
-                    if_then_else: false \
+                    if_then_else: false, \
+                    br_if: false \
                 }, \
-                wasp_interface: WaspInterface { inputs: [], outputs: [], generic_interface: None, if_then_trap: None, if_then_else_trap: None } \
+                wasp_interface: WaspInterface { inputs: [], outputs: [], generic_interface: None, if_then_trap: None, if_then_else_trap: None, br_if_trap: None } \
             }"
         );
     }

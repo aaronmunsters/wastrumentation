@@ -4,11 +4,12 @@ use indoc::indoc;
 
 use crate::{
     ast::wasp::{
-        AdviceDefinition, ApplyGen, ApplyHookSignature, ApplySpe, BranchFormalCondition, TrapApply,
-        TrapIfThen, TrapIfThenElse, TrapSignature, WasmParameter, WasmType, WaspRoot,
+        AdviceDefinition, ApplyGen, ApplyHookSignature, ApplySpe, BranchFormalCondition,
+        BranchFormalLabel, TrapApply, TrapBrIf, TrapIfThen, TrapIfThenElse, TrapSignature,
+        WasmParameter, WasmType, WaspRoot,
     },
     wasp_interface::{
-        WasmExport, WasmImport, GENERIC_APPLY_FUNCTION_NAME,
+        WasmExport, WasmImport, GENERIC_APPLY_FUNCTION_NAME, SPECIALIZED_BR_IF_FUNCTION_NAME,
         SPECIALIZED_IF_THEN_ELSE_FUNCTION_NAME, SPECIALIZED_IF_THEN_FUNCTION_NAME,
         TRANSFORMED_INPUT_NS,
     },
@@ -70,6 +71,7 @@ impl TrapSignature {
             TrapSignature::TrapIfThenElse(trap_if_then_else) => {
                 trap_if_then_else.to_assemblyscript()
             }
+            TrapSignature::TrapBrIf(trap_bf_id) => trap_bf_id.to_assemblyscript(),
         }
     }
 }
@@ -279,6 +281,11 @@ impl ApplySpe {
     }
 }
 
+// TODO: mangle the variables that are hardcoded now.
+// eg. currently, there's `path_kontinuation` as a variable, however
+//     this may clash with analysis-provided variables.
+//     The same goes for `low_level_label`.
+
 impl TrapIfThen {
     fn to_assemblyscript(&self) -> String {
         let TrapIfThen {
@@ -334,6 +341,40 @@ impl TrapIfThenElse {
             SPECIALIZED_IF_THEN_ELSE_FUNCTION_NAME = SPECIALIZED_IF_THEN_ELSE_FUNCTION_NAME,
             body = body,
             parameter_condition = parameter_condition,
+        )
+        .to_string()
+    }
+}
+
+impl TrapBrIf {
+    fn to_assemblyscript(&self) -> String {
+        let TrapBrIf {
+            branch_formal_condition:
+                BranchFormalCondition {
+                    parameter_condition,
+                },
+            branch_formal_label: BranchFormalLabel { parameter_label },
+            body,
+        } = &self;
+
+        format!(
+            indoc! {r#"
+            export function {SPECIALIZED_BR_IF_FUNCTION_NAME}(
+                path_kontinuation: i32,
+                low_level_label: i32,
+            ): i32 {{
+                let {parameter_condition} = new ParameterConditionBrIf(path_kontinuation);
+                let {parameter_label} = new ParameterLabelBrIf(low_level_label);
+                {body}
+                // Fallback, if no return value
+                return path_kontinuation;
+            }}
+            "#
+            },
+            SPECIALIZED_BR_IF_FUNCTION_NAME = SPECIALIZED_BR_IF_FUNCTION_NAME,
+            body = body,
+            parameter_condition = parameter_condition,
+            parameter_label = parameter_label,
         )
         .to_string()
     }

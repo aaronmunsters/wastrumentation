@@ -10,6 +10,7 @@ pub struct JoinPoints {
     pub specialized: HashSet<SpecialisedJoinPoint>,
     pub if_then: bool,
     pub if_then_else: bool,
+    pub br_if: bool,
 }
 
 #[derive(Debug, Eq, PartialEq, Hash, Clone)]
@@ -27,6 +28,7 @@ impl JoinPoints {
             JoinPoint::Generic => self.generic = true,
             JoinPoint::IfThen => self.if_then = true,
             JoinPoint::IfThenElse => self.if_then_else = true,
+            JoinPoint::BrIf => self.br_if = true,
         };
     }
 }
@@ -36,6 +38,7 @@ enum JoinPoint {
     Specialised(SpecialisedJoinPoint),
     IfThen,
     IfThenElse,
+    BrIf,
 }
 
 impl WaspRoot {
@@ -60,6 +63,7 @@ impl TrapSignature {
             TrapSignature::TrapApply(trap_apply) => trap_apply.apply_hook_signature.join_point(),
             TrapSignature::TrapIfThen(_) => JoinPoint::IfThen,
             TrapSignature::TrapIfThenElse(_) => JoinPoint::IfThenElse,
+            TrapSignature::TrapBrIf(_) => JoinPoint::BrIf,
         }
     }
 }
@@ -136,7 +140,8 @@ mod tests {
                 }\
             }, \
             if_then: false, \
-            if_then_else: false \
+            if_then_else: false, \
+            br_if: false \
         }"
         )
     }
@@ -224,6 +229,9 @@ mod tests {
                         >>>GUEST>>>🟠<<<GUEST<<<)
                     (advice if_then_else (cond Condition)
                         >>>GUEST>>>🟣<<<GUEST<<<)
+                    (advice br_if (cond  Condition)
+                                  (label Label)
+                        >>>GUEST>>>⚪️<<<GUEST<<<)
                 )
                 "#,
             ),
@@ -244,6 +252,7 @@ mod tests {
                 .collect(),
                 if_then: true,
                 if_then_else: true,
+                br_if: true,
             }
         )
     }

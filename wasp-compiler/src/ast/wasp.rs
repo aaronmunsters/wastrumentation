@@ -31,6 +31,7 @@ pub enum TrapSignature {
     TrapApply(TrapApply),
     TrapIfThen(TrapIfThen),
     TrapIfThenElse(TrapIfThenElse),
+    TrapBrIf(TrapBrIf),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -81,8 +82,20 @@ pub struct TrapIfThenElse {
 }
 
 #[derive(Debug, PartialEq, Eq)]
+pub struct TrapBrIf {
+    pub branch_formal_condition: BranchFormalCondition,
+    pub branch_formal_label: BranchFormalLabel,
+    pub body: String,
+}
+
+#[derive(Debug, PartialEq, Eq)]
 pub struct BranchFormalCondition {
     pub parameter_condition: String,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct BranchFormalLabel {
+    pub parameter_label: String,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -132,6 +145,9 @@ impl WaspRoot {
                 ) || matches!(
                     advice_definition,
                     AdviceDefinition::AdviceTrap(TrapSignature::TrapIfThenElse { .. })
+                ) || matches!(
+                    advice_definition,
+                    AdviceDefinition::AdviceTrap(TrapSignature::TrapBrIf { .. })
                 )
             })
     }
@@ -196,6 +212,15 @@ impl TryFrom<pest_ast::TrapSignature> for TrapSignature {
                 branch_formal_condition: BranchFormalCondition::from(branch_formal_condition),
                 body,
             })),
+            pest_ast::TrapSignature::TrapBrIf(pest_ast::TrapBrIf {
+                branch_formal_condition,
+                branch_formal_label,
+                body,
+            }) => Ok(TrapSignature::TrapBrIf(TrapBrIf {
+                branch_formal_condition: BranchFormalCondition::from(branch_formal_condition),
+                branch_formal_label: BranchFormalLabel::from(branch_formal_label),
+                body,
+            })),
         }
     }
 }
@@ -206,6 +231,13 @@ impl From<pest_ast::BranchFormalCondition> for BranchFormalCondition {
         BranchFormalCondition {
             parameter_condition,
         }
+    }
+}
+
+impl From<pest_ast::BranchFormalLabel> for BranchFormalLabel {
+    fn from(past_branch_formal_label: pest_ast::BranchFormalLabel) -> Self {
+        let parameter_label = past_branch_formal_label.parameter_identifier_label;
+        BranchFormalLabel { parameter_label }
     }
 }
 

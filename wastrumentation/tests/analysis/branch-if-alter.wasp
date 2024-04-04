@@ -1,0 +1,12 @@
+(aspect
+    (advice br_if (condition Condition)
+                  (label     Label) >>>GUEST>>>
+        // THEN => SKIP
+        if (condition.is_branch) {
+            return condition.continue_skip;
+        };
+        // SKIP => THEN
+        if (condition.is_skip) {
+            return condition.continue_branch;
+        };
+        <<<GUEST<<<))
