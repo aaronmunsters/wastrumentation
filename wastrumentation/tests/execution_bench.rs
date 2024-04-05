@@ -19,7 +19,6 @@ use std::{
     fs::{read, read_to_string},
     io::Cursor,
     path::PathBuf,
-    str::FromStr,
 };
 
 mod test_conf;
@@ -37,22 +36,6 @@ fn test_integration_configurations() {
 }
 
 struct WatModule(pub Vec<u8>);
-
-// TODO: change to TryInto
-impl From<&TestConfiguration> for WatModule {
-    fn from(test_configuration: &TestConfiguration) -> Self {
-        let mut path = PathBuf::from_str(TEST_RELATIVE_PATH).unwrap();
-        path.push(&test_configuration.input_program.path);
-
-        let content = read(&path).unwrap_or_else(|_| panic!("Could not open {}", path.display()));
-        match &test_configuration.input_program.r#type {
-            test_conf::ProgramType::Wat => test_configuration.compile_as_wat(&content),
-            test_conf::ProgramType::AssemblyScript(AssemblyScript { wasi_enabled }) => {
-                test_configuration.compile_as_assemblyscript(&content, *wasi_enabled)
-            }
-        }
-    }
-}
 
 impl From<&WasmValue> for Val {
     fn from(val: &WasmValue) -> Self {
@@ -120,6 +103,20 @@ impl WasiEngineSetup {
 }
 
 impl TestConfiguration {
+    fn to_wat_module(&self) -> std::io::Result<WatModule> {
+        let mut path = PathBuf::from(TEST_RELATIVE_PATH);
+        path.push(&self.input_program.path);
+
+        let content = read(&path)?;
+        let wat_module = match &self.input_program.r#type {
+            test_conf::ProgramType::Wat => self.compile_as_wat(&content),
+            test_conf::ProgramType::AssemblyScript(AssemblyScript { wasi_enabled }) => {
+                self.compile_as_assemblyscript(&content, *wasi_enabled)
+            }
+        };
+        Ok(wat_module)
+    }
+
     fn as_wasmtime_values(values: &[WasmValue]) -> Vec<Val> {
         values.iter().map(Into::into).collect()
     }
@@ -133,7 +130,7 @@ impl TestConfiguration {
     }
 
     fn assert_behavior(&self) {
-        let WatModule(input_program) = self.into();
+        let WatModule(input_program) = self.to_wat_module().unwrap();
         Self::assert_uninstrumented(self, &input_program);
         Self::assert_instrumented(self, &input_program);
     }
