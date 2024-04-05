@@ -1,27 +1,7 @@
-const THEN_KONTN: i32 = 0;
-const ELSE_KONTN: i32 = 1;
-const SKIP_KONTN: i32 = 1;
-
-// TODO:
-// IDEA: Allow for 'custom continuation', in which instrumentation platform
-//       jumps to custom branch bevaviour and not only the behavior present
-//       in the input program.
-
-/// Boolean values in WebAssembly are represented as values of type `i32`.
-/// In a boolean context, such as a `br_if` condition, any non-zero value
-/// is interpreted as true and `0` is interpreted as false.
-///
-/// [Link to Wasm reference manual source](
-/// https://github.com/sunfishcode/wasm-reference-manual/blob/master/WebAssembly.md#booleans
-/// )
-const WASM_FALSE: i32 = 0;
-
 use std::collections::HashSet;
 
 use crate::parse_nesting::{HighLevelBody, Instr, LowLevelBody};
-use wasabi_wasm::{
-    BinaryOp, Code, Function, Idx, ImportOrPresent, Local, LocalOp, Module, Val, ValType,
-};
+use wasabi_wasm::{Code, Function, Idx, ImportOrPresent, Local, LocalOp, Module, Val, ValType};
 use wasp_compiler::wasp_interface::WasmExport;
 
 use super::{function_application::INSTRUMENTATION_ANALYSIS_MODULE, FunctionTypeConvertible};
@@ -77,25 +57,38 @@ pub fn instrument_bodies(
     Ok(())
 }
 
-// TODO: Correct this / determine this up front
 // Amount of constant instructions in transformation
-const TRANSFORM_COST_PER_IF_THEN_INSTR: usize = 17;
-const TRANSFORM_COST_PER_IF_THEN_ELSE_INSTR: usize = 17;
-const TRANSFORM_COST_PER_BR_IF: usize = 17;
+const TRANSFORM_COST_PER_IF_THEN_INSTR: usize = 2;
+const TRANSFORM_COST_PER_IF_THEN_ELSE_INSTR: usize = 2;
+const TRANSFORM_COST_PER_BR_IF: usize = 3;
 
-fn cost_for(body: &[Instr]) -> usize {
-    body.iter()
+fn delta_to_instrument_instr(instr: &Instr) -> usize {
+    match instr {
+        Instr::If(_, _, None) => TRANSFORM_COST_PER_IF_THEN_INSTR,
+        Instr::If(_, _, Some(_)) => TRANSFORM_COST_PER_IF_THEN_ELSE_INSTR,
+        Instr::BrIf(_) => TRANSFORM_COST_PER_BR_IF,
+        _ => 0,
+    }
+}
+
+#[allow(dead_code)] /* TODO: */
+fn delta_to_instrument_body(body: &[Instr]) -> usize {
+    let res = body
+        .iter()
         .map(|instr| -> usize {
-            match instr {
-                Instr::Loop(_, body) => cost_for(body),
-                Instr::Block(_, body) => cost_for(body),
-                Instr::If(_, _, None) => TRANSFORM_COST_PER_IF_THEN_INSTR,
-                Instr::If(_, _, Some(_)) => TRANSFORM_COST_PER_IF_THEN_ELSE_INSTR,
-                Instr::BrIf(_) => TRANSFORM_COST_PER_BR_IF,
-                _ => 1,
-            }
+            delta_to_instrument_instr(instr)
+                + match instr {
+                    Instr::Loop(_, body) => delta_to_instrument_body(body),
+                    Instr::Block(_, body) => delta_to_instrument_body(body),
+                    Instr::If(_, then, None) => delta_to_instrument_body(then),
+                    Instr::If(_, then, Some(els)) => {
+                        delta_to_instrument_body(then) + delta_to_instrument_body(els)
+                    }
+                    _ => 0,
+                }
         })
-        .sum()
+        .sum();
+    res
 }
 
 impl HighLevelBody {
@@ -111,48 +104,29 @@ impl HighLevelBody {
         Self(transformed_body)
     }
 
-    // TODO: Is is possible to drop the equality check?
     fn transform_inner(
         body: &Vec<Instr>,
         if_k_f_idx: &Idx<Function>,
         store_if_continuation: &Idx<Local>,
         target: Target,
     ) -> Vec<Instr> {
-        let mut result = Vec::with_capacity(cost_for(body));
+        let mut result = Vec::with_capacity(
+            body.iter().map(delta_to_instrument_instr).sum::<usize>() + body.len(),
+        );
+
         for instr in body {
             match (target, instr) {
                 (Target::IfThen, Instr::If(type_, then, None)) => {
                     result.extend_from_slice(&[
                         // STACK: [type_in, condition]
-                        Instr::Const(wasabi_wasm::Val::I32(WASM_FALSE)),
-                        // STACK: [type_in, condition, false]
-                        Instr::Binary(BinaryOp::I32Eq),
-                        // STACK: [type_in, PATH_KONTN]
                         Instr::Call(*if_k_f_idx),
                         // STACK: [type_in, kontinuation]
                         Instr::Local(LocalOp::Tee, *store_if_continuation),
                         // STACK: [type_in, kontinuation], local.store_if_continuation = kontinuation
-                        Instr::Const(wasabi_wasm::Val::I32(THEN_KONTN)),
-                        // STACK: [type_in, kontinuation, THEN_KONTN]
-                        Instr::Binary(wasabi_wasm::BinaryOp::I32Eq),
-                        // STACK: [type_in, condition]
-                        Instr::if_then_else(
+                        Instr::if_then(
                             *type_,
+                            // STACK: [type_in]
                             Self::transform_inner(then, if_k_f_idx, store_if_continuation, target),
-                            vec![
-                                // STACK: [type_in]
-                                Instr::Local(LocalOp::Get, *store_if_continuation),
-                                // STACK: [type_in, kontinuation]
-                                Instr::Const(wasabi_wasm::Val::I32(SKIP_KONTN)),
-                                // STACK: [type_in, kontinuation, CSTM_KONTN]
-                                Instr::Binary(wasabi_wasm::BinaryOp::I32Eq),
-                                // STACK: [type_in, condition]
-                                Instr::if_then_else(
-                                    *type_,
-                                    vec![], // Do nothing
-                                    vec![Instr::Unreachable],
-                                ),
-                            ],
                         ),
                         // STACK: [type_out]
                     ]);
@@ -160,40 +134,16 @@ impl HighLevelBody {
                 (Target::IfThenElse, Instr::If(type_, then, Some(else_))) => {
                     result.extend_from_slice(&[
                         // STACK: [type_in, condition]
-                        Instr::Const(wasabi_wasm::Val::I32(WASM_FALSE)),
-                        // STACK: [type_in, condition, false]
-                        Instr::Binary(BinaryOp::I32Eq),
-                        // STACK: [type_in, PATH_KONTN]
                         Instr::Call(*if_k_f_idx),
                         // STACK: [type_in, kontinuation]
                         Instr::Local(LocalOp::Tee, *store_if_continuation),
                         // STACK: [type_in, kontinuation], local.store_if_continuation = kontinuation
-                        Instr::Const(wasabi_wasm::Val::I32(THEN_KONTN)),
-                        // STACK: [type_in, kontinuation, THEN_KONTN]
-                        Instr::Binary(wasabi_wasm::BinaryOp::I32Eq),
-                        // STACK: [type_in, condition]
                         Instr::if_then_else(
                             *type_,
+                            // STACK: [type_in]
                             Self::transform_inner(then, if_k_f_idx, store_if_continuation, target),
-                            vec![
-                                // STACK: [type_in]
-                                Instr::Local(LocalOp::Get, *store_if_continuation),
-                                // STACK: [type_in, kontinuation]
-                                Instr::Const(wasabi_wasm::Val::I32(ELSE_KONTN)),
-                                // STACK: [type_in, kontinuation, ELSE_KONTN]
-                                Instr::Binary(wasabi_wasm::BinaryOp::I32Eq),
-                                // STACK: [type_in, condition]
-                                Instr::if_then_else(
-                                    *type_,
-                                    Self::transform_inner(
-                                        else_,
-                                        if_k_f_idx,
-                                        store_if_continuation,
-                                        target,
-                                    ),
-                                    vec![Instr::Unreachable],
-                                ),
-                            ],
+                            // STACK: [type_in]
+                            Self::transform_inner(else_, if_k_f_idx, store_if_continuation, target),
                         ),
                         // STACK: [type_out]
                     ]);
@@ -201,20 +151,12 @@ impl HighLevelBody {
                 (Target::BrIf, Instr::BrIf(label)) => {
                     result.extend_from_slice(&[
                         // STACK: [condition]
-                        Instr::Const(wasabi_wasm::Val::I32(WASM_FALSE)),
-                        // STACK: [condition, false]
-                        Instr::Binary(BinaryOp::I32Eq),
-                        // STACK: [PATH_KONTN]
                         Instr::Const(Val::I32(label.to_u32() as i32)),
-                        // STACK: [PATH_KONTN, label]
+                        // STACK: [condition, label]
                         Instr::Call(*if_k_f_idx),
                         // STACK: [kontinuation]
                         Instr::Local(LocalOp::Tee, *store_if_continuation),
                         // STACK: [kontinuation], local.store_if_continuation = kontinuation
-                        Instr::Const(wasabi_wasm::Val::I32(THEN_KONTN)),
-                        // STACK: [kontinuation, THEN_KONTN]
-                        Instr::Binary(wasabi_wasm::BinaryOp::I32Eq),
-                        // STACK: [condition]
                         Instr::BrIf(*label),
                         // STACK: []
                     ]);
@@ -237,6 +179,9 @@ impl HighLevelBody {
 
 #[cfg(test)]
 mod tests {
+    const THEN_KONTN: i32 = 1;
+    const ELSE_KONTN: i32 = 0;
+
     use std::collections::HashSet;
 
     use wasabi_wasm::{FunctionType, Val, ValType};
@@ -424,7 +369,7 @@ mod tests {
         )
         .unwrap();
 
-        // Execute uninstrumented:
+        // Execute instrumented:
         assert_outcome(&wasm_module, instrumented_assertions);
     }
 
@@ -515,22 +460,10 @@ mod tests {
 
     #[test]
     fn test_nested_ifs() {
-        let (mut wasm_module, body) = nested_ifs_body();
-
-        // Instrument
-        instrument_bodies(
-            &mut wasm_module,
-            &HashSet::from_iter(vec![0_usize.into()]),
-            &0_usize.into(),
-            Target::IfThenElse,
-        )
-        .unwrap();
-
+        let (mut _wasm_module, body) = nested_ifs_body();
         assert_eq!(HighLevelBody::try_from(LowLevelBody(body)).unwrap(), {
-            let type_ = FunctionType::new(&[], &[]);
-            use wasabi_wasm::BinaryOp::*;
-            use wasabi_wasm::UnaryOp::*;
-            use wasabi_wasm::Val::*;
+            let type_ = FunctionType::empty();
+            use wasabi_wasm::{BinaryOp::*, UnaryOp::*, Val::*};
             use {super::Instr::*, super::LocalOp::*};
             HighLevelBody(vec![
                 Local(Get, 0_usize.into()),
@@ -571,41 +504,43 @@ mod tests {
     #[test]
     fn compute_cost_blocks_loops() {
         // Include cost computation with loops
-        let type_void_to_void = FunctionType::new(&[], &[]);
         let instr_loop = || {
             Instr::Loop(
-                type_void_to_void,
+                FunctionType::empty(),
                 vec![Instr::Block(
-                    type_void_to_void,
+                    FunctionType::empty(),
                     vec![Instr::Const(Val::I32(0))],
                 )],
             )
         };
-        let cost = cost_for(&[Instr::if_then_else(
-            type_void_to_void,
+        let instrumentation_delta = delta_to_instrument_body(&[Instr::if_then_else(
+            FunctionType::empty(),
             vec![instr_loop()],
             vec![instr_loop()],
         )]);
-        assert_eq!(cost, 17);
+        assert_eq!(instrumentation_delta, 2);
     }
 
     #[test]
-    fn compute_cost_through_logic() {
-        // Assert
+    fn compute_cost() {
+        // TODO: 1. pick a more complex wasm program
+        // TODO: 2. use property-based testing
+        // FIXME: input program is only using if-then-else, delta_to_instrument would compute for instrumenting all
         let (mut wasm_module, body) = nested_ifs_body();
-        let count_ifs = |body: &[wasabi_wasm::Instr]| {
-            body.iter().fold(0, |acc, instr| {
-                if let wasabi_wasm::Instr::If(..) = instr {
-                    acc + 1
-                } else {
-                    acc
-                }
-            })
+        let HighLevelBody(high_level_body) = LowLevelBody(body.clone()).try_into().unwrap();
+        let delta_to_instrument = delta_to_instrument_body(&high_level_body);
+
+        let body_length = |wasm_module: &wasabi_wasm::Module, index: usize| {
+            wasm_module
+                .function(index.into())
+                .code()
+                .unwrap()
+                .body
+                .len()
         };
 
-        let pre_instr_if_count = count_ifs(&body);
+        let length_uninstrumented = body_length(&wasm_module, 0);
 
-        // Instrument
         instrument_bodies(
             &mut wasm_module,
             &HashSet::from_iter(vec![0_usize.into()]),
@@ -614,17 +549,12 @@ mod tests {
         )
         .unwrap();
 
-        let transformed_body = wasm_module
-            .function(0_usize.into())
-            .code()
-            .unwrap()
-            .body
-            .clone();
-
-        let post_instrumentation_ifs_count = count_ifs(&transformed_body);
-
-        assert_eq!(pre_instr_if_count, 3);
-        assert_eq!(post_instrumentation_ifs_count, pre_instr_if_count * 2)
+        let length_instrumented = body_length(&wasm_module, 0);
+        assert!(length_uninstrumented < length_instrumented);
+        assert_eq!(
+            length_instrumented,
+            length_uninstrumented + delta_to_instrument
+        );
     }
 
     #[test]

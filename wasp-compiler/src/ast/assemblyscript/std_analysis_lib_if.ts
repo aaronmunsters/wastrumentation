@@ -1,10 +1,18 @@
-const THEN_KONTN: i32 = 0;
-const ELSE_KONTN: i32 = 1;
-const SKIP_KONTN: i32 = 1;
+/// Boolean values in WebAssembly are represented as values of type `i32`.
+/// In a boolean context, such as a `br_if` condition, any non-zero value
+/// is interpreted as true and `0` is interpreted as false.
+///
+/// [Link to Wasm reference manual source](
+/// https://github.com/sunfishcode/wasm-reference-manual/blob/master/WebAssembly.md#booleans
+/// )
+
+const THEN_KONTN: i32 = 1;
+const ELSE_KONTN: i32 = 0;
+const SKIP_KONTN: i32 = ELSE_KONTN;
+
+const BRANCH_FAIL: i32 = 0;
 
 class ParameterConditionIfThen {
-    readonly continuation: i32;
-
     readonly is_then: i32;
     readonly is_skip: i32;
 
@@ -12,27 +20,17 @@ class ParameterConditionIfThen {
     readonly continue_skip: i32 = SKIP_KONTN;
 
     constructor(path_kontinuation: i32) {
-        this.continuation = path_kontinuation;
-
-        switch (path_kontinuation) {
-            case THEN_KONTN:
-                this.is_then = true;
-                this.is_skip = false;
-                break;
-            case SKIP_KONTN:
-                this.is_then = false;
-                this.is_skip = true;
-                break;
-            default:
-                unreachable();
+        if (path_kontinuation == BRANCH_FAIL) {
+            this.is_then = false;
+            this.is_skip = true;
+        } else {
+            this.is_then = true;
+            this.is_skip = false;
         }
-
     }
 }
 
 class ParameterConditionIfThenElse {
-    readonly continuation: i32;
-
     readonly is_then: i32;
     readonly is_else: i32;
 
@@ -40,27 +38,17 @@ class ParameterConditionIfThenElse {
     readonly continue_else: i32 = ELSE_KONTN;
 
     constructor(path_kontinuation: i32) {
-        this.continuation = path_kontinuation;
-
-        switch (path_kontinuation) {
-            case THEN_KONTN:
-                this.is_then = true;
-                this.is_else = false;
-                break;
-            case ELSE_KONTN:
-                this.is_then = false;
-                this.is_else = true;
-                break;
-            default:
-                unreachable();
+        if (path_kontinuation == BRANCH_FAIL) {
+            this.is_then = false;
+            this.is_else = true;
+        } else {
+            this.is_then = true;
+            this.is_else = false;
         }
-
     }
 }
 
 class ParameterConditionBrIf {
-    readonly continuation: i32;
-
     readonly is_branch: i32;
     readonly is_skip: i32;
 
@@ -68,21 +56,13 @@ class ParameterConditionBrIf {
     readonly continue_skip: i32 = SKIP_KONTN;
 
     constructor(path_kontinuation: i32) {
-        this.continuation = path_kontinuation;
-
-        switch (path_kontinuation) {
-            case THEN_KONTN:
-                this.is_branch = true;
-                this.is_skip = false;
-                break;
-            case SKIP_KONTN:
-                this.is_branch = false;
-                this.is_skip = true;
-                break;
-            default:
-                unreachable();
+        if (path_kontinuation == BRANCH_FAIL) {
+            this.is_branch = false;
+            this.is_skip = true;
+        } else {
+            this.is_branch = true;
+            this.is_skip = false;
         }
-
     }
 }
 
