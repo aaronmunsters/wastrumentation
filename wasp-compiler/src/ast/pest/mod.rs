@@ -166,7 +166,7 @@ mod tests {
 
     #[test]
     fn test_wasp_parser() {
-        const TEST_EXTENSION: &'static str = "wasp-test";
+        const TEST_EXTENSION: &str = "wasp-test";
         let tests_dir = cargo_manifest_dir().join("src").join("ast").join("pest");
         let tester: PestTester<Rule, WaspParser> = {
             PestTester::new(

@@ -6,6 +6,6 @@
         };
         // SKIP => THEN
         if (condition.is_skip) {
-            return condition.is_then;
+            return condition.continue_then;
         };
         <<<GUEST<<<))
