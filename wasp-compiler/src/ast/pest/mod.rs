@@ -135,17 +135,11 @@ pub struct TrapBrIf {
 
 #[derive(Debug, FromPest)]
 #[pest_ast(rule(Rule::branch_formal_condition))]
-pub struct BranchFormalCondition {
-    #[pest_ast(inner(with(span_into_string)))]
-    pub parameter_identifier_condition: String,
-}
+pub struct BranchFormalCondition(#[pest_ast(inner(with(span_into_string)))] pub String);
 
 #[derive(Debug, FromPest)]
 #[pest_ast(rule(Rule::branch_formal_label))]
-pub struct BranchFormalLabel {
-    #[pest_ast(inner(with(span_into_string)))]
-    pub parameter_identifier_label: String,
-}
+pub struct BranchFormalLabel(#[pest_ast(inner(with(span_into_string)))] pub String);
 
 #[derive(Debug, FromPest)]
 #[pest_ast(rule(Rule::typed_argument))]
@@ -168,29 +162,37 @@ mod tests {
     use pest::Parser;
 
     use pest_test::{cargo_manifest_dir, PestTester};
+    use std::{fs::DirEntry, io::Result};
 
     #[test]
     fn test_wasp_parser() {
+        const TEST_EXTENSION: &'static str = "wasp-test";
+        let tests_dir = cargo_manifest_dir().join("src").join("ast").join("pest");
         let tester: PestTester<Rule, WaspParser> = {
-            let path_to_source_dir = cargo_manifest_dir().join("src").join("ast").join("pest");
-
             PestTester::new(
-                path_to_source_dir,
-                "wasp-test",
+                &tests_dir,
+                TEST_EXTENSION,
                 Rule::wasp_input,
                 Default::default(),
             )
         };
 
-        // TODO: find these *.wasp-test files automatically
-        tester.evaluate_strict("test-empty").unwrap();
-        tester.evaluate_strict("test-global-only").unwrap();
-        tester.evaluate_strict("test-trap-apply-hook").unwrap();
-        tester.evaluate_strict("test-trap-apply-spe-inter").unwrap();
-        tester.evaluate_strict("test-trap-apply-spe-intro").unwrap();
-        tester.evaluate_strict("test-trap-applies").unwrap();
-        tester.evaluate_strict("test-trap-br-if").unwrap();
-        tester.evaluate_strict("test-trap-if-then-else").unwrap();
+        for dir_entry in tests_dir
+            .read_dir()
+            .unwrap()
+            .collect::<Result<Vec<DirEntry>>>()
+            .unwrap()
+        {
+            let file_name = dir_entry.file_name();
+            if file_name == "mod.rs" {
+                continue;
+            }
+
+            let name = file_name.to_string_lossy();
+            let (test_name, test_extension) = name.split_once('.').unwrap();
+            assert_eq!(test_extension, TEST_EXTENSION);
+            tester.evaluate_strict(test_name).unwrap();
+        }
     }
 
     #[test]

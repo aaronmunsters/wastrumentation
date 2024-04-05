@@ -266,9 +266,7 @@ mod tests {
     fn test_generation_if_then() {
         let wasp_root = WaspRoot(vec![AdviceDefinition::AdviceTrap(
             TrapSignature::TrapIfThen(TrapIfThen {
-                branch_formal_condition: BranchFormalCondition {
-                    parameter_condition: "condition".into(),
-                },
+                branch_formal_condition: BranchFormalCondition("condition".into()),
                 body: "trap body".into(),
             }),
         )]);
@@ -287,9 +285,7 @@ mod tests {
     fn test_generation_if_then_else() {
         let wasp_root = WaspRoot(vec![AdviceDefinition::AdviceTrap(
             TrapSignature::TrapIfThenElse(TrapIfThenElse {
-                branch_formal_condition: BranchFormalCondition {
-                    parameter_condition: "condition".into(),
-                },
+                branch_formal_condition: BranchFormalCondition("condition".into()),
                 body: "trap body".into(),
             }),
         )]);

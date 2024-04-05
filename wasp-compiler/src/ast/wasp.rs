@@ -89,14 +89,10 @@ pub struct TrapBrIf {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct BranchFormalCondition {
-    pub parameter_condition: String,
-}
+pub struct BranchFormalCondition(pub String);
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct BranchFormalLabel {
-    pub parameter_label: String,
-}
+pub struct BranchFormalLabel(pub String);
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum WasmType {
@@ -202,14 +198,14 @@ impl TryFrom<pest_ast::TrapSignature> for TrapSignature {
                 branch_formal_condition,
                 body,
             }) => Ok(TrapSignature::TrapIfThen(TrapIfThen {
-                branch_formal_condition: BranchFormalCondition::from(branch_formal_condition),
+                branch_formal_condition: branch_formal_condition.into(),
                 body,
             })),
             pest_ast::TrapSignature::TrapIfThenElse(pest_ast::TrapIfThenElse {
                 branch_formal_condition,
                 body,
             }) => Ok(TrapSignature::TrapIfThenElse(TrapIfThenElse {
-                branch_formal_condition: BranchFormalCondition::from(branch_formal_condition),
+                branch_formal_condition: branch_formal_condition.into(),
                 body,
             })),
             pest_ast::TrapSignature::TrapBrIf(pest_ast::TrapBrIf {
@@ -217,8 +213,8 @@ impl TryFrom<pest_ast::TrapSignature> for TrapSignature {
                 branch_formal_label,
                 body,
             }) => Ok(TrapSignature::TrapBrIf(TrapBrIf {
-                branch_formal_condition: BranchFormalCondition::from(branch_formal_condition),
-                branch_formal_label: BranchFormalLabel::from(branch_formal_label),
+                branch_formal_condition: branch_formal_condition.into(),
+                branch_formal_label: branch_formal_label.into(),
                 body,
             })),
         }
@@ -226,18 +222,16 @@ impl TryFrom<pest_ast::TrapSignature> for TrapSignature {
 }
 
 impl From<pest_ast::BranchFormalCondition> for BranchFormalCondition {
-    fn from(past_branch_formal_condition: pest_ast::BranchFormalCondition) -> Self {
-        let parameter_condition = past_branch_formal_condition.parameter_identifier_condition;
-        BranchFormalCondition {
-            parameter_condition,
-        }
+    fn from(pest: pest_ast::BranchFormalCondition) -> Self {
+        let pest_ast::BranchFormalCondition(parameter) = pest;
+        Self(parameter)
     }
 }
 
 impl From<pest_ast::BranchFormalLabel> for BranchFormalLabel {
-    fn from(past_branch_formal_label: pest_ast::BranchFormalLabel) -> Self {
-        let parameter_label = past_branch_formal_label.parameter_identifier_label;
-        BranchFormalLabel { parameter_label }
+    fn from(pest: pest_ast::BranchFormalLabel) -> Self {
+        let pest_ast::BranchFormalLabel(parameter) = pest;
+        Self(parameter)
     }
 }
 
@@ -573,15 +567,11 @@ mod tests {
                 })),
                 AdviceDefinition::AdviceGlobal("🟣".into()),
                 AdviceDefinition::AdviceTrap(TrapSignature::TrapIfThen(TrapIfThen {
-                    branch_formal_condition: BranchFormalCondition {
-                        parameter_condition: "cond".into()
-                    },
+                    branch_formal_condition: BranchFormalCondition("cond".into()),
                     body: "then 🧂".into()
                 })),
                 AdviceDefinition::AdviceTrap(TrapSignature::TrapIfThenElse(TrapIfThenElse {
-                    branch_formal_condition: BranchFormalCondition {
-                        parameter_condition: "cond".into()
-                    },
+                    branch_formal_condition: BranchFormalCondition("cond".into()),
                     body: "then 🧂 else 🌶️".into()
                 }))
             ])

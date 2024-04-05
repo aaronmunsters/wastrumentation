@@ -289,10 +289,7 @@ impl ApplySpe {
 impl TrapIfThen {
     fn to_assemblyscript(&self) -> String {
         let TrapIfThen {
-            branch_formal_condition:
-                BranchFormalCondition {
-                    parameter_condition,
-                },
+            branch_formal_condition: BranchFormalCondition(parameter_condition),
             body,
         } = &self;
 
@@ -319,10 +316,7 @@ impl TrapIfThen {
 impl TrapIfThenElse {
     fn to_assemblyscript(&self) -> String {
         let TrapIfThenElse {
-            branch_formal_condition:
-                BranchFormalCondition {
-                    parameter_condition,
-                },
+            branch_formal_condition: BranchFormalCondition(parameter_condition),
             body,
         } = &self;
 
@@ -349,11 +343,8 @@ impl TrapIfThenElse {
 impl TrapBrIf {
     fn to_assemblyscript(&self) -> String {
         let TrapBrIf {
-            branch_formal_condition:
-                BranchFormalCondition {
-                    parameter_condition,
-                },
-            branch_formal_label: BranchFormalLabel { parameter_label },
+            branch_formal_condition: BranchFormalCondition(parameter_condition),
+            branch_formal_label: BranchFormalLabel(parameter_label),
             body,
         } = &self;
 
@@ -518,9 +509,7 @@ mod tests {
     #[test]
     fn generate_if_then() {
         let ast: TrapSignature = TrapSignature::TrapIfThen(TrapIfThen {
-            branch_formal_condition: BranchFormalCondition {
-                parameter_condition: "cond".into(),
-            },
+            branch_formal_condition: BranchFormalCondition("cond".into()),
             body: "console.log('it');".into(),
         });
 
@@ -541,9 +530,7 @@ mod tests {
     #[test]
     fn generate_if_then_else() {
         let ast: TrapSignature = TrapSignature::TrapIfThenElse(TrapIfThenElse {
-            branch_formal_condition: BranchFormalCondition {
-                parameter_condition: "cond".into(),
-            },
+            branch_formal_condition: BranchFormalCondition("cond".into()),
             body: "console.log('ite');".into(),
         });
 
