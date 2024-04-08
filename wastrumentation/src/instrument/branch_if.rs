@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::parse_nesting::{HighLevelBody, Instr, LowLevelBody};
-use wasabi_wasm::{Code, Function, Idx, ImportOrPresent, Local, LocalOp, Module, Val, ValType};
+use wasabi_wasm::{Code, Function, Idx, ImportOrPresent, Module, Val};
 use wasp_compiler::wasp_interface::WasmExport;
 
 use super::{function_application::INSTRUMENTATION_ANALYSIS_MODULE, FunctionTypeConvertible};
@@ -41,12 +41,10 @@ pub fn instrument_bodies(
         if target_function.code().is_none() {
             return Err("Attempt to instrument if-then-else on import function");
         }
-        let store_if_continuation = target_function.add_fresh_local(ValType::I32);
-        let code = target_function.code_mut().unwrap(); // checked above
 
+        let code = target_function.code_mut().unwrap(); // checked above
         let high_level_body: HighLevelBody = LowLevelBody(code.body.clone()).try_into()?;
-        let high_level_body_transformed =
-            high_level_body.transform(if_k_f_idx, &store_if_continuation, target);
+        let high_level_body_transformed = high_level_body.transform(if_k_f_idx, target);
         let LowLevelBody(transformed_low_level_body) = high_level_body_transformed.into();
 
         target_function.code = ImportOrPresent::Present(Code {
@@ -58,9 +56,9 @@ pub fn instrument_bodies(
 }
 
 // Amount of constant instructions in transformation
-const TRANSFORM_COST_PER_IF_THEN_INSTR: usize = 2;
-const TRANSFORM_COST_PER_IF_THEN_ELSE_INSTR: usize = 2;
-const TRANSFORM_COST_PER_BR_IF: usize = 3;
+const TRANSFORM_COST_PER_IF_THEN_INSTR: usize = 1;
+const TRANSFORM_COST_PER_IF_THEN_ELSE_INSTR: usize = 1;
+const TRANSFORM_COST_PER_BR_IF: usize = 1;
 
 fn delta_to_instrument_instr(instr: &Instr) -> usize {
     match instr {
@@ -92,22 +90,15 @@ fn delta_to_instrument_body(body: &[Instr]) -> usize {
 }
 
 impl HighLevelBody {
-    pub fn transform(
-        &self,
-        if_k_f_idx: &Idx<Function>,
-        store_if_continuation: &Idx<Local>,
-        target: Target,
-    ) -> Self {
+    pub fn transform(&self, if_k_f_idx: &Idx<Function>, target: Target) -> Self {
         let Self(body) = self;
-        let transformed_body =
-            Self::transform_inner(body, if_k_f_idx, store_if_continuation, target);
+        let transformed_body = Self::transform_inner(body, if_k_f_idx, target);
         Self(transformed_body)
     }
 
     fn transform_inner(
         body: &Vec<Instr>,
         if_k_f_idx: &Idx<Function>,
-        store_if_continuation: &Idx<Local>,
         target: Target,
     ) -> Vec<Instr> {
         let mut result = Vec::with_capacity(
@@ -116,58 +107,44 @@ impl HighLevelBody {
 
         for instr in body {
             match (target, instr) {
-                (Target::IfThen, Instr::If(type_, then, None)) => {
-                    result.extend_from_slice(&[
+                (Target::IfThen, Instr::If(type_, then, None)) => result.extend_from_slice(&[
+                    // STACK: [type_in, condition]
+                    Instr::Call(*if_k_f_idx),
+                    // STACK: [type_in, kontinuation]
+                    Instr::if_then(*type_, Self::transform_inner(then, if_k_f_idx, target)),
+                    // STACK: [type_out]
+                ]),
+                (Target::IfThenElse, Instr::If(type_, then, Some(else_))) => result
+                    .extend_from_slice(&[
                         // STACK: [type_in, condition]
                         Instr::Call(*if_k_f_idx),
                         // STACK: [type_in, kontinuation]
-                        Instr::Local(LocalOp::Tee, *store_if_continuation),
-                        // STACK: [type_in, kontinuation], local.store_if_continuation = kontinuation
-                        Instr::if_then(
-                            *type_,
-                            // STACK: [type_in]
-                            Self::transform_inner(then, if_k_f_idx, store_if_continuation, target),
-                        ),
-                        // STACK: [type_out]
-                    ]);
-                }
-                (Target::IfThenElse, Instr::If(type_, then, Some(else_))) => {
-                    result.extend_from_slice(&[
-                        // STACK: [type_in, condition]
-                        Instr::Call(*if_k_f_idx),
-                        // STACK: [type_in, kontinuation]
-                        Instr::Local(LocalOp::Tee, *store_if_continuation),
-                        // STACK: [type_in, kontinuation], local.store_if_continuation = kontinuation
                         Instr::if_then_else(
                             *type_,
                             // STACK: [type_in]
-                            Self::transform_inner(then, if_k_f_idx, store_if_continuation, target),
+                            Self::transform_inner(then, if_k_f_idx, target),
                             // STACK: [type_in]
-                            Self::transform_inner(else_, if_k_f_idx, store_if_continuation, target),
+                            Self::transform_inner(else_, if_k_f_idx, target),
                         ),
                         // STACK: [type_out]
-                    ]);
-                }
-                (Target::BrIf, Instr::BrIf(label)) => {
-                    result.extend_from_slice(&[
-                        // STACK: [condition]
-                        Instr::Const(Val::I32(label.to_u32() as i32)),
-                        // STACK: [condition, label]
-                        Instr::Call(*if_k_f_idx),
-                        // STACK: [kontinuation]
-                        Instr::Local(LocalOp::Tee, *store_if_continuation),
-                        // STACK: [kontinuation], local.store_if_continuation = kontinuation
-                        Instr::BrIf(*label),
-                        // STACK: []
-                    ]);
-                }
+                    ]),
+                (Target::BrIf, Instr::BrIf(label)) => result.extend_from_slice(&[
+                    // STACK: [condition]
+                    Instr::Const(Val::I32(label.to_u32() as i32)),
+                    // STACK: [condition, label]
+                    Instr::Call(*if_k_f_idx),
+                    // STACK: [kontinuation]
+                    Instr::BrIf(*label),
+                    // STACK: []
+                ]),
+
                 (target, Instr::Loop(type_, body)) => result.push(Instr::Loop(
                     *type_,
-                    Self::transform_inner(body, if_k_f_idx, store_if_continuation, target),
+                    Self::transform_inner(body, if_k_f_idx, target),
                 )),
                 (target, Instr::Block(type_, body)) => result.push(Instr::Block(
                     *type_,
-                    Self::transform_inner(body, if_k_f_idx, store_if_continuation, target),
+                    Self::transform_inner(body, if_k_f_idx, target),
                 )),
 
                 _ => result.push(instr.clone()),
@@ -463,8 +440,8 @@ mod tests {
         let (mut _wasm_module, body) = nested_ifs_body();
         assert_eq!(HighLevelBody::try_from(LowLevelBody(body)).unwrap(), {
             let type_ = FunctionType::empty();
-            use wasabi_wasm::{BinaryOp::*, UnaryOp::*, Val::*};
-            use {super::Instr::*, super::LocalOp::*};
+            use super::Instr::*;
+            use wasabi_wasm::{BinaryOp::*, LocalOp::*, UnaryOp::*, Val::*};
             HighLevelBody(vec![
                 Local(Get, 0_usize.into()),
                 Unary(I32Eqz),
@@ -518,7 +495,7 @@ mod tests {
             vec![instr_loop()],
             vec![instr_loop()],
         )]);
-        assert_eq!(instrumentation_delta, 2);
+        assert_eq!(instrumentation_delta, TRANSFORM_COST_PER_IF_THEN_ELSE_INSTR);
     }
 
     #[test]
