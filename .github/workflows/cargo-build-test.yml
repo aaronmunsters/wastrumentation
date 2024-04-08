@@ -9,7 +9,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: "-Dwarnings"
-  binaryen_version: 116
+  binaryen_version: 117
 
 jobs:
   build_test:
