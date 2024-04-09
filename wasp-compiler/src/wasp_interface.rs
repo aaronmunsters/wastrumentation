@@ -8,17 +8,16 @@ use crate::ast::{
     },
 };
 
-// TODO: order such that uniqueness is last
-pub const TRANSFORMED_INPUT_NS: &str = "transformed_input";
-pub const GENERIC_APPLY_FUNCTION_NAME: &str = "generic_apply";
-pub const SPECIALIZED_IF_THEN_FUNCTION_NAME: &str = "specialized_if_then_k";
-pub const SPECIALIZED_IF_THEN_ELSE_FUNCTION_NAME: &str = "specialized_if_then_else_k";
-pub const SPECIALIZED_BR_IF_FUNCTION_NAME: &str = "specialized_br_if";
-pub const SPECIALIZED_CALL_PRE_FUNCTION_NAME: &str = "specialized_call_pre";
-pub const SPECIALIZED_CALL_POST_FUNCTION_NAME: &str = "specialized_call_post";
-pub const SPECIALIZED_CALL_INDIRECT_PRE_FUNCTION_NAME: &str = "specialized_call_indirect_pre";
-pub const SPECIALIZED_CALL_INDIRECT_POST_FUNCTION_NAME: &str = "specialized_call_indirect_post";
-pub const CALL_BASE: &str = "call_base";
+pub const FUNCTION_NAME_CALL_BASE: &str = "call_base";
+pub const FUNCTION_NAME_GENERIC_APPLY: &str = "generic_apply";
+pub const FUNCTION_NAME_SPECIALIZED_BR_IF: &str = "specialized_br_if";
+pub const FUNCTION_NAME_SPECIALIZED_CALL_POST: &str = "specialized_call_post";
+pub const FUNCTION_NAME_SPECIALIZED_CALL_PRE: &str = "specialized_call_pre";
+pub const FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_POST: &str = "specialized_call_indirect_post";
+pub const FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_PRE: &str = "specialized_call_indirect_pre";
+pub const FUNCTION_NAME_SPECIALIZED_IF_THEN: &str = "specialized_if_then_k";
+pub const FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE: &str = "specialized_if_then_else_k";
+pub const NAMESPACE_TRANSFORMED_INPUT: &str = "transformed_input";
 
 // TODO: are `inputs` and `outputs` used?
 #[derive(Debug, PartialEq, Eq, Default)]
@@ -57,14 +56,14 @@ impl WaspInterface {
     fn generic_apply_interface() -> ApplyInterface {
         (
             WasmExport {
-                name: GENERIC_APPLY_FUNCTION_NAME.into(),
+                name: FUNCTION_NAME_GENERIC_APPLY.into(),
                 // f_apply, argc, resc, sigv, sigtypv
                 args: vec![I32, I32, I32, I32, I32],
                 results: vec![],
             },
             WasmImport {
-                namespace: TRANSFORMED_INPUT_NS.into(),
-                name: CALL_BASE.into(),
+                namespace: NAMESPACE_TRANSFORMED_INPUT.into(),
+                name: FUNCTION_NAME_CALL_BASE.into(),
                 // f_apply, sigv
                 args: vec![I32, I32],
                 results: vec![],
@@ -74,7 +73,7 @@ impl WaspInterface {
 
     fn if_then_interface() -> WasmExport {
         WasmExport {
-            name: SPECIALIZED_IF_THEN_FUNCTION_NAME.into(),
+            name: FUNCTION_NAME_SPECIALIZED_IF_THEN.into(),
             // path_kontinuation
             args: vec![I32],
             // path_kontinuation
@@ -84,7 +83,7 @@ impl WaspInterface {
 
     fn if_then_else_interface() -> WasmExport {
         WasmExport {
-            name: SPECIALIZED_IF_THEN_ELSE_FUNCTION_NAME.into(),
+            name: FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE.into(),
             // path_kontinuation
             args: vec![I32],
             // path_kontinuation
@@ -94,7 +93,7 @@ impl WaspInterface {
 
     fn br_if_interface() -> WasmExport {
         WasmExport {
-            name: SPECIALIZED_BR_IF_FUNCTION_NAME.into(),
+            name: FUNCTION_NAME_SPECIALIZED_BR_IF.into(),
             // path_kontinuation, label
             // TODO: is `label` interesting? This value does not change at runtime
             args: vec![I32, I32],
@@ -105,7 +104,7 @@ impl WaspInterface {
 
     fn call_pre_interface() -> WasmExport {
         WasmExport {
-            name: SPECIALIZED_CALL_PRE_FUNCTION_NAME.into(),
+            name: FUNCTION_NAME_SPECIALIZED_CALL_PRE.into(),
             // function_target
             args: vec![I32],
             // void
@@ -115,7 +114,7 @@ impl WaspInterface {
 
     fn call_post_interface() -> WasmExport {
         WasmExport {
-            name: SPECIALIZED_CALL_POST_FUNCTION_NAME.into(),
+            name: FUNCTION_NAME_SPECIALIZED_CALL_POST.into(),
             // function_target
             args: vec![I32],
             // void
@@ -125,7 +124,7 @@ impl WaspInterface {
 
     fn call_indirect_pre_interface() -> WasmExport {
         WasmExport {
-            name: SPECIALIZED_CALL_INDIRECT_PRE_FUNCTION_NAME.into(),
+            name: FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_PRE.into(),
             // function_table_index, function_table
             args: vec![I32, I32],
             // void
@@ -135,7 +134,7 @@ impl WaspInterface {
 
     fn call_indirect_post_interface() -> WasmExport {
         WasmExport {
-            name: SPECIALIZED_CALL_INDIRECT_POST_FUNCTION_NAME.into(),
+            name: FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_POST.into(),
             // function_table
             args: vec![I32],
             // void

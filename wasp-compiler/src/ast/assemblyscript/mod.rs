@@ -9,11 +9,11 @@ use crate::{
         TrapIfThenElse, TrapSignature, WasmParameter, WasmType, WaspRoot,
     },
     wasp_interface::{
-        WasmExport, WasmImport, GENERIC_APPLY_FUNCTION_NAME, SPECIALIZED_BR_IF_FUNCTION_NAME,
-        SPECIALIZED_CALL_INDIRECT_POST_FUNCTION_NAME, SPECIALIZED_CALL_INDIRECT_PRE_FUNCTION_NAME,
-        SPECIALIZED_CALL_POST_FUNCTION_NAME, SPECIALIZED_CALL_PRE_FUNCTION_NAME,
-        SPECIALIZED_IF_THEN_ELSE_FUNCTION_NAME, SPECIALIZED_IF_THEN_FUNCTION_NAME,
-        TRANSFORMED_INPUT_NS,
+        WasmExport, WasmImport, FUNCTION_NAME_GENERIC_APPLY, FUNCTION_NAME_SPECIALIZED_BR_IF,
+        FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_POST, FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_PRE,
+        FUNCTION_NAME_SPECIALIZED_CALL_POST, FUNCTION_NAME_SPECIALIZED_CALL_PRE,
+        FUNCTION_NAME_SPECIALIZED_IF_THEN, FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE,
+        NAMESPACE_TRANSFORMED_INPUT,
     },
 };
 
@@ -116,7 +116,7 @@ impl ApplyGen {
             }}
             "#
             },
-            GENERIC_APPLY_FUNCTION_NAME = GENERIC_APPLY_FUNCTION_NAME,
+            GENERIC_APPLY_FUNCTION_NAME = FUNCTION_NAME_GENERIC_APPLY,
             body = body,
         )
         .to_string()
@@ -169,7 +169,7 @@ impl WasmImport {
         let name = format!("call_base_{full_signature_name}");
 
         Self {
-            namespace: TRANSFORMED_INPUT_NS.into(),
+            namespace: NAMESPACE_TRANSFORMED_INPUT.into(),
             name,
             args: WasmParameterVec(parameters_arguments).types(),
             results: WasmParameterVec(parameters_results).types(),
@@ -319,7 +319,7 @@ impl TrapIfThen {
             }}
             "#
             },
-            SPECIALIZED_IF_THEN_FUNCTION_NAME = SPECIALIZED_IF_THEN_FUNCTION_NAME,
+            SPECIALIZED_IF_THEN_FUNCTION_NAME = FUNCTION_NAME_SPECIALIZED_IF_THEN,
             body = body,
             parameter_condition = parameter_condition,
         )
@@ -346,7 +346,7 @@ impl TrapIfThenElse {
             }}
             "#
             },
-            SPECIALIZED_IF_THEN_ELSE_FUNCTION_NAME = SPECIALIZED_IF_THEN_ELSE_FUNCTION_NAME,
+            SPECIALIZED_IF_THEN_ELSE_FUNCTION_NAME = FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE,
             body = body,
             parameter_condition = parameter_condition,
         )
@@ -376,7 +376,7 @@ impl TrapBrIf {
             }}
             "#
             },
-            SPECIALIZED_BR_IF_FUNCTION_NAME = SPECIALIZED_BR_IF_FUNCTION_NAME,
+            SPECIALIZED_BR_IF_FUNCTION_NAME = FUNCTION_NAME_SPECIALIZED_BR_IF,
             body = body,
             parameter_condition = parameter_condition,
             parameter_label = parameter_label,
@@ -394,8 +394,8 @@ impl TrapCall {
         } = &self;
 
         let specialized_name = match call_qualifier {
-            super::pest::CallQualifier::Before => SPECIALIZED_CALL_PRE_FUNCTION_NAME,
-            super::pest::CallQualifier::After => SPECIALIZED_CALL_POST_FUNCTION_NAME,
+            super::pest::CallQualifier::Before => FUNCTION_NAME_SPECIALIZED_CALL_PRE,
+            super::pest::CallQualifier::After => FUNCTION_NAME_SPECIALIZED_CALL_POST,
         };
 
         format!(
@@ -440,7 +440,7 @@ impl TrapCallIndirect {
                 }}
                 "#
                 },
-                specialized_name = SPECIALIZED_CALL_INDIRECT_PRE_FUNCTION_NAME,
+                specialized_name = FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_PRE,
                 body = body,
                 parameter_table = parameter_table,
                 parameter_index = parameter_index,
@@ -456,7 +456,7 @@ impl TrapCallIndirect {
                 }}
                 "#
                 },
-                specialized_name = SPECIALIZED_CALL_INDIRECT_POST_FUNCTION_NAME,
+                specialized_name = FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_POST,
                 body = body,
                 parameter_table = parameter_table,
             )
