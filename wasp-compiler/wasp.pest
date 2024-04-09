@@ -24,7 +24,8 @@ type_identifier = @{ ASCII_ALPHA_UPPER ~ ASCII_ALPHANUMERIC+ }
 trap_signature = {
     trap_apply
   | trap_call
-  | trap_call_indirect
+  | trap_call_indirect_before
+  | trap_call_indirect_after
   | trap_if_then
   | trap_if_then_else
   | trap_br_if /* | more | trap | targets | here | ... */
@@ -56,9 +57,10 @@ trap_call     = { "call" ~ call_qualifier ~ formal_target ~ GUEST_BLOCK }
 formal_target = { "(" ~ identifier ~ "FunctionIndex" ~ ")" }
 
 // TRAP CALL_INDIRECT
-trap_call_indirect = { "call_indirect" ~ call_qualifier ~ formal_table ~ formal_index ~ GUEST_BLOCK }
-formal_table       = { "(" ~ identifier ~ "FunctionTable" ~ ")" }
-formal_index       = { "(" ~ identifier ~ "FunctionTableIndex" ~ ")" }
+trap_call_indirect_before = { "call_indirect" ~ "before" ~ formal_table ~ formal_index ~ GUEST_BLOCK }
+trap_call_indirect_after  = { "call_indirect" ~ "after" ~ formal_table ~ GUEST_BLOCK }
+formal_table              = { "(" ~ identifier ~ "FunctionTable" ~ ")" }
+formal_index              = { "(" ~ identifier ~ "FunctionTableIndex" ~ ")" }
 
 // TRAP IF - [ 🐇 ], [ 📝 ], [ 🪖 ]
 trap_if_then      = { "if_then" ~ branch_formal_condition ~ GUEST_BLOCK }

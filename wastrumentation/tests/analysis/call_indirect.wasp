@@ -12,7 +12,6 @@
         // No intercession, intercession @ callee site
     <<<GUEST<<<)
 
-    (advice call_indirect after (table FunctionTable)
-                                (index FunctionTableIndex) >>>GUEST>>>
+    (advice call_indirect after (table FunctionTable) >>>GUEST>>>
         // No intercession, intercession @ callee site
     <<<GUEST<<<))

@@ -32,7 +32,8 @@ pub enum AdviceDefinition {
 pub enum TrapSignature {
     TrapApply(TrapApply),
     TrapCall(TrapCall),
-    TrapCallIndirect(TrapCallIndirect),
+    TrapCallIndirectBefore(TrapCallIndirectBefore),
+    TrapCallIndirectAfter(TrapCallIndirectAfter),
     TrapIfThen(TrapIfThen),
     TrapIfThenElse(TrapIfThenElse),
     TrapBrIf(TrapBrIf),
@@ -84,10 +85,15 @@ pub struct TrapCall {
 pub struct FormalTarget(pub String);
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct TrapCallIndirect {
-    pub call_qualifier: CallQualifier,
+pub struct TrapCallIndirectBefore {
     pub formal_table: FormalTable,
     pub formal_index: FormalIndex,
+    pub body: String,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct TrapCallIndirectAfter {
+    pub formal_table: FormalTable,
     pub body: String,
 }
 
@@ -186,7 +192,10 @@ impl WaspRoot {
                     AdviceDefinition::AdviceTrap(TrapSignature::TrapCall { .. })
                 ) || matches!(
                     advice_definition,
-                    AdviceDefinition::AdviceTrap(TrapSignature::TrapCallIndirect { .. })
+                    AdviceDefinition::AdviceTrap(TrapSignature::TrapCallIndirectBefore { .. })
+                ) || matches!(
+                    advice_definition,
+                    AdviceDefinition::AdviceTrap(TrapSignature::TrapCallIndirectAfter { .. })
                 )
             })
     }
@@ -246,17 +255,26 @@ impl TryFrom<pest_ast::TrapSignature> for TrapSignature {
                 formal_target: formal_target.into(),
                 body,
             })),
-            pest_ast::TrapSignature::TrapCallIndirect(pest_ast::TrapCallIndirect {
-                call_qualifier,
+            pest_ast::TrapSignature::TrapCallIndirectBefore(pest_ast::TrapCallIndirectBefore {
                 formal_table,
                 formal_index,
                 body,
-            }) => Ok(TrapSignature::TrapCallIndirect(TrapCallIndirect {
-                call_qualifier,
-                formal_table: formal_table.into(),
-                formal_index: formal_index.into(),
+            }) => Ok(TrapSignature::TrapCallIndirectBefore(
+                TrapCallIndirectBefore {
+                    formal_table: formal_table.into(),
+                    formal_index: formal_index.into(),
+                    body,
+                },
+            )),
+            pest_ast::TrapSignature::TrapCallIndirectAfter(pest_ast::TrapCallIndirectAfter {
+                formal_table,
                 body,
-            })),
+            }) => Ok(TrapSignature::TrapCallIndirectAfter(
+                TrapCallIndirectAfter {
+                    formal_table: formal_table.into(),
+                    body,
+                },
+            )),
             pest_ast::TrapSignature::TrapIfThen(pest_ast::TrapIfThen {
                 branch_formal_condition,
                 body,
@@ -570,7 +588,6 @@ mod tests {
                 >>>GUEST>>>🧐🏄<<<GUEST<<<)
             (advice call_indirect after
                     (table FunctionTable)
-                    (index FunctionTableIndex)
                 >>>GUEST>>>👀🏄<<<GUEST<<<))"#;
 
     fn program_to_wasp_root(program: &str) -> anyhow::Result<WaspRoot> {
@@ -690,18 +707,19 @@ mod tests {
                     formal_target: FormalTarget("f".into()),
                     body: "👀🏃".into(),
                 })),
-                AdviceDefinition::AdviceTrap(TrapSignature::TrapCallIndirect(TrapCallIndirect {
-                    call_qualifier: CallQualifier::Before,
-                    formal_table: FormalTable("table".into()),
-                    formal_index: FormalIndex("index".into()),
-                    body: "🧐🏄".into(),
-                })),
-                AdviceDefinition::AdviceTrap(TrapSignature::TrapCallIndirect(TrapCallIndirect {
-                    call_qualifier: CallQualifier::After,
-                    formal_table: FormalTable("table".into()),
-                    formal_index: FormalIndex("index".into()),
-                    body: "👀🏄".into(),
-                })),
+                AdviceDefinition::AdviceTrap(TrapSignature::TrapCallIndirectBefore(
+                    TrapCallIndirectBefore {
+                        formal_table: FormalTable("table".into()),
+                        formal_index: FormalIndex("index".into()),
+                        body: "🧐🏄".into(),
+                    }
+                )),
+                AdviceDefinition::AdviceTrap(TrapSignature::TrapCallIndirectAfter(
+                    TrapCallIndirectAfter {
+                        formal_table: FormalTable("table".into()),
+                        body: "👀🏄".into(),
+                    }
+                )),
             ])
         )
     }

@@ -46,8 +46,7 @@
         return index.index; // Arguments intercession @ callee site
     <<<GUEST<<<)
 
-    (advice call_indirect after (table FunctionTable)
-                                (index FunctionTableIndex) >>>GUEST>>>
+    (advice call_indirect after (table FunctionTable) >>>GUEST>>>
         return; // No intercession, intercession @ callee site
     <<<GUEST<<<)
     )

@@ -5,8 +5,8 @@ use indoc::indoc;
 use crate::{
     ast::wasp::{
         AdviceDefinition, ApplyGen, ApplyHookSignature, ApplySpe, BranchFormalCondition,
-        BranchFormalLabel, TrapApply, TrapBrIf, TrapCall, TrapCallIndirect, TrapIfThen,
-        TrapIfThenElse, TrapSignature, WasmParameter, WasmType, WaspRoot,
+        BranchFormalLabel, TrapApply, TrapBrIf, TrapCall, TrapIfThen, TrapIfThenElse,
+        TrapSignature, WasmParameter, WasmType, WaspRoot,
     },
     wasp_interface::{
         WasmExport, WasmImport, FUNCTION_NAME_GENERIC_APPLY, FUNCTION_NAME_SPECIALIZED_BR_IF,
@@ -19,8 +19,8 @@ use crate::{
 
 use crate::util::Alphabetical;
 
-use super::pest::CallQualifier::{After, Before};
-use super::wasp::{FormalIndex, FormalTable, FormalTarget};
+use super::wasp::TrapCallIndirectBefore;
+use super::wasp::{FormalIndex, FormalTable, FormalTarget, TrapCallIndirectAfter};
 
 const STD_ANALYSIS_LIB_GENRIC_APPLY: &str = include_str!("std_analysis_lib_gen_apply.ts");
 const STD_ANALYSIS_LIB_IF: &str = include_str!("std_analysis_lib_if.ts");
@@ -83,8 +83,11 @@ impl TrapSignature {
             }
             TrapSignature::TrapBrIf(trap_bf_id) => trap_bf_id.to_assemblyscript(),
             TrapSignature::TrapCall(trap_call) => trap_call.to_assemblyscript(),
-            TrapSignature::TrapCallIndirect(trap_call_indirect) => {
-                trap_call_indirect.to_assemblyscript()
+            TrapSignature::TrapCallIndirectBefore(trap_call_indirect_before) => {
+                trap_call_indirect_before.to_assemblyscript()
+            }
+            TrapSignature::TrapCallIndirectAfter(trap_call_indirect_after) => {
+                trap_call_indirect_after.to_assemblyscript()
             }
         }
     }
@@ -416,52 +419,59 @@ impl TrapCall {
     }
 }
 
-impl TrapCallIndirect {
+impl TrapCallIndirectBefore {
     fn to_assemblyscript(&self) -> String {
         let Self {
-            call_qualifier,
             formal_table: FormalTable(parameter_table),
-            formal_index: FormalIndex(parameter_index), // TODO: remove `formal_index` from after in grammar
+            formal_index: FormalIndex(parameter_index),
             body,
         } = &self;
 
-        match call_qualifier {
-            Before => format!(
-                indoc! {r#"
-                export function {specialized_name}(
-                    function_table_index: i32, // NOTE: index first, eases transformation!
-                    function_table: i32,
-                ): i32 {{
-                    let {parameter_table} = new FunctionTable(function_table);
-                    let {parameter_index} = new FunctionTableIndex(function_table_index);
-                    {body}
-                    // Fallback, if no return value
-                    return function_table_index;
-                }}
-                "#
-                },
-                specialized_name = FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_PRE,
-                body = body,
-                parameter_table = parameter_table,
-                parameter_index = parameter_index,
-            )
-            .to_string(),
-            After => format!(
-                indoc! {r#"
-                export function {specialized_name}(
-                    function_table: i32,
-                ): void {{
-                    let {parameter_table} = new FunctionTable(function_table);
-                    {body}
-                }}
-                "#
-                },
-                specialized_name = FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_POST,
-                body = body,
-                parameter_table = parameter_table,
-            )
-            .to_string(),
-        }
+        format!(
+            indoc! {r#"
+            export function {specialized_name}(
+                function_table_index: i32, // NOTE: index first, eases transformation!
+                function_table: i32,
+            ): i32 {{
+                let {parameter_table} = new FunctionTable(function_table);
+                let {parameter_index} = new FunctionTableIndex(function_table_index);
+                {body}
+                // Fallback, if no return value
+                return function_table_index;
+            }}
+            "#
+            },
+            specialized_name = FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_PRE,
+            body = body,
+            parameter_table = parameter_table,
+            parameter_index = parameter_index,
+        )
+        .to_string()
+    }
+}
+
+impl TrapCallIndirectAfter {
+    fn to_assemblyscript(&self) -> String {
+        let Self {
+            formal_table: FormalTable(parameter_table),
+            body,
+        } = &self;
+
+        format!(
+            indoc! {r#"
+            export function {specialized_name}(
+                function_table: i32,
+            ): void {{
+                let {parameter_table} = new FunctionTable(function_table);
+                {body}
+            }}
+            "#
+            },
+            specialized_name = FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_POST,
+            body = body,
+            parameter_table = parameter_table,
+        )
+        .to_string()
     }
 }
 

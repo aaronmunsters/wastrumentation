@@ -66,7 +66,8 @@ pub struct AdviceTrap(pub TrapSignature);
 pub enum TrapSignature {
     TrapApply(TrapApply),
     TrapCall(TrapCall),
-    TrapCallIndirect(TrapCallIndirect),
+    TrapCallIndirectBefore(TrapCallIndirectBefore),
+    TrapCallIndirectAfter(TrapCallIndirectAfter),
     TrapIfThen(TrapIfThen),
     TrapIfThenElse(TrapIfThenElse),
     TrapBrIf(TrapBrIf),
@@ -95,12 +96,18 @@ pub struct TrapCall {
 pub struct FormalTarget(#[pest_ast(inner(with(span_into_string)))] pub String);
 
 #[derive(Debug, FromPest)]
-#[pest_ast(rule(Rule::trap_call_indirect))]
-pub struct TrapCallIndirect {
-    #[pest_ast(inner(with(span_into_qualifier)))]
-    pub call_qualifier: CallQualifier,
+#[pest_ast(rule(Rule::trap_call_indirect_before))]
+pub struct TrapCallIndirectBefore {
     pub formal_table: FormalTable,
     pub formal_index: FormalIndex,
+    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter)))]
+    pub body: String,
+}
+
+#[derive(Debug, FromPest)]
+#[pest_ast(rule(Rule::trap_call_indirect_after))]
+pub struct TrapCallIndirectAfter {
+    pub formal_table: FormalTable,
     #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter)))]
     pub body: String,
 }
@@ -286,7 +293,6 @@ mod tests {
           >>>GUEST>>>🧐🏄<<<GUEST<<<)
       (advice call_indirect after
               (table FunctionTable)
-              (index FunctionTableIndex)
           >>>GUEST>>>👀🏄<<<GUEST<<<))"#;
         let mut parse_tree = WaspParser::parse(Rule::wasp_input, program_source).unwrap();
         let wasp_input = WaspInput::from_pest(&mut parse_tree).unwrap();

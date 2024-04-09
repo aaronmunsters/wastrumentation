@@ -1,8 +1,8 @@
 use crate::ast::{
     pest::CallQualifier,
     wasp::{
-        AdviceDefinition, ApplyHookSignature, ApplySpe, TrapApply, TrapCall, TrapCallIndirect,
-        TrapSignature,
+        AdviceDefinition, ApplyHookSignature, ApplySpe, TrapApply, TrapCall, TrapCallIndirectAfter,
+        TrapCallIndirectBefore, TrapSignature,
         WasmType::{self, *},
         WaspRoot,
     },
@@ -201,16 +201,10 @@ impl From<&WaspRoot> for WaspInterface {
                         call_qualifier: CallQualifier::After,
                         ..
                     }) => post_trap_call = Some(WaspInterface::call_post_interface()),
-                    TrapSignature::TrapCallIndirect(TrapCallIndirect {
-                        call_qualifier: CallQualifier::Before,
-                        ..
-                    }) => {
+                    TrapSignature::TrapCallIndirectBefore(TrapCallIndirectBefore { .. }) => {
                         pre_trap_call_indirect = Some(WaspInterface::call_indirect_pre_interface())
                     }
-                    TrapSignature::TrapCallIndirect(TrapCallIndirect {
-                        call_qualifier: CallQualifier::After,
-                        ..
-                    }) => {
+                    TrapSignature::TrapCallIndirectAfter(TrapCallIndirectAfter { .. }) => {
                         post_trap_call_indirect =
                             Some(WaspInterface::call_indirect_post_interface())
                     }

@@ -3,8 +3,8 @@ use std::collections::HashSet;
 use crate::ast::{
     pest::CallQualifier::{After, Before},
     wasp::{
-        ApplyHookSignature, ApplySpe, TrapCall, TrapCallIndirect, TrapSignature, WasmParameter,
-        WasmType, WaspRoot,
+        ApplyHookSignature, ApplySpe, TrapCall, TrapCallIndirectAfter, TrapCallIndirectBefore,
+        TrapSignature, WasmParameter, WasmType, WaspRoot,
     },
 };
 
@@ -88,14 +88,12 @@ impl TrapSignature {
                 call_qualifier: After,
                 ..
             }) => JoinPoint::CallPost,
-            TrapSignature::TrapCallIndirect(TrapCallIndirect {
-                call_qualifier: Before,
-                ..
-            }) => JoinPoint::CallIndirectPre,
-            TrapSignature::TrapCallIndirect(TrapCallIndirect {
-                call_qualifier: After,
-                ..
-            }) => JoinPoint::CallIndirectPost,
+            TrapSignature::TrapCallIndirectBefore(TrapCallIndirectBefore { .. }) => {
+                JoinPoint::CallIndirectPre
+            }
+            TrapSignature::TrapCallIndirectAfter(TrapCallIndirectAfter { .. }) => {
+                JoinPoint::CallIndirectPost
+            }
         }
     }
 }
@@ -326,7 +324,6 @@ mod tests {
                 r#"
                 (aspect
                     (advice call_indirect after (table FunctionTable)
-                                                (index FunctionTableIndex)
                         >>>GUEST>>>👀🏄<<<GUEST<<<))
                 "#,
             ),
@@ -370,7 +367,6 @@ mod tests {
                                                  (index FunctionTableIndex)
                         >>>GUEST>>>🧐🏄<<<GUEST<<<)
                     (advice call_indirect after (table FunctionTable)
-                                                (index FunctionTableIndex)
                         >>>GUEST>>>👀🏄<<<GUEST<<<)
                 )
                 "#,
