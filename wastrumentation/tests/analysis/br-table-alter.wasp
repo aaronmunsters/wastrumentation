@@ -1,0 +1,5 @@
+(aspect
+    (advice br_table (trg  Target)
+                     (dflt Default) >>>GUEST>>>
+        return trg.target + 1;
+    <<<GUEST<<<))

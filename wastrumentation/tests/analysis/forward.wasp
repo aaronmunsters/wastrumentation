@@ -27,6 +27,11 @@
         };
     <<<GUEST<<<)
 
+    (advice br_table (target Target)
+                     (dflt   Default) >>>GUEST>>>
+        return target.target;
+    <<<GUEST<<<)
+
     (advice apply (func    WasmFunction)
                   (args    MutDynArgs)
                   (results MutDynResults) >>>GUEST>>>

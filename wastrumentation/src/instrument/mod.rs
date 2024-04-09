@@ -34,6 +34,7 @@ pub fn instrument(module: &[u8], wasp_interface: WaspInterface) -> Instrumentati
         pre_trap_call_indirect,
         post_trap_call,
         post_trap_call_indirect,
+        br_table_trap,
         .. // TODO: remove?
     } = wasp_interface;
     let mut instrumentation_lib = String::new();
@@ -116,6 +117,16 @@ pub fn instrument(module: &[u8], wasp_interface: WaspInterface) -> Instrumentati
             &pre_instrumentation_function_indices,
             trap_export,
             branch_if::Target::BrIf,
+        )
+        .unwrap() // TODO: handle
+    }
+
+    if let Some(trap_export) = br_table_trap {
+        branch_if::instrument(
+            &mut module,
+            &pre_instrumentation_function_indices,
+            trap_export,
+            branch_if::Target::BrTable,
         )
         .unwrap() // TODO: handle
     }

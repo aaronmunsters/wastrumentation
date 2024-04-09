@@ -13,6 +13,7 @@ pub enum Target {
     IfThen,
     IfThenElse,
     BrIf,
+    BrTable,
 }
 
 pub fn instrument(
@@ -107,6 +108,15 @@ impl HighLevelBody {
 
         for instr in body {
             match (target, instr) {
+                (Target::BrTable, Instr::BrTable { table: _, default }) => result
+                    .extend_from_slice(&[
+                        // STACK: [table_target_index]
+                        Instr::Const(Val::I32(default.to_u32() as i32)),
+                        // STACK: [table_target_index, default]
+                        Instr::Call(*if_k_f_idx),
+                        // STACK: [table_target_index]
+                        instr.clone(),
+                    ]),
                 (Target::IfThen, Instr::If(type_, then, None)) => result.extend_from_slice(&[
                     // STACK: [type_in, condition]
                     Instr::Call(*if_k_f_idx),

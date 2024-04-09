@@ -1,0 +1,21 @@
+Aspect Br Table
+
+=======
+
+(aspect
+  (advice br_table (target Target) (default Default) >>>GUEST>>>🏓<<<GUEST<<<))
+
+=======
+
+(wasp_input
+  (wasp
+    (advice_definition
+      (advice_trap
+        (trap_signature
+          (trap_br_table
+            (branch_formal_target
+              (identifier: "target"))
+            (branch_formal_default
+              (identifier: "default"))
+            (GUEST_BLOCK: ">>>GUEST>>>🏓<<<GUEST<<<"))))))
+  (EOI: ""))

@@ -10,17 +10,20 @@ use crate::{
     },
     wasp_interface::{
         WasmExport, WasmImport, FUNCTION_NAME_GENERIC_APPLY, FUNCTION_NAME_SPECIALIZED_BR_IF,
-        FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_POST, FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_PRE,
-        FUNCTION_NAME_SPECIALIZED_CALL_POST, FUNCTION_NAME_SPECIALIZED_CALL_PRE,
-        FUNCTION_NAME_SPECIALIZED_IF_THEN, FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE,
-        NAMESPACE_TRANSFORMED_INPUT,
+        FUNCTION_NAME_SPECIALIZED_BR_TABLE, FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_POST,
+        FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_PRE, FUNCTION_NAME_SPECIALIZED_CALL_POST,
+        FUNCTION_NAME_SPECIALIZED_CALL_PRE, FUNCTION_NAME_SPECIALIZED_IF_THEN,
+        FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE, NAMESPACE_TRANSFORMED_INPUT,
     },
 };
 
 use crate::util::Alphabetical;
 
-use super::wasp::TrapCallIndirectBefore;
-use super::wasp::{FormalIndex, FormalTable, FormalTarget, TrapCallIndirectAfter};
+use super::wasp::{
+    BranchFormalDefault, BranchFormalTarget, FormalIndex, FormalTable, FormalTarget,
+    TrapCallIndirectAfter,
+};
+use super::wasp::{TrapBrTable, TrapCallIndirectBefore};
 
 const STD_ANALYSIS_LIB_GENRIC_APPLY: &str = include_str!("std_analysis_lib_gen_apply.ts");
 const STD_ANALYSIS_LIB_IF: &str = include_str!("std_analysis_lib_if.ts");
@@ -82,6 +85,7 @@ impl TrapSignature {
                 trap_if_then_else.to_assemblyscript()
             }
             TrapSignature::TrapBrIf(trap_br_if) => trap_br_if.to_assemblyscript(),
+            TrapSignature::TrapBrTable(trap_br_table) => trap_br_table.to_assemblyscript(),
             TrapSignature::TrapCall(trap_call) => trap_call.to_assemblyscript(),
             TrapSignature::TrapCallIndirectBefore(trap_call_indirect_before) => {
                 trap_call_indirect_before.to_assemblyscript()
@@ -390,6 +394,37 @@ impl TrapBrIf {
             body = body,
             parameter_condition = parameter_condition,
             parameter_label = parameter_label,
+        )
+        .to_string()
+    }
+}
+
+impl TrapBrTable {
+    fn to_assemblyscript(&self) -> String {
+        let Self {
+            branch_formal_target: BranchFormalTarget(parameter_target),
+            branch_formal_default: BranchFormalDefault(parameter_default),
+            body,
+        } = &self;
+
+        format!(
+            indoc! {r#"
+            export function {FUNCTION_NAME_SPECIALIZED_BR_TABLE}(
+                br_table_target: i32,
+                br_table_default: i32,
+            ): i32 {{
+                let {parameter_target} = new ParameterBrTableTarget(br_table_target);
+                let {parameter_default} = new ParameterBrTableDefault(br_table_default);
+                {body}
+                // Fallback, if no return value
+                return br_table_target;
+            }}
+            "#
+            },
+            FUNCTION_NAME_SPECIALIZED_BR_TABLE = FUNCTION_NAME_SPECIALIZED_BR_TABLE,
+            body = body,
+            parameter_target = parameter_target,
+            parameter_default = parameter_default,
         )
         .to_string()
     }

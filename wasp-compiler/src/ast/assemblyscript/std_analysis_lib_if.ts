@@ -73,3 +73,19 @@ class ParameterBrIfLabel {
         this.label = label;
     }
 }
+
+class ParameterBrTableTarget {
+    readonly target: i32;
+
+    constructor(target: i32) {
+        this.target = target;
+    }
+}
+
+class ParameterBrTableDefault {
+    readonly deflt: i32;
+
+    constructor(deflt: i32) {
+        this.deflt = deflt;
+    }
+}

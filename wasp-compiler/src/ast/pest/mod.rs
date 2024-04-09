@@ -71,6 +71,7 @@ pub enum TrapSignature {
     TrapIfThen(TrapIfThen),
     TrapIfThenElse(TrapIfThenElse),
     TrapBrIf(TrapBrIf),
+    TrapBrTable(TrapBrTable),
 }
 
 #[derive(Debug, FromPest)]
@@ -198,6 +199,23 @@ pub struct BranchFormalCondition(#[pest_ast(inner(with(span_into_string)))] pub 
 pub struct BranchFormalLabel(#[pest_ast(inner(with(span_into_string)))] pub String);
 
 #[derive(Debug, FromPest)]
+#[pest_ast(rule(Rule::trap_br_table))]
+pub struct TrapBrTable {
+    pub branch_formal_target: BranchFormalTarget,
+    pub branch_formal_default: BranchFormalDefault,
+    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter)))]
+    pub body: String,
+}
+
+#[derive(Debug, FromPest)]
+#[pest_ast(rule(Rule::branch_formal_target))]
+pub struct BranchFormalTarget(#[pest_ast(inner(with(span_into_string)))] pub String);
+
+#[derive(Debug, FromPest)]
+#[pest_ast(rule(Rule::branch_formal_default))]
+pub struct BranchFormalDefault(#[pest_ast(inner(with(span_into_string)))] pub String);
+
+#[derive(Debug, FromPest)]
 #[pest_ast(rule(Rule::typed_argument))]
 pub struct TypedArgument {
     #[pest_ast(inner(with(span_into_string)))]
@@ -281,6 +299,9 @@ mod tests {
       (advice br_if        (cond Condition)
                            (label Label)
           >>>GUEST>>>🌿<<<GUEST<<<)
+      (advice br_table (target  Target)
+                       (default Default)
+          >>>GUEST>>>🏓<<<GUEST<<<)
       (advice call before
               (f FunctionIndex)
           >>>GUEST>>>🧐🏃<<<GUEST<<<)
@@ -298,7 +319,8 @@ mod tests {
         let wasp_input = WaspInput::from_pest(&mut parse_tree).unwrap();
         let formatted = format!("{wasp_input:?}");
         for guest_code in [
-            "🔴", "🟠", "🟡", "🟢", "🔵", "🟣", "🌶", "🧂", "🌿", "🧐🏃", "👀🏃", "🧐🏄", "👀🏄",
+            "🔴", "🟠", "🟡", "🟢", "🔵", "🟣", "🌶", "🧂", "🌿", "🏓", "🧐🏃", "👀🏃", "🧐🏄",
+            "👀🏄",
         ] {
             assert!(formatted.contains(guest_code))
         }

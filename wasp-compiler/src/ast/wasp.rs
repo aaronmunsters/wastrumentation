@@ -37,6 +37,7 @@ pub enum TrapSignature {
     TrapIfThen(TrapIfThen),
     TrapIfThenElse(TrapIfThenElse),
     TrapBrIf(TrapBrIf),
+    TrapBrTable(TrapBrTable),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -128,6 +129,19 @@ pub struct BranchFormalCondition(pub String);
 #[derive(Debug, PartialEq, Eq)]
 pub struct BranchFormalLabel(pub String);
 
+#[derive(Debug, PartialEq, Eq)]
+pub struct TrapBrTable {
+    pub branch_formal_target: BranchFormalTarget,
+    pub branch_formal_default: BranchFormalDefault,
+    pub body: String,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct BranchFormalTarget(pub String);
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct BranchFormalDefault(pub String);
+
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum WasmType {
     I32,
@@ -178,6 +192,9 @@ impl WaspRoot {
                 ) || matches!(
                     advice_definition,
                     AdviceDefinition::AdviceTrap(TrapSignature::TrapBrIf { .. })
+                ) || matches!(
+                    advice_definition,
+                    AdviceDefinition::AdviceTrap(TrapSignature::TrapBrTable { .. })
                 )
             })
     }
@@ -298,6 +315,15 @@ impl TryFrom<pest_ast::TrapSignature> for TrapSignature {
                 branch_formal_label: branch_formal_label.into(),
                 body,
             })),
+            pest_ast::TrapSignature::TrapBrTable(pest_ast::TrapBrTable {
+                branch_formal_target,
+                branch_formal_default,
+                body,
+            }) => Ok(TrapSignature::TrapBrTable(TrapBrTable {
+                branch_formal_target: branch_formal_target.into(),
+                branch_formal_default: branch_formal_default.into(),
+                body,
+            })),
         }
     }
 }
@@ -333,6 +359,20 @@ impl From<pest_ast::BranchFormalCondition> for BranchFormalCondition {
 impl From<pest_ast::BranchFormalLabel> for BranchFormalLabel {
     fn from(pest: pest_ast::BranchFormalLabel) -> Self {
         let pest_ast::BranchFormalLabel(parameter) = pest;
+        Self(parameter)
+    }
+}
+
+impl From<pest_ast::BranchFormalTarget> for BranchFormalTarget {
+    fn from(pest: pest_ast::BranchFormalTarget) -> Self {
+        let pest_ast::BranchFormalTarget(parameter) = pest;
+        Self(parameter)
+    }
+}
+
+impl From<pest_ast::BranchFormalDefault> for BranchFormalDefault {
+    fn from(pest: pest_ast::BranchFormalDefault) -> Self {
+        let pest_ast::BranchFormalDefault(parameter) = pest;
         Self(parameter)
     }
 }
@@ -576,6 +616,9 @@ mod tests {
             (advice br_if        (cond Condition)
                                  (label Label)
                 >>>GUEST>>>🌿<<<GUEST<<<)
+            (advice br_table (target  Target)
+                             (default Default)
+                >>>GUEST>>>🏓<<<GUEST<<<)
             (advice call before
                     (f FunctionIndex)
                 >>>GUEST>>>🧐🏃<<<GUEST<<<)
@@ -696,6 +739,11 @@ mod tests {
                     branch_formal_condition: BranchFormalCondition("cond".into()),
                     branch_formal_label: BranchFormalLabel("label".into()),
                     body: "🌿".into()
+                })),
+                AdviceDefinition::AdviceTrap(TrapSignature::TrapBrTable(TrapBrTable {
+                    branch_formal_target: BranchFormalTarget("target".into()),
+                    branch_formal_default: BranchFormalDefault("default".into()),
+                    body: "🏓".into(),
                 })),
                 AdviceDefinition::AdviceTrap(TrapSignature::TrapCall(TrapCall {
                     call_qualifier: CallQualifier::Before,

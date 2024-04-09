@@ -14,6 +14,7 @@ pub struct JoinPoints {
     pub if_then: bool,
     pub if_then_else: bool,
     pub br_if: bool,
+    pub br_table: bool,
     pub call_pre: bool,
     pub call_post: bool,
     pub call_indirect_pre: bool,
@@ -40,6 +41,7 @@ impl JoinPoints {
             JoinPoint::CallPost => self.call_post = true,
             JoinPoint::CallIndirectPre => self.call_indirect_pre = true,
             JoinPoint::CallIndirectPost => self.call_indirect_post = true,
+            JoinPoint::TrapBrTable => self.br_table = true,
         };
     }
 }
@@ -54,6 +56,7 @@ enum JoinPoint {
     IfThen,
     IfThenElse,
     BrIf,
+    TrapBrTable,
 }
 
 impl WaspRoot {
@@ -89,6 +92,7 @@ impl TrapSignature {
             }) => JoinPoint::CallPost,
             TrapSignature::TrapCallIndirectBefore(_) => JoinPoint::CallIndirectPre,
             TrapSignature::TrapCallIndirectAfter(_) => JoinPoint::CallIndirectPost,
+            TrapSignature::TrapBrTable(_) => JoinPoint::TrapBrTable,
         }
     }
 }
@@ -173,6 +177,7 @@ mod tests {
                 if_then: false,
                 if_then_else: false,
                 br_if: false,
+                br_table: false,
                 call_pre: false,
                 call_post: false,
                 call_indirect_pre: false,
@@ -255,6 +260,24 @@ mod tests {
             ),
             JoinPoints {
                 br_if: true,
+                ..Default::default()
+            }
+        )
+    }
+
+    #[test]
+    fn test_br_table() {
+        assert_eq!(
+            get_joinpoints(
+                r#"
+                (aspect
+                    (advice br_table (target  Target)
+                                    (default Default)
+                        >>>GUEST>>>🏓<<<GUEST<<<))
+                "#,
+            ),
+            JoinPoints {
+                br_table: true,
                 ..Default::default()
             }
         )
@@ -354,6 +377,9 @@ mod tests {
                     (advice br_if (cond  Condition)
                                   (label Label)
                         >>>GUEST>>>⚪️<<<GUEST<<<)
+                    (advice br_table (target  Target)
+                                     (default Default)
+                        >>>GUEST>>>🏓<<<GUEST<<<)
                     (advice call before (f FunctionIndex)
                         >>>GUEST>>>🧐🏃<<<GUEST<<<)
                     (advice call after (f FunctionIndex)
@@ -384,6 +410,7 @@ mod tests {
                 if_then: true,
                 if_then_else: true,
                 br_if: true,
+                br_table: true,
                 call_pre: true,
                 call_post: true,
                 call_indirect_pre: true,

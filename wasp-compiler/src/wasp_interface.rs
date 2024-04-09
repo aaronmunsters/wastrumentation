@@ -11,6 +11,7 @@ use crate::ast::{
 pub const FUNCTION_NAME_CALL_BASE: &str = "call_base";
 pub const FUNCTION_NAME_GENERIC_APPLY: &str = "generic_apply";
 pub const FUNCTION_NAME_SPECIALIZED_BR_IF: &str = "specialized_br_if";
+pub const FUNCTION_NAME_SPECIALIZED_BR_TABLE: &str = "specialized_br_table";
 pub const FUNCTION_NAME_SPECIALIZED_CALL_POST: &str = "specialized_call_post";
 pub const FUNCTION_NAME_SPECIALIZED_CALL_PRE: &str = "specialized_call_pre";
 pub const FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_POST: &str = "specialized_call_indirect_post";
@@ -28,6 +29,7 @@ pub struct WaspInterface {
     pub if_then_trap: Option<WasmExport>,
     pub if_then_else_trap: Option<WasmExport>,
     pub br_if_trap: Option<WasmExport>,
+    pub br_table_trap: Option<WasmExport>,
     pub pre_trap_call: Option<WasmExport>,
     pub pre_trap_call_indirect: Option<WasmExport>,
     pub post_trap_call: Option<WasmExport>,
@@ -101,6 +103,16 @@ impl WaspInterface {
         }
     }
 
+    fn interface_br_table() -> WasmExport {
+        WasmExport {
+            name: FUNCTION_NAME_SPECIALIZED_BR_TABLE.into(),
+            // table_target_index, default
+            args: vec![I32, I32],
+            // table_target_index
+            results: vec![I32],
+        }
+    }
+
     fn interface_call_pre() -> WasmExport {
         WasmExport {
             name: FUNCTION_NAME_SPECIALIZED_CALL_PRE.into(),
@@ -154,6 +166,7 @@ impl From<&WaspRoot> for WaspInterface {
         let mut pre_trap_call_indirect: Option<WasmExport> = None;
         let mut post_trap_call: Option<WasmExport> = None;
         let mut post_trap_call_indirect: Option<WasmExport> = None;
+        let mut br_table_trap = None;
         let WaspRoot(advice_definitions) = wasp_root;
         for advice_definition in advice_definitions {
             if let AdviceDefinition::AdviceTrap(trap_signature) = advice_definition {
@@ -192,6 +205,9 @@ impl From<&WaspRoot> for WaspInterface {
                     TrapSignature::TrapBrIf(_) => {
                         br_if_trap = Some(WaspInterface::interface_br_if())
                     }
+                    TrapSignature::TrapBrTable(_) => {
+                        br_table_trap = Some(WaspInterface::interface_br_table())
+                    }
                     TrapSignature::TrapCall(TrapCall {
                         call_qualifier: CallQualifier::Before,
                         ..
@@ -221,6 +237,7 @@ impl From<&WaspRoot> for WaspInterface {
             pre_trap_call_indirect,
             post_trap_call,
             post_trap_call_indirect,
+            br_table_trap,
         }
     }
 }
