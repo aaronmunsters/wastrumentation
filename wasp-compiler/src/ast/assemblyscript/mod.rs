@@ -93,10 +93,14 @@ impl TrapSignature {
     }
 }
 
-// TODO: below the names `func`, `args`, `results` seem to be fixed?
-//       can the .wasp still user-define them?
 impl ApplyGen {
     fn to_assemblyscript(&self, body: &str) -> String {
+        let Self {
+            generic_means: _, // TODO: put to use?
+            parameter_function,
+            parameter_arguments,
+            parameter_results,
+        } = self;
         format!(
             indoc! {r#"
             export function {GENERIC_APPLY_FUNCTION_NAME}(
@@ -106,20 +110,23 @@ impl ApplyGen {
                 sigv: i32,
                 sigtypv: i32,
             ): void {{
-                let func = new WasmFunction(f_apply, sigv);
+                let {parameter_function} = new WasmFunction(f_apply, sigv);
                 let argsResults = new MutDynArgsResults(
                     argc,
                     resc,
                     sigv,
                     sigtypv,
                 );
-                let args = new MutDynArgs(argsResults);
-                let results = new MutDynRess(argsResults);
+                let {parameter_arguments} = new MutDynArgs(argsResults);
+                let {parameter_results} = new MutDynRess(argsResults);
                 {body}
             }}
             "#
             },
             GENERIC_APPLY_FUNCTION_NAME = FUNCTION_NAME_GENERIC_APPLY,
+            parameter_function = parameter_function,
+            parameter_arguments = parameter_arguments,
+            parameter_results = parameter_results,
             body = body,
         )
         .to_string()
@@ -579,7 +586,7 @@ mod tests {
         let ast: TrapSignature = TrapSignature::TrapApply(TrapApply {
             apply_hook_signature: ApplyHookSignature::Gen(ApplyGen {
                 generic_means: GenericTarget::MutableDynamic,
-                parameter_apply: "func".to_string(),
+                parameter_function: "func".to_string(),
                 parameter_arguments: "args".to_string(),
                 parameter_results: "results".to_string(),
             }),

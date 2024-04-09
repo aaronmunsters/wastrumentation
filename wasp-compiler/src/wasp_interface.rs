@@ -280,7 +280,7 @@ mod tests {
             TrapSignature::TrapApply(TrapApply {
                 apply_hook_signature: ApplyHookSignature::Gen(ApplyGen {
                     generic_means: GenericTarget::Dynamic,
-                    parameter_apply: "WasmFunc".into(),
+                    parameter_function: "WasmFunc".into(),
                     parameter_arguments: "WasmArgs".into(),
                     parameter_results: "WasmResults".into(),
                 }),

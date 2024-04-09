@@ -61,7 +61,7 @@ pub enum GenericTarget {
 #[derive(Debug, PartialEq, Eq)]
 pub struct ApplyGen {
     pub generic_means: GenericTarget,
-    pub parameter_apply: String,
+    pub parameter_function: String,
     pub parameter_arguments: String,
     pub parameter_results: String,
 }
@@ -399,7 +399,7 @@ impl TryFrom<pest_ast::ApplyGen> for ApplyGen {
 
         Ok(ApplyGen {
             generic_means,
-            parameter_apply,
+            parameter_function: parameter_apply,
             parameter_arguments: formal_argument.identifier,
             parameter_results: formal_result.identifier,
         })
@@ -605,7 +605,7 @@ mod tests {
                 AdviceDefinition::AdviceTrap(TrapSignature::TrapApply(TrapApply {
                     apply_hook_signature: ApplyHookSignature::Gen(ApplyGen {
                         generic_means: GenericTarget::HighLevel,
-                        parameter_apply: "func".into(),
+                        parameter_function: "func".into(),
                         parameter_arguments: "args".into(),
                         parameter_results: "results".into()
                     }),
@@ -614,7 +614,7 @@ mod tests {
                 AdviceDefinition::AdviceTrap(TrapSignature::TrapApply(TrapApply {
                     apply_hook_signature: ApplyHookSignature::Gen(ApplyGen {
                         generic_means: GenericTarget::Dynamic,
-                        parameter_apply: "func".into(),
+                        parameter_function: "func".into(),
                         parameter_arguments: "args".into(),
                         parameter_results: "results".into()
                     }),
@@ -623,7 +623,7 @@ mod tests {
                 AdviceDefinition::AdviceTrap(TrapSignature::TrapApply(TrapApply {
                     apply_hook_signature: ApplyHookSignature::Gen(ApplyGen {
                         generic_means: GenericTarget::MutableDynamic,
-                        parameter_apply: "func".into(),
+                        parameter_function: "func".into(),
                         parameter_arguments: "args".into(),
                         parameter_results: "results".into()
                     }),
