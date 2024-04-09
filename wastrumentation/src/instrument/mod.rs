@@ -12,8 +12,12 @@ use wasp_compiler::wasp_interface::WaspInterface;
 use wasabi_wasm::Function;
 use wasabi_wasm::Idx;
 
+use self::function_call::TargetCall;
+
 pub mod branch_if;
 pub mod function_application;
+pub mod function_call;
+pub mod function_call_indirect;
 
 pub struct InstrumentationResult {
     pub module: Vec<u8>,
@@ -26,6 +30,10 @@ pub fn instrument(module: &[u8], wasp_interface: WaspInterface) -> Instrumentati
         if_then_else_trap,
         if_then_trap,
         br_if_trap,
+        pre_trap_call,
+        pre_trap_call_indirect,
+        post_trap_call,
+        post_trap_call_indirect,
         .. // TODO: remove?
     } = wasp_interface;
     let mut instrumentation_lib = String::new();
@@ -35,6 +43,41 @@ pub fn instrument(module: &[u8], wasp_interface: WaspInterface) -> Instrumentati
         .filter(|(_index, f)| f.code().is_some())
         .map(|(idx, _)| idx)
         .collect();
+
+    // Instrument call / call_indirect first, to prevent new calls to be instrumented too.
+    let target_call = match (pre_trap_call, post_trap_call) {
+        (None, None) => TargetCall::None,
+        (Some(pre_call_trap), None) => TargetCall::Pre(pre_call_trap),
+        (None, Some(post_call_trap)) => TargetCall::Post(post_call_trap),
+        (Some(pre_call_trap), Some(post_call_trap)) => TargetCall::Both {
+            pre_call_trap,
+            post_call_trap,
+        },
+    };
+
+    target_call
+        .instrument(&mut module, &pre_instrumentation_function_indices)
+        .unwrap();
+
+    if let Some(trap_export) = pre_trap_call_indirect {
+        function_call_indirect::instrument(
+            &mut module,
+            &pre_instrumentation_function_indices,
+            trap_export,
+            function_call_indirect::Target::CallIndirectPre,
+        )
+        .unwrap() // TODO: handle
+    }
+
+    if let Some(trap_export) = post_trap_call_indirect {
+        function_call_indirect::instrument(
+            &mut module,
+            &pre_instrumentation_function_indices,
+            trap_export,
+            function_call_indirect::Target::CallIndirectPost,
+        )
+        .unwrap() // TODO: handle
+    }
 
     if let Some(trap_export) = if_then_trap {
         branch_if::instrument(

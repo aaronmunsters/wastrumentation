@@ -23,12 +23,23 @@
                 {
                     "GlobalValueEquals": {
                         "identifier": "amount_of_calls",
-                        "result": {"I32": 1}
+                        "result": {"I32": 0}
                     }
                 },
                 {
                     "GlobalValueEquals": {
                         "identifier": "max_call_depth",
+                        "result": {"I32": 0}}
+                },
+                {
+                    "GlobalValueEquals": {
+                        "identifier": "amount_of_applys",
+                        "result": {"I32": 1}
+                    }
+                },
+                {
+                    "GlobalValueEquals": {
+                        "identifier": "max_apply_depth",
                         "result": {"I32": 1}}
                 }
            ]
@@ -58,12 +69,23 @@
                 {
                     "GlobalValueEquals": {
                         "identifier": "amount_of_calls",
-                        "result": {"I32": 177}
+                        "result": {"I32": 176}
                     }
                 },
                 {
                     "GlobalValueEquals": {
                         "identifier": "max_call_depth",
+                        "result": {"I32": 9}}
+                },
+                {
+                    "GlobalValueEquals": {
+                        "identifier": "amount_of_applys",
+                        "result": {"I32": 177}
+                    }
+                },
+                {
+                    "GlobalValueEquals": {
+                        "identifier": "max_apply_depth",
                         "result": {"I32": 10}}
                 }
            ]
@@ -127,12 +149,23 @@
                 {
                     "GlobalValueEquals": {
                         "identifier": "amount_of_calls",
-                        "result": {"I32": 981957}
+                        "result": {"I32": 981956}
                     }
                 },
                 {
                     "GlobalValueEquals": {
                         "identifier": "max_call_depth",
+                        "result": {"I32": 255}}
+                },
+                {
+                    "GlobalValueEquals": {
+                        "identifier": "amount_of_applys",
+                        "result": {"I32": 981957}
+                    }
+                },
+                {
+                    "GlobalValueEquals": {
+                        "identifier": "max_apply_depth",
                         "result": {"I32": 256}}
                 }
            ]
@@ -348,6 +381,113 @@
                 "DifferentReturnValue": [{"I32": 100}]
             },
             "post_execution_assertions": []
+        }]
+    },
+    {
+        "input_program": {
+            "path":"./input-programs/wat/call_indirect.wat",
+            "type": "Wat"
+        },
+        "uninstrumented_assertion": {
+            "input_entry_point":"main",
+            "arguments":[{"I32":0}, {"I32":10}, {"I32":5}],
+            "results":[{"I32":15}],
+            "post_execution_assertions": []
+        },
+        "instrumented_assertions": [{
+            "analysis":"./analysis/forward.wasp",
+            "wasi_enabled": false,
+            "input_program_assertion": "EqualToUninstrumented",
+            "post_execution_assertions": []
+        }]
+    },{
+        "input_program": {
+            "path":"./input-programs/wat/call_indirect.wat",
+            "type": "Wat"
+        },
+        "uninstrumented_assertion": {
+            "input_entry_point":"main",
+            "arguments":[{"I32":1}, {"I32":10}, {"I32":5}],
+            "results":[{"I32":5}],
+            "post_execution_assertions": []
+        },
+        "instrumented_assertions": [{
+            "analysis":"./analysis/forward.wasp",
+            "wasi_enabled": false,
+            "input_program_assertion": "EqualToUninstrumented",
+            "post_execution_assertions": []
+        }]
+    },{
+        "input_program": {
+            "path":"./input-programs/wat/call_indirect.wat",
+            "type": "Wat"
+        },
+        "uninstrumented_assertion": {
+            "input_entry_point":"main",
+            "arguments":[{"I32":2}, {"I32":10}, {"I32":5}],
+            "results":[{"I32":50}],
+            "post_execution_assertions": []
+        },
+        "instrumented_assertions": [{
+            "analysis":"./analysis/forward.wasp",
+            "wasi_enabled": false,
+            "input_program_assertion": "EqualToUninstrumented",
+            "post_execution_assertions": []
+        }]
+    },{
+        "input_program": {
+            "path": "./input-programs/wat/call_chain.wat",
+            "type": "Wat"
+        },
+        "uninstrumented_assertion": {
+            "input_entry_point":"main",
+            "arguments":[],
+            "results":[],
+            "post_execution_assertions": []
+        },
+        "instrumented_assertions": [{
+            "analysis":"./analysis/forward.wasp",
+            "wasi_enabled": false,
+            "input_program_assertion": "EqualToUninstrumented",
+            "post_execution_assertions": []
+        },{
+            "analysis":"./analysis/call_chain.wasp",
+            "wasi_enabled": false,
+            "input_program_assertion": "EqualToUninstrumented",
+            "post_execution_assertions": [
+                {
+                    "GlobalValueEquals": {
+                        "identifier": "amount_of_calls_before",
+                        "result": {
+                            "I32": 5
+                        }
+                    }
+                },
+                {
+                    "GlobalValueEquals": {
+                        "identifier": "amount_of_calls_after",
+                        "result": {
+                            "I32": 5
+                        }
+                    }
+                },
+                {
+                    "GlobalValueEquals": {
+                        "identifier": "amount_of_apply_before",
+                        "result": {
+                            "I32": 6
+                        }
+                    }
+                },
+                {
+                    "GlobalValueEquals": {
+                        "identifier": "amount_of_apply_after",
+                        "result": {
+                            "I32": 6
+                        }
+                    }
+                }
+            ]
         }]
     }
 ]

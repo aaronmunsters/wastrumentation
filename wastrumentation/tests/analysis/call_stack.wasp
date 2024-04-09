@@ -1,5 +1,9 @@
 (aspect
     (global >>>GUEST>>>
+        export let amount_of_applys: i32 = 0;
+        export let max_apply_depth: i32 = 0;
+        let apply_stack: i32 = 0;
+
         export let amount_of_calls: i32 = 0;
         export let max_call_depth: i32 = 0;
         let call_stack: i32 = 0;
@@ -9,25 +13,39 @@
         }
     <<<GUEST<<<)
 
-    (advice apply (func    WasmFunction)
-                  (args    MutDynArgs)
-                  (results MutDynResults) >>>GUEST>>>
-        // Before call:
-        // [1] Increment call stack size
-        // [2] Ensure highest call stack size is recorded
-        // [3] Ensure call count is incremented
-        // After call:
-        // [4] Ensure call count is decremented
-
-
+    (advice call before (f FunctionIndex) >>>GUEST>>>
         /* [1] */
         call_stack += 1;
         /* [2] */
         max_call_depth = max(max_call_depth, call_stack);
         /* [3] */
         amount_of_calls += 1;
+    <<<GUEST<<<)
+
+    (advice call after (f FunctionIndex) >>>GUEST>>>
+        call_stack -= 1;
+    <<<GUEST<<<)
+
+
+    (advice apply (func    WasmFunction)
+                  (args    MutDynArgs)
+                  (results MutDynResults) >>>GUEST>>>
+        // Before apply:
+        // [1] Increment apply stack size
+        // [2] Ensure highest apply stack size is recorded
+        // [3] Ensure apply count is incremented
+        // After apply:
+        // [4] Ensure apply count is decremented
+
+
+        /* [1] */
+        apply_stack += 1;
+        /* [2] */
+        max_apply_depth = max(max_apply_depth, apply_stack);
+        /* [3] */
+        amount_of_applys += 1;
         func.apply();
         /* [4] */
-        call_stack -= 1;
+        apply_stack -= 1;
 
     <<<GUEST<<<))

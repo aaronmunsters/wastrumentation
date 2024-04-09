@@ -1,7 +1,11 @@
 use std::collections::HashSet;
 
-use crate::ast::wasp::{
-    ApplyHookSignature, ApplySpe, TrapSignature, WasmParameter, WasmType, WaspRoot,
+use crate::ast::{
+    pest::CallQualifier::{After, Before},
+    wasp::{
+        ApplyHookSignature, ApplySpe, TrapCall, TrapCallIndirect, TrapSignature, WasmParameter,
+        WasmType, WaspRoot,
+    },
 };
 
 #[derive(Debug, PartialEq, Eq, Default)]
@@ -11,6 +15,10 @@ pub struct JoinPoints {
     pub if_then: bool,
     pub if_then_else: bool,
     pub br_if: bool,
+    pub call_pre: bool,
+    pub call_post: bool,
+    pub call_indirect_pre: bool,
+    pub call_indirect_post: bool,
 }
 
 #[derive(Debug, Eq, PartialEq, Hash, Clone)]
@@ -29,6 +37,10 @@ impl JoinPoints {
             JoinPoint::IfThen => self.if_then = true,
             JoinPoint::IfThenElse => self.if_then_else = true,
             JoinPoint::BrIf => self.br_if = true,
+            JoinPoint::CallPre => self.call_pre = true,
+            JoinPoint::CallPost => self.call_post = true,
+            JoinPoint::CallIndirectPre => self.call_indirect_pre = true,
+            JoinPoint::CallIndirectPost => self.call_indirect_post = true,
         };
     }
 }
@@ -36,6 +48,10 @@ impl JoinPoints {
 enum JoinPoint {
     Generic,
     Specialised(SpecialisedJoinPoint),
+    CallPre,
+    CallPost,
+    CallIndirectPre,
+    CallIndirectPost,
     IfThen,
     IfThenElse,
     BrIf,
@@ -64,6 +80,22 @@ impl TrapSignature {
             TrapSignature::TrapIfThen(_) => JoinPoint::IfThen,
             TrapSignature::TrapIfThenElse(_) => JoinPoint::IfThenElse,
             TrapSignature::TrapBrIf(_) => JoinPoint::BrIf,
+            TrapSignature::TrapCall(TrapCall {
+                call_qualifier: Before,
+                ..
+            }) => JoinPoint::CallPre,
+            TrapSignature::TrapCall(TrapCall {
+                call_qualifier: After,
+                ..
+            }) => JoinPoint::CallPost,
+            TrapSignature::TrapCallIndirect(TrapCallIndirect {
+                call_qualifier: Before,
+                ..
+            }) => JoinPoint::CallIndirectPre,
+            TrapSignature::TrapCallIndirect(TrapCallIndirect {
+                call_qualifier: After,
+                ..
+            }) => JoinPoint::CallIndirectPost,
         }
     }
 }
@@ -92,6 +124,7 @@ impl ApplySpe {
 #[cfg(test)]
 mod tests {
     use from_pest::FromPest;
+    use indoc::indoc;
     use pest::Parser;
 
     use super::*;
@@ -129,20 +162,29 @@ mod tests {
             "#,
         );
         assert_eq!(
-            format!("{joinpoints:?}"),
-            "\
-        JoinPoints { \
-            generic: false, \
-            specialized: {\
-                SpecialisedJoinPoint { \
-                    result_types: [F64], \
-                    argument_types: [I32, F32, I64] \
-                }\
-            }, \
-            if_then: false, \
-            if_then_else: false, \
-            br_if: false \
-        }"
+            format!("{joinpoints:#?}"),
+            indoc! {r#"JoinPoints {
+                generic: false,
+                specialized: {
+                    SpecialisedJoinPoint {
+                        result_types: [
+                            F64,
+                        ],
+                        argument_types: [
+                            I32,
+                            F32,
+                            I64,
+                        ],
+                    },
+                },
+                if_then: false,
+                if_then_else: false,
+                br_if: false,
+                call_pre: false,
+                call_post: false,
+                call_indirect_pre: false,
+                call_indirect_post: false,
+            }"#}
         )
     }
 
@@ -208,6 +250,94 @@ mod tests {
     }
 
     #[test]
+    fn test_br_if() {
+        assert_eq!(
+            get_joinpoints(
+                r#"
+                (aspect
+                    (advice br_if (cond  Condition)
+                                  (label Label)
+                        >>>GUEST>>>⚪️<<<GUEST<<<))
+                "#,
+            ),
+            JoinPoints {
+                br_if: true,
+                ..Default::default()
+            }
+        )
+    }
+
+    #[test]
+    fn test_call_pre() {
+        assert_eq!(
+            get_joinpoints(
+                r#"
+                (aspect
+                    (advice call before (f FunctionIndex)
+                        >>>GUEST>>>🧐🏃<<<GUEST<<<))
+                "#,
+            ),
+            JoinPoints {
+                call_pre: true,
+                ..Default::default()
+            }
+        )
+    }
+
+    #[test]
+    fn test_call_post() {
+        assert_eq!(
+            get_joinpoints(
+                r#"
+                (aspect
+                    (advice call after (f FunctionIndex)
+                        >>>GUEST>>>🧐🏃<<<GUEST<<<))
+                "#,
+            ),
+            JoinPoints {
+                call_post: true,
+                ..Default::default()
+            }
+        )
+    }
+
+    #[test]
+    fn test_call_indirect_pre() {
+        assert_eq!(
+            get_joinpoints(
+                r#"
+                (aspect
+                    (advice call_indirect before (table FunctionTable)
+                                                 (index FunctionTableIndex)
+                        >>>GUEST>>>🧐🏄<<<GUEST<<<))
+                "#,
+            ),
+            JoinPoints {
+                call_indirect_pre: true,
+                ..Default::default()
+            }
+        )
+    }
+
+    #[test]
+    fn test_call_indirect_post() {
+        assert_eq!(
+            get_joinpoints(
+                r#"
+                (aspect
+                    (advice call_indirect after (table FunctionTable)
+                                                (index FunctionTableIndex)
+                        >>>GUEST>>>👀🏄<<<GUEST<<<))
+                "#,
+            ),
+            JoinPoints {
+                call_indirect_post: true,
+                ..Default::default()
+            }
+        )
+    }
+
+    #[test]
     fn test_multiple() {
         assert_eq!(
             get_joinpoints(
@@ -232,6 +362,16 @@ mod tests {
                     (advice br_if (cond  Condition)
                                   (label Label)
                         >>>GUEST>>>⚪️<<<GUEST<<<)
+                    (advice call before (f FunctionIndex)
+                        >>>GUEST>>>🧐🏃<<<GUEST<<<)
+                    (advice call after (f FunctionIndex)
+                        >>>GUEST>>>👀🏃<<<GUEST<<<)
+                    (advice call_indirect before (table FunctionTable)
+                                                 (index FunctionTableIndex)
+                        >>>GUEST>>>🧐🏄<<<GUEST<<<)
+                    (advice call_indirect after (table FunctionTable)
+                                                (index FunctionTableIndex)
+                        >>>GUEST>>>👀🏄<<<GUEST<<<)
                 )
                 "#,
             ),
@@ -253,6 +393,10 @@ mod tests {
                 if_then: true,
                 if_then_else: true,
                 br_if: true,
+                call_pre: true,
+                call_post: true,
+                call_indirect_pre: true,
+                call_indirect_post: true
             }
         )
     }

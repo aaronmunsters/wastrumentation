@@ -10,6 +10,20 @@ fn span_into_string(span: Span) -> String {
     span.as_str().to_string()
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum CallQualifier {
+    Before,
+    After,
+}
+
+fn span_into_qualifier(span: Span) -> CallQualifier {
+    match span.as_str() {
+        "before" => CallQualifier::Before,
+        "after" => CallQualifier::After,
+        &_ => panic!("Could not parse `before` or `after`"),
+    }
+}
+
 fn drop_guest_delimiter(guest_code: String) -> String {
     guest_code
         .strip_prefix(">>>GUEST>>>")
@@ -51,6 +65,8 @@ pub struct AdviceTrap(pub TrapSignature);
 #[pest_ast(rule(Rule::trap_signature))]
 pub enum TrapSignature {
     TrapApply(TrapApply),
+    TrapCall(TrapCall),
+    TrapCallIndirect(TrapCallIndirect),
     TrapIfThen(TrapIfThen),
     TrapIfThenElse(TrapIfThenElse),
     TrapBrIf(TrapBrIf),
@@ -63,6 +79,39 @@ pub struct TrapApply {
     #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter)))]
     pub body: String,
 }
+
+#[derive(Debug, FromPest)]
+#[pest_ast(rule(Rule::trap_call))]
+pub struct TrapCall {
+    #[pest_ast(inner(with(span_into_qualifier)))]
+    pub call_qualifier: CallQualifier,
+    pub formal_target: FormalTarget,
+    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter)))]
+    pub body: String,
+}
+
+#[derive(Debug, FromPest)]
+#[pest_ast(rule(Rule::formal_target))]
+pub struct FormalTarget(#[pest_ast(inner(with(span_into_string)))] pub String);
+
+#[derive(Debug, FromPest)]
+#[pest_ast(rule(Rule::trap_call_indirect))]
+pub struct TrapCallIndirect {
+    #[pest_ast(inner(with(span_into_qualifier)))]
+    pub call_qualifier: CallQualifier,
+    pub formal_table: FormalTable,
+    pub formal_index: FormalIndex,
+    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter)))]
+    pub body: String,
+}
+
+#[derive(Debug, FromPest)]
+#[pest_ast(rule(Rule::formal_table))]
+pub struct FormalTable(#[pest_ast(inner(with(span_into_string)))] pub String);
+
+#[derive(Debug, FromPest)]
+#[pest_ast(rule(Rule::formal_index))]
+pub struct FormalIndex(#[pest_ast(inner(with(span_into_string)))] pub String);
 
 #[derive(Debug, FromPest)]
 #[pest_ast(rule(Rule::apply_hook_signature))]
@@ -221,11 +270,30 @@ mod tests {
           >>>GUEST>>>🔵<<<GUEST<<<)
       (global >>>GUEST>>>🟣<<<GUEST<<<)
       (advice if_then      (cond Condition) >>>GUEST>>>[🌶]<<<GUEST<<<)
-      (advice if_then_else (cond Condition) >>>GUEST>>>[🧂]<<<GUEST<<<))"#;
+      (advice if_then_else (cond Condition) >>>GUEST>>>[🧂]<<<GUEST<<<)
+      (advice br_if        (cond Condition)
+                           (label Label)
+          >>>GUEST>>>🌿<<<GUEST<<<)
+      (advice call before
+              (f FunctionIndex)
+          >>>GUEST>>>🧐🏃<<<GUEST<<<)
+      (advice call after
+              (f FunctionIndex)
+          >>>GUEST>>>👀🏃<<<GUEST<<<)
+      (advice call_indirect before
+              (table FunctionTable)
+              (index FunctionTableIndex)
+          >>>GUEST>>>🧐🏄<<<GUEST<<<)
+      (advice call_indirect after
+              (table FunctionTable)
+              (index FunctionTableIndex)
+          >>>GUEST>>>👀🏄<<<GUEST<<<))"#;
         let mut parse_tree = WaspParser::parse(Rule::wasp_input, program_source).unwrap();
         let wasp_input = WaspInput::from_pest(&mut parse_tree).unwrap();
         let formatted = format!("{wasp_input:?}");
-        for guest_code in ["🔴", "🟠", "🟡", "🟢", "🔵", "🟣", "🌶", "🧂"] {
+        for guest_code in [
+            "🔴", "🟠", "🟡", "🟢", "🔵", "🟣", "🌶", "🧂", "🌿", "🧐🏃", "👀🏃", "🧐🏄", "👀🏄",
+        ] {
             assert!(formatted.contains(guest_code))
         }
     }

@@ -31,4 +31,23 @@
                   (args    MutDynArgs)
                   (results MutDynResults) >>>GUEST>>>
         func.apply();
-    <<<GUEST<<<))
+    <<<GUEST<<<)
+
+    (advice call before (f FunctionIndex) >>>GUEST>>>
+        return; // No intercession, intercession @ callee site
+    <<<GUEST<<<)
+
+    (advice call after (f FunctionIndex) >>>GUEST>>>
+        return; // No intercession, intercession @ callee site
+    <<<GUEST<<<)
+
+    (advice call_indirect before (table FunctionTable)
+                                 (index FunctionTableIndex) >>>GUEST>>>
+        return index.index; // Arguments intercession @ callee site
+    <<<GUEST<<<)
+
+    (advice call_indirect after (table FunctionTable)
+                                (index FunctionTableIndex) >>>GUEST>>>
+        return; // No intercession, intercession @ callee site
+    <<<GUEST<<<)
+    )

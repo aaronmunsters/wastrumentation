@@ -48,6 +48,7 @@ impl<'a> TryFrom<&'a str> for AssemblyScriptProgram {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use indoc::indoc;
     use pest::Parser;
 
     fn assert_parse_ok(s: &str) {
@@ -158,20 +159,36 @@ mod tests {
             wasp_interface: WaspInterface::default(),
         };
         assert_eq!(
-            format!("{compilation_result:?}"),
-            "CompilationResult { \
-                analysis_source_code: AssemblyScriptProgram { \
-                    content: \"\" \
-                }, \
-                join_points: JoinPoints { \
-                    generic: false, \
-                    specialized: {}, \
-                    if_then: false, \
-                    if_then_else: false, \
-                    br_if: false \
-                }, \
-                wasp_interface: WaspInterface { inputs: [], outputs: [], generic_interface: None, if_then_trap: None, if_then_else_trap: None, br_if_trap: None } \
-            }"
+            format!("{compilation_result:#?}"),
+            indoc! {r#"CompilationResult {
+                analysis_source_code: AssemblyScriptProgram {
+                    content: "",
+                },
+                join_points: JoinPoints {
+                    generic: false,
+                    specialized: {},
+                    if_then: false,
+                    if_then_else: false,
+                    br_if: false,
+                    call_pre: false,
+                    call_post: false,
+                    call_indirect_pre: false,
+                    call_indirect_post: false,
+                },
+                wasp_interface: WaspInterface {
+                    inputs: [],
+                    outputs: [],
+                    generic_interface: None,
+                    if_then_trap: None,
+                    if_then_else_trap: None,
+                    br_if_trap: None,
+                    pre_trap_call: None,
+                    pre_trap_call_indirect: None,
+                    post_trap_call: None,
+                    post_trap_call_indirect: None,
+                },
+            }"#
+            }
         );
     }
 }

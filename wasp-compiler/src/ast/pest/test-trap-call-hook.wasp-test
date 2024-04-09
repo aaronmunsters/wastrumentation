@@ -1,0 +1,61 @@
+Aspect Call (Indirect)
+
+=======
+
+(aspect
+  (advice call before
+          (f FunctionIndex)
+    >>>GUEST>>>🧐🏃<<<GUEST<<<)
+  (advice call after
+          (f FunctionIndex)
+    >>>GUEST>>>👀🏃<<<GUEST<<<)
+  (advice call_indirect before
+          (table FunctionTable)
+          (index FunctionTableIndex)
+    >>>GUEST>>>🧐🏄<<<GUEST<<<)
+  (advice call_indirect after
+          (table FunctionTable)
+          (index FunctionTableIndex)
+    >>>GUEST>>>👀🏄<<<GUEST<<<))
+
+=======
+
+(wasp_input
+  (wasp
+    (advice_definition
+      (advice_trap
+        (trap_signature
+          (trap_call
+            (call_qualifier: "before")
+            (formal_target
+              (identifier: "f"))
+            (GUEST_BLOCK: ">>>GUEST>>>🧐🏃<<<GUEST<<<")))))
+    (advice_definition
+      (advice_trap
+        (trap_signature
+          (trap_call
+            (call_qualifier: "after")
+            (formal_target
+              (identifier: "f"))
+            (GUEST_BLOCK: ">>>GUEST>>>👀🏃<<<GUEST<<<")))))
+    (advice_definition
+      (advice_trap
+        (trap_signature
+          (trap_call_indirect
+            (call_qualifier: "before")
+            (formal_table
+              (identifier: "table"))
+            (formal_index
+              (identifier: "index"))
+            (GUEST_BLOCK: ">>>GUEST>>>🧐🏄<<<GUEST<<<")))))
+    (advice_definition
+      (advice_trap
+        (trap_signature
+          (trap_call_indirect
+            (call_qualifier: "after")
+            (formal_table
+              (identifier: "table"))
+            (formal_index
+              (identifier: "index"))
+            (GUEST_BLOCK: ">>>GUEST>>>👀🏄<<<GUEST<<<"))))))
+  (EOI: ""))

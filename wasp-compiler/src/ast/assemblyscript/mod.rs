@@ -5,11 +5,13 @@ use indoc::indoc;
 use crate::{
     ast::wasp::{
         AdviceDefinition, ApplyGen, ApplyHookSignature, ApplySpe, BranchFormalCondition,
-        BranchFormalLabel, TrapApply, TrapBrIf, TrapIfThen, TrapIfThenElse, TrapSignature,
-        WasmParameter, WasmType, WaspRoot,
+        BranchFormalLabel, TrapApply, TrapBrIf, TrapCall, TrapCallIndirect, TrapIfThen,
+        TrapIfThenElse, TrapSignature, WasmParameter, WasmType, WaspRoot,
     },
     wasp_interface::{
         WasmExport, WasmImport, GENERIC_APPLY_FUNCTION_NAME, SPECIALIZED_BR_IF_FUNCTION_NAME,
+        SPECIALIZED_CALL_INDIRECT_POST_FUNCTION_NAME, SPECIALIZED_CALL_INDIRECT_PRE_FUNCTION_NAME,
+        SPECIALIZED_CALL_POST_FUNCTION_NAME, SPECIALIZED_CALL_PRE_FUNCTION_NAME,
         SPECIALIZED_IF_THEN_ELSE_FUNCTION_NAME, SPECIALIZED_IF_THEN_FUNCTION_NAME,
         TRANSFORMED_INPUT_NS,
     },
@@ -17,8 +19,12 @@ use crate::{
 
 use crate::util::Alphabetical;
 
+use super::pest::CallQualifier::{After, Before};
+use super::wasp::{FormalIndex, FormalTable, FormalTarget};
+
 const STD_ANALYSIS_LIB_GENRIC_APPLY: &str = include_str!("std_analysis_lib_gen_apply.ts");
 const STD_ANALYSIS_LIB_IF: &str = include_str!("std_analysis_lib_if.ts");
+const STD_ANALYSIS_LIB_CALL: &str = include_str!("std_analysis_lib_call.ts");
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct AssemblyScriptProgram {
@@ -36,6 +42,10 @@ impl From<WaspRoot> for AssemblyScriptProgram {
         if wasp_root.instruments_if() {
             program_analysis_content.push_str(STD_ANALYSIS_LIB_IF);
         };
+
+        if wasp_root.instruments_call() {
+            program_analysis_content.push_str(STD_ANALYSIS_LIB_CALL);
+        }
 
         let WaspRoot(advice_definitions) = wasp_root;
         for advice_definition in advice_definitions {
@@ -72,6 +82,10 @@ impl TrapSignature {
                 trap_if_then_else.to_assemblyscript()
             }
             TrapSignature::TrapBrIf(trap_bf_id) => trap_bf_id.to_assemblyscript(),
+            TrapSignature::TrapCall(trap_call) => trap_call.to_assemblyscript(),
+            TrapSignature::TrapCallIndirect(trap_call_indirect) => {
+                trap_call_indirect.to_assemblyscript()
+            }
         }
     }
 }
@@ -288,7 +302,7 @@ impl ApplySpe {
 
 impl TrapIfThen {
     fn to_assemblyscript(&self) -> String {
-        let TrapIfThen {
+        let Self {
             branch_formal_condition: BranchFormalCondition(parameter_condition),
             body,
         } = &self;
@@ -315,7 +329,7 @@ impl TrapIfThen {
 
 impl TrapIfThenElse {
     fn to_assemblyscript(&self) -> String {
-        let TrapIfThenElse {
+        let Self {
             branch_formal_condition: BranchFormalCondition(parameter_condition),
             body,
         } = &self;
@@ -342,7 +356,7 @@ impl TrapIfThenElse {
 
 impl TrapBrIf {
     fn to_assemblyscript(&self) -> String {
-        let TrapBrIf {
+        let Self {
             branch_formal_condition: BranchFormalCondition(parameter_condition),
             branch_formal_label: BranchFormalLabel(parameter_label),
             body,
@@ -368,6 +382,86 @@ impl TrapBrIf {
             parameter_label = parameter_label,
         )
         .to_string()
+    }
+}
+
+impl TrapCall {
+    fn to_assemblyscript(&self) -> String {
+        let Self {
+            call_qualifier,
+            formal_target: FormalTarget(parameter_target),
+            body,
+        } = &self;
+
+        let specialized_name = match call_qualifier {
+            super::pest::CallQualifier::Before => SPECIALIZED_CALL_PRE_FUNCTION_NAME,
+            super::pest::CallQualifier::After => SPECIALIZED_CALL_POST_FUNCTION_NAME,
+        };
+
+        format!(
+            indoc! {r#"
+            export function {specialized_name}(
+                function_target: i32,
+            ): void {{
+                let {parameter_target} = new FunctionIndex(function_target);
+                {body}
+            }}
+            "#
+            },
+            specialized_name = specialized_name,
+            body = body,
+            parameter_target = parameter_target,
+        )
+        .to_string()
+    }
+}
+
+impl TrapCallIndirect {
+    fn to_assemblyscript(&self) -> String {
+        let Self {
+            call_qualifier,
+            formal_table: FormalTable(parameter_table),
+            formal_index: FormalIndex(parameter_index), // TODO: remove `formal_index` from after in grammar
+            body,
+        } = &self;
+
+        match call_qualifier {
+            Before => format!(
+                indoc! {r#"
+                export function {specialized_name}(
+                    function_table_index: i32, // NOTE: index first, eases transformation!
+                    function_table: i32,
+                ): i32 {{
+                    let {parameter_table} = new FunctionTable(function_table);
+                    let {parameter_index} = new FunctionTableIndex(function_table_index);
+                    {body}
+                    // Fallback, if no return value
+                    return function_table_index;
+                }}
+                "#
+                },
+                specialized_name = SPECIALIZED_CALL_INDIRECT_PRE_FUNCTION_NAME,
+                body = body,
+                parameter_table = parameter_table,
+                parameter_index = parameter_index,
+            )
+            .to_string(),
+            After => format!(
+                indoc! {r#"
+                export function {specialized_name}(
+                    function_table: i32,
+                ): void {{
+                    let {parameter_table} = new FunctionTable(function_table);
+                    {body}
+                }}
+                "#
+                },
+                specialized_name = SPECIALIZED_CALL_INDIRECT_POST_FUNCTION_NAME,
+                body = body,
+                parameter_table = parameter_table,
+            )
+            .to_string(),
+        }
     }
 }
 

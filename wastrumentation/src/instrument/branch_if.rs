@@ -44,7 +44,7 @@ pub fn instrument_bodies(
 
         let code = target_function.code_mut().unwrap(); // checked above
         let high_level_body: HighLevelBody = LowLevelBody(code.body.clone()).try_into()?;
-        let high_level_body_transformed = high_level_body.transform(if_k_f_idx, target);
+        let high_level_body_transformed = high_level_body.transform_branch(if_k_f_idx, target);
         let LowLevelBody(transformed_low_level_body) = high_level_body_transformed.into();
 
         target_function.code = ImportOrPresent::Present(Code {
@@ -90,13 +90,13 @@ fn delta_to_instrument_body(body: &[Instr]) -> usize {
 }
 
 impl HighLevelBody {
-    pub fn transform(&self, if_k_f_idx: &Idx<Function>, target: Target) -> Self {
+    pub fn transform_branch(&self, if_k_f_idx: &Idx<Function>, target: Target) -> Self {
         let Self(body) = self;
-        let transformed_body = Self::transform_inner(body, if_k_f_idx, target);
+        let transformed_body = Self::transform_branch_inner(body, if_k_f_idx, target);
         Self(transformed_body)
     }
 
-    fn transform_inner(
+    fn transform_branch_inner(
         body: &Vec<Instr>,
         if_k_f_idx: &Idx<Function>,
         target: Target,
@@ -111,7 +111,10 @@ impl HighLevelBody {
                     // STACK: [type_in, condition]
                     Instr::Call(*if_k_f_idx),
                     // STACK: [type_in, kontinuation]
-                    Instr::if_then(*type_, Self::transform_inner(then, if_k_f_idx, target)),
+                    Instr::if_then(
+                        *type_,
+                        Self::transform_branch_inner(then, if_k_f_idx, target),
+                    ),
                     // STACK: [type_out]
                 ]),
                 (Target::IfThenElse, Instr::If(type_, then, Some(else_))) => result
@@ -122,9 +125,9 @@ impl HighLevelBody {
                         Instr::if_then_else(
                             *type_,
                             // STACK: [type_in]
-                            Self::transform_inner(then, if_k_f_idx, target),
+                            Self::transform_branch_inner(then, if_k_f_idx, target),
                             // STACK: [type_in]
-                            Self::transform_inner(else_, if_k_f_idx, target),
+                            Self::transform_branch_inner(else_, if_k_f_idx, target),
                         ),
                         // STACK: [type_out]
                     ]),
@@ -140,11 +143,11 @@ impl HighLevelBody {
 
                 (target, Instr::Loop(type_, body)) => result.push(Instr::Loop(
                     *type_,
-                    Self::transform_inner(body, if_k_f_idx, target),
+                    Self::transform_branch_inner(body, if_k_f_idx, target),
                 )),
                 (target, Instr::Block(type_, body)) => result.push(Instr::Block(
                     *type_,
-                    Self::transform_inner(body, if_k_f_idx, target),
+                    Self::transform_branch_inner(body, if_k_f_idx, target),
                 )),
 
                 _ => result.push(instr.clone()),
