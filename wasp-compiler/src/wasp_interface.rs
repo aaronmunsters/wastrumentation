@@ -52,8 +52,7 @@ pub struct WasmExport {
 type ApplyInterface = (WasmExport, WasmImport);
 
 impl WaspInterface {
-    // TODO: naming - move uniqueness to end
-    fn generic_apply_interface() -> ApplyInterface {
+    fn interface_generic_apply() -> ApplyInterface {
         (
             WasmExport {
                 name: FUNCTION_NAME_GENERIC_APPLY.into(),
@@ -71,7 +70,7 @@ impl WaspInterface {
         )
     }
 
-    fn if_then_interface() -> WasmExport {
+    fn interface_if_then() -> WasmExport {
         WasmExport {
             name: FUNCTION_NAME_SPECIALIZED_IF_THEN.into(),
             // path_kontinuation
@@ -81,7 +80,7 @@ impl WaspInterface {
         }
     }
 
-    fn if_then_else_interface() -> WasmExport {
+    fn interface_if_then_else() -> WasmExport {
         WasmExport {
             name: FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE.into(),
             // path_kontinuation
@@ -91,7 +90,7 @@ impl WaspInterface {
         }
     }
 
-    fn br_if_interface() -> WasmExport {
+    fn interface_br_if() -> WasmExport {
         WasmExport {
             name: FUNCTION_NAME_SPECIALIZED_BR_IF.into(),
             // path_kontinuation, label
@@ -102,7 +101,7 @@ impl WaspInterface {
         }
     }
 
-    fn call_pre_interface() -> WasmExport {
+    fn interface_call_pre() -> WasmExport {
         WasmExport {
             name: FUNCTION_NAME_SPECIALIZED_CALL_PRE.into(),
             // function_target
@@ -112,7 +111,7 @@ impl WaspInterface {
         }
     }
 
-    fn call_post_interface() -> WasmExport {
+    fn interface_call_post() -> WasmExport {
         WasmExport {
             name: FUNCTION_NAME_SPECIALIZED_CALL_POST.into(),
             // function_target
@@ -122,7 +121,7 @@ impl WaspInterface {
         }
     }
 
-    fn call_indirect_pre_interface() -> WasmExport {
+    fn interface_call_indirect_pre() -> WasmExport {
         WasmExport {
             name: FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_PRE.into(),
             // function_table_index, function_table
@@ -132,7 +131,7 @@ impl WaspInterface {
         }
     }
 
-    fn call_indirect_post_interface() -> WasmExport {
+    fn interface_call_indirect_post() -> WasmExport {
         WasmExport {
             name: FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_POST.into(),
             // function_table
@@ -162,7 +161,7 @@ impl From<&WaspRoot> for WaspInterface {
                     TrapSignature::TrapApply(TrapApply {
                         apply_hook_signature: ApplyHookSignature::Gen(_),
                         ..
-                    }) => generic_interface = Some(WaspInterface::generic_apply_interface()),
+                    }) => generic_interface = Some(WaspInterface::interface_generic_apply()),
                     TrapSignature::TrapApply(TrapApply {
                         apply_hook_signature:
                             ApplyHookSignature::Spe(ApplySpe {
@@ -185,28 +184,28 @@ impl From<&WaspRoot> for WaspInterface {
                         ));
                     }
                     TrapSignature::TrapIfThen(_) => {
-                        if_then_trap = Some(WaspInterface::if_then_interface())
+                        if_then_trap = Some(WaspInterface::interface_if_then())
                     }
                     TrapSignature::TrapIfThenElse(_) => {
-                        if_then_else_trap = Some(WaspInterface::if_then_else_interface())
+                        if_then_else_trap = Some(WaspInterface::interface_if_then_else())
                     }
                     TrapSignature::TrapBrIf(_) => {
-                        br_if_trap = Some(WaspInterface::br_if_interface())
+                        br_if_trap = Some(WaspInterface::interface_br_if())
                     }
                     TrapSignature::TrapCall(TrapCall {
                         call_qualifier: CallQualifier::Before,
                         ..
-                    }) => pre_trap_call = Some(WaspInterface::call_pre_interface()),
+                    }) => pre_trap_call = Some(WaspInterface::interface_call_pre()),
                     TrapSignature::TrapCall(TrapCall {
                         call_qualifier: CallQualifier::After,
                         ..
-                    }) => post_trap_call = Some(WaspInterface::call_post_interface()),
+                    }) => post_trap_call = Some(WaspInterface::interface_call_post()),
                     TrapSignature::TrapCallIndirectBefore(TrapCallIndirectBefore { .. }) => {
-                        pre_trap_call_indirect = Some(WaspInterface::call_indirect_pre_interface())
+                        pre_trap_call_indirect = Some(WaspInterface::interface_call_indirect_pre())
                     }
                     TrapSignature::TrapCallIndirectAfter(TrapCallIndirectAfter { .. }) => {
                         post_trap_call_indirect =
-                            Some(WaspInterface::call_indirect_post_interface())
+                            Some(WaspInterface::interface_call_indirect_post())
                     }
                 }
             };
@@ -293,7 +292,7 @@ mod tests {
         assert_eq!(
             wasp_interface,
             WaspInterface {
-                generic_interface: Some(WaspInterface::generic_apply_interface()),
+                generic_interface: Some(WaspInterface::interface_generic_apply()),
                 ..Default::default()
             }
         );
@@ -352,7 +351,7 @@ mod tests {
         assert_eq!(
             wasp_interface,
             WaspInterface {
-                if_then_trap: Some(WaspInterface::if_then_interface()),
+                if_then_trap: Some(WaspInterface::interface_if_then()),
                 ..Default::default()
             }
         );
@@ -371,7 +370,7 @@ mod tests {
         assert_eq!(
             wasp_interface,
             WaspInterface {
-                if_then_else_trap: Some(WaspInterface::if_then_else_interface()),
+                if_then_else_trap: Some(WaspInterface::interface_if_then_else()),
                 ..Default::default()
             }
         );
