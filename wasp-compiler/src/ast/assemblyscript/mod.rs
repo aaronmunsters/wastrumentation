@@ -81,7 +81,7 @@ impl TrapSignature {
             TrapSignature::TrapIfThenElse(trap_if_then_else) => {
                 trap_if_then_else.to_assemblyscript()
             }
-            TrapSignature::TrapBrIf(trap_bf_id) => trap_bf_id.to_assemblyscript(),
+            TrapSignature::TrapBrIf(trap_br_if) => trap_br_if.to_assemblyscript(),
             TrapSignature::TrapCall(trap_call) => trap_call.to_assemblyscript(),
             TrapSignature::TrapCallIndirectBefore(trap_call_indirect_before) => {
                 trap_call_indirect_before.to_assemblyscript()
