@@ -319,17 +319,17 @@ impl TrapIfThen {
 
         format!(
             indoc! {r#"
-            export function {SPECIALIZED_IF_THEN_FUNCTION_NAME}(
+            export function {FUNCTION_NAME_SPECIALIZED_IF_THEN}(
                 path_kontinuation: i32,
             ): i32 {{
-                let {parameter_condition} = new ParameterConditionIfThen(path_kontinuation);
+                let {parameter_condition} = new ParameterIfThenCondition(path_kontinuation);
                 {body}
                 // Fallback, if no return value
                 return path_kontinuation;
             }}
             "#
             },
-            SPECIALIZED_IF_THEN_FUNCTION_NAME = FUNCTION_NAME_SPECIALIZED_IF_THEN,
+            FUNCTION_NAME_SPECIALIZED_IF_THEN = FUNCTION_NAME_SPECIALIZED_IF_THEN,
             body = body,
             parameter_condition = parameter_condition,
         )
@@ -346,17 +346,17 @@ impl TrapIfThenElse {
 
         format!(
             indoc! {r#"
-            export function {SPECIALIZED_IF_THEN_ELSE_FUNCTION_NAME}(
+            export function {FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE}(
                 path_kontinuation: i32,
             ): i32 {{
-                let {parameter_condition} = new ParameterConditionIfThenElse(path_kontinuation);
+                let {parameter_condition} = new ParameterIfThenElseCondition(path_kontinuation);
                 {body}
                 // Fallback, if no return value
                 return path_kontinuation;
             }}
             "#
             },
-            SPECIALIZED_IF_THEN_ELSE_FUNCTION_NAME = FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE,
+            FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE = FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE,
             body = body,
             parameter_condition = parameter_condition,
         )
@@ -374,19 +374,19 @@ impl TrapBrIf {
 
         format!(
             indoc! {r#"
-            export function {SPECIALIZED_BR_IF_FUNCTION_NAME}(
+            export function {FUNCTION_NAME_SPECIALIZED_BR_IF}(
                 path_kontinuation: i32,
                 low_level_label: i32,
             ): i32 {{
-                let {parameter_condition} = new ParameterConditionBrIf(path_kontinuation);
-                let {parameter_label} = new ParameterLabelBrIf(low_level_label);
+                let {parameter_condition} = new ParameterBrIfCondition(path_kontinuation);
+                let {parameter_label} = new ParameterBrIfLabel(low_level_label);
                 {body}
                 // Fallback, if no return value
                 return path_kontinuation;
             }}
             "#
             },
-            SPECIALIZED_BR_IF_FUNCTION_NAME = FUNCTION_NAME_SPECIALIZED_BR_IF,
+            FUNCTION_NAME_SPECIALIZED_BR_IF = FUNCTION_NAME_SPECIALIZED_BR_IF,
             body = body,
             parameter_condition = parameter_condition,
             parameter_label = parameter_label,
@@ -436,7 +436,7 @@ impl TrapCallIndirectBefore {
 
         format!(
             indoc! {r#"
-            export function {specialized_name}(
+            export function {FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_PRE}(
                 function_table_index: i32, // NOTE: index first, eases transformation!
                 function_table: i32,
             ): i32 {{
@@ -448,7 +448,8 @@ impl TrapCallIndirectBefore {
             }}
             "#
             },
-            specialized_name = FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_PRE,
+            FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_PRE =
+                FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_PRE,
             body = body,
             parameter_table = parameter_table,
             parameter_index = parameter_index,
@@ -466,7 +467,7 @@ impl TrapCallIndirectAfter {
 
         format!(
             indoc! {r#"
-            export function {specialized_name}(
+            export function {FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_POST}(
                 function_table: i32,
             ): void {{
                 let {parameter_table} = new FunctionTable(function_table);
@@ -474,7 +475,8 @@ impl TrapCallIndirectAfter {
             }}
             "#
             },
-            specialized_name = FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_POST,
+            FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_POST =
+                FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_POST,
             body = body,
             parameter_table = parameter_table,
         )
@@ -628,7 +630,7 @@ mod tests {
         export function specialized_if_then_k(
             path_kontinuation: i32,
         ): i32 {
-            let cond = new ParameterConditionIfThen(path_kontinuation);
+            let cond = new ParameterIfThenCondition(path_kontinuation);
             console.log('it');
             // Fallback, if no return value
             return path_kontinuation;
@@ -649,7 +651,7 @@ mod tests {
         export function specialized_if_then_else_k(
             path_kontinuation: i32,
         ): i32 {
-            let cond = new ParameterConditionIfThenElse(path_kontinuation);
+            let cond = new ParameterIfThenElseCondition(path_kontinuation);
             console.log('ite');
             // Fallback, if no return value
             return path_kontinuation;
@@ -706,7 +708,7 @@ mod tests {
             export function specialized_if_then_else_k(
                 path_kontinuation: i32,
             ): i32 {
-                let cond = new ParameterConditionIfThenElse(path_kontinuation);
+                let cond = new ParameterIfThenElseCondition(path_kontinuation);
                 
                     console.log('ite');
                 

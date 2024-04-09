@@ -12,7 +12,7 @@ const SKIP_KONTN: i32 = ELSE_KONTN;
 
 const BRANCH_FAIL: i32 = 0;
 
-class ParameterConditionIfThen {
+class ParameterIfThenCondition {
     readonly is_then: i32;
     readonly is_skip: i32;
 
@@ -30,7 +30,7 @@ class ParameterConditionIfThen {
     }
 }
 
-class ParameterConditionIfThenElse {
+class ParameterIfThenElseCondition {
     readonly is_then: i32;
     readonly is_else: i32;
 
@@ -48,7 +48,7 @@ class ParameterConditionIfThenElse {
     }
 }
 
-class ParameterConditionBrIf {
+class ParameterBrIfCondition {
     readonly is_branch: i32;
     readonly is_skip: i32;
 
@@ -66,7 +66,7 @@ class ParameterConditionBrIf {
     }
 }
 
-class ParameterLabelBrIf {
+class ParameterBrIfLabel {
     readonly label: i32;
 
     constructor(label: i32) {

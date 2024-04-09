@@ -3,8 +3,7 @@ use std::collections::HashSet;
 use crate::ast::{
     pest::CallQualifier::{After, Before},
     wasp::{
-        ApplyHookSignature, ApplySpe, TrapCall, TrapCallIndirectAfter, TrapCallIndirectBefore,
-        TrapSignature, WasmParameter, WasmType, WaspRoot,
+        ApplyHookSignature, ApplySpe, TrapCall, TrapSignature, WasmParameter, WasmType, WaspRoot,
     },
 };
 
@@ -88,12 +87,8 @@ impl TrapSignature {
                 call_qualifier: After,
                 ..
             }) => JoinPoint::CallPost,
-            TrapSignature::TrapCallIndirectBefore(TrapCallIndirectBefore { .. }) => {
-                JoinPoint::CallIndirectPre
-            }
-            TrapSignature::TrapCallIndirectAfter(TrapCallIndirectAfter { .. }) => {
-                JoinPoint::CallIndirectPost
-            }
+            TrapSignature::TrapCallIndirectBefore(_) => JoinPoint::CallIndirectPre,
+            TrapSignature::TrapCallIndirectAfter(_) => JoinPoint::CallIndirectPost,
         }
     }
 }
