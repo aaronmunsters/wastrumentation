@@ -147,7 +147,7 @@ impl HighLevelBody {
                     // STACK: [condition, label]
                     Instr::Call(*if_k_f_idx),
                     // STACK: [kontinuation]
-                    Instr::BrIf(*label),
+                    instr.clone(),
                     // STACK: []
                 ]),
 
