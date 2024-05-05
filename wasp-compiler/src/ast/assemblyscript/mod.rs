@@ -5,8 +5,8 @@ use indoc::indoc;
 use crate::{
     ast::wasp::{
         AdviceDefinition, ApplyGen, ApplyHookSignature, ApplySpe, BranchFormalCondition,
-        BranchFormalLabel, TrapApply, TrapBrIf, TrapCall, TrapIfThen, TrapIfThenElse,
-        TrapSignature, WasmParameter, WasmType, WaspRoot,
+        BranchFormalLabel, Root, TrapApply, TrapBrIf, TrapCall, TrapIfThen, TrapIfThenElse,
+        TrapSignature, WasmParameter, WasmType,
     },
     wasp_interface::{
         WasmExport, WasmImport, FUNCTION_NAME_GENERIC_APPLY, FUNCTION_NAME_SPECIALIZED_BR_IF,
@@ -34,8 +34,8 @@ pub struct AssemblyScriptProgram {
     pub content: String,
 }
 
-impl From<WaspRoot> for AssemblyScriptProgram {
-    fn from(wasp_root: WaspRoot) -> Self {
+impl From<Root> for AssemblyScriptProgram {
+    fn from(wasp_root: Root) -> Self {
         let mut program_analysis_content = String::new();
 
         if wasp_root.instruments_generic_apply() {
@@ -50,9 +50,9 @@ impl From<WaspRoot> for AssemblyScriptProgram {
             program_analysis_content.push_str(STD_ANALYSIS_LIB_CALL);
         }
 
-        let WaspRoot(advice_definitions) = wasp_root;
+        let Root(advice_definitions) = wasp_root;
         for advice_definition in advice_definitions {
-            program_analysis_content.push_str(&advice_definition.to_assemblyscript())
+            program_analysis_content.push_str(&advice_definition.to_assemblyscript());
         }
 
         AssemblyScriptProgram {
@@ -173,6 +173,7 @@ fn signature_to_string(
 }
 
 impl WasmImport {
+    #[must_use]
     pub fn for_extern_call_base(
         mutable_signature: bool,
         parameters_arguments: &Vec<WasmParameter>,
@@ -219,6 +220,7 @@ impl WasmImport {
 }
 
 impl WasmExport {
+    #[must_use]
     pub fn for_exported_apply_trap(
         mutable_signature: bool,
         parameters_arguments: &Vec<WasmParameter>,

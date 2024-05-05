@@ -26,16 +26,16 @@ pub fn instrument(
         trap.name,
     );
 
-    instrument_bodies(module, target_functions, &trap, target)
+    instrument_bodies(module, target_functions, trap, target)
 }
 
 pub fn instrument_bodies(
     module: &mut Module,
     target_functions: &HashSet<Idx<Function>>,
-    trap: &Idx<Function>,
+    trap: Idx<Function>,
     target: Target,
 ) -> Result<(), CallTransformationError> {
-    for target_function_idx in target_functions.iter() {
+    for target_function_idx in target_functions {
         let target_function = module.function_mut(*target_function_idx);
         if target_function.code().is_none() {
             return Err("Attempt to instrument call indirect on import function");
@@ -71,9 +71,9 @@ fn delta_to_instrument_body(body: &[Instr]) -> usize {
         .map(|instr| -> usize {
             delta_to_instrument_instr(instr)
                 + match instr {
-                    Instr::Loop(_, body) => delta_to_instrument_body(body),
-                    Instr::Block(_, body) => delta_to_instrument_body(body),
-                    Instr::If(_, then, None) => delta_to_instrument_body(then),
+                    Instr::Loop(_, body) | Instr::Block(_, body) | Instr::If(_, body, None) => {
+                        delta_to_instrument_body(body)
+                    }
                     Instr::If(_, then, Some(els)) => {
                         delta_to_instrument_body(then) + delta_to_instrument_body(els)
                     }
@@ -85,7 +85,8 @@ fn delta_to_instrument_body(body: &[Instr]) -> usize {
 }
 
 impl HighLevelBody {
-    pub fn transform_call_indirect(&self, trap: &Idx<Function>, target: Target) -> Self {
+    #[must_use]
+    pub fn transform_call_indirect(&self, trap: Idx<Function>, target: Target) -> Self {
         let Self(body) = self;
         let transformed_body = Self::transform_call_indirect_inner(body, trap, target);
         Self(transformed_body)
@@ -93,7 +94,7 @@ impl HighLevelBody {
 
     fn transform_call_indirect_inner(
         body: &Vec<Instr>,
-        trap: &Idx<Function>,
+        trap: Idx<Function>,
         target: Target,
     ) -> Vec<Instr> {
         let mut result = Vec::new();
@@ -103,9 +104,9 @@ impl HighLevelBody {
                 (Target::CallIndirectPre, Instr::CallIndirect(_function_type, table_index)) => {
                     result.extend_from_slice(&[
                         // STACK: [type_in, table_function_index]
-                        Instr::Const(Val::I32(table_index.to_u32() as i32)),
+                        Instr::Const(Val::I32(i32::try_from(table_index.to_u32()).unwrap())),
                         // STACK: [type_in, table_function_index, table_index]
-                        Instr::Call(*trap),
+                        Instr::Call(trap),
                         // STACK: [type_in, table_function_index]
                         instr.clone(),
                         // STACK: [type_out]
@@ -116,9 +117,9 @@ impl HighLevelBody {
                         // STACK: [type_in, table_function_index]
                         instr.clone(),
                         // STACK: [type_out]
-                        Instr::Const(Val::I32(table_index.to_u32() as i32)),
+                        Instr::Const(Val::I32(i32::try_from(table_index.to_u32()).unwrap())),
                         // STACK: [type_out, table_index]
-                        Instr::Call(*trap),
+                        Instr::Call(trap),
                         // STACK: [type_out]
                     ]);
                 }

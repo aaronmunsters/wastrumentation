@@ -2,12 +2,11 @@ use std::collections::HashSet;
 
 use crate::ast::{
     pest::CallQualifier::{After, Before},
-    wasp::{
-        ApplyHookSignature, ApplySpe, TrapCall, TrapSignature, WasmParameter, WasmType, WaspRoot,
-    },
+    wasp::{ApplyHookSignature, ApplySpe, Root, TrapCall, TrapSignature, WasmParameter, WasmType},
 };
 
 #[derive(Debug, PartialEq, Eq, Default)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct JoinPoints {
     pub generic: bool,
     pub specialized: HashSet<SpecialisedJoinPoint>,
@@ -59,7 +58,8 @@ enum JoinPoint {
     TrapBrTable,
 }
 
-impl WaspRoot {
+impl Root {
+    #[must_use]
     pub fn join_points(&self) -> JoinPoints {
         let Self(advice_definitions) = self;
         let mut join_points = JoinPoints::default();
@@ -67,7 +67,7 @@ impl WaspRoot {
             match advice_definition {
                 crate::ast::wasp::AdviceDefinition::AdviceGlobal(_) => {}
                 crate::ast::wasp::AdviceDefinition::AdviceTrap(trap_signature) => {
-                    join_points.include(trap_signature.join_point())
+                    join_points.include(trap_signature.join_point());
                 }
             };
         }
@@ -130,7 +130,7 @@ mod tests {
     fn get_joinpoints(wasp: &str) -> JoinPoints {
         let mut pest_parse = WaspParser::parse(Rule::wasp_input, wasp).unwrap();
         let wasp_input = WaspInput::from_pest(&mut pest_parse).expect("pest to input");
-        let wasp_root = WaspRoot::try_from(wasp_input).unwrap();
+        let wasp_root = Root::try_from(wasp_input).unwrap();
         wasp_root.join_points()
     }
 

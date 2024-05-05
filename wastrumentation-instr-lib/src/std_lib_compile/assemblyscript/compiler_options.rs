@@ -10,6 +10,7 @@ use std::{
 };
 use tempfile::{tempdir, NamedTempFile};
 
+#[allow(clippy::struct_excessive_bools)]
 pub struct CompilerOptions {
     pub source_code: String,
     pub optimization_strategy: OptimizationStrategy,
@@ -42,6 +43,7 @@ pub enum RuntimeStrategy {
 }
 
 impl CompilerOptions {
+    #[must_use]
     pub fn no_wasi(source_code: String) -> Self {
         Self {
             source_code,
@@ -122,6 +124,11 @@ impl CompilerOptions {
         )
     }
 
+    /// # Errors
+    /// When the compilation failes.
+    ///
+    /// # Panics
+    /// When system resources such as files cannot be acquired.
     pub fn compile(compile_options: &CompilerOptions) -> CompilationResult {
         let working_dir = tempdir().expect("Could not create temp dir");
         let working_dir_path = working_dir.path().to_string_lossy().to_string();

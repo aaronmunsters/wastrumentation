@@ -1,10 +1,9 @@
 use crate::ast::{
     pest::CallQualifier,
     wasp::{
-        AdviceDefinition, ApplyHookSignature, ApplySpe, TrapApply, TrapCall, TrapCallIndirectAfter,
-        TrapCallIndirectBefore, TrapSignature,
-        WasmType::{self, *},
-        WaspRoot,
+        AdviceDefinition, ApplyHookSignature, ApplySpe, Root, TrapApply, TrapCall,
+        TrapCallIndirectAfter, TrapCallIndirectBefore, TrapSignature,
+        WasmType::{self, I32},
     },
 };
 
@@ -154,8 +153,8 @@ impl WaspInterface {
     }
 }
 
-impl From<&WaspRoot> for WaspInterface {
-    fn from(wasp_root: &WaspRoot) -> Self {
+impl From<&Root> for WaspInterface {
+    fn from(wasp_root: &Root) -> Self {
         let mut generic_interface = None;
         let mut wasm_imports: Vec<WasmImport> = Vec::new();
         let mut wasm_exports: Vec<WasmExport> = Vec::new();
@@ -167,7 +166,7 @@ impl From<&WaspRoot> for WaspInterface {
         let mut post_trap_call: Option<WasmExport> = None;
         let mut post_trap_call_indirect: Option<WasmExport> = None;
         let mut br_table_trap = None;
-        let WaspRoot(advice_definitions) = wasp_root;
+        let Root(advice_definitions) = wasp_root;
         for advice_definition in advice_definitions {
             if let AdviceDefinition::AdviceTrap(trap_signature) = advice_definition {
                 match trap_signature {
@@ -197,16 +196,16 @@ impl From<&WaspRoot> for WaspInterface {
                         ));
                     }
                     TrapSignature::TrapIfThen(_) => {
-                        if_then_trap = Some(WaspInterface::interface_if_then())
+                        if_then_trap = Some(WaspInterface::interface_if_then());
                     }
                     TrapSignature::TrapIfThenElse(_) => {
-                        if_then_else_trap = Some(WaspInterface::interface_if_then_else())
+                        if_then_else_trap = Some(WaspInterface::interface_if_then_else());
                     }
                     TrapSignature::TrapBrIf(_) => {
-                        br_if_trap = Some(WaspInterface::interface_br_if())
+                        br_if_trap = Some(WaspInterface::interface_br_if());
                     }
                     TrapSignature::TrapBrTable(_) => {
-                        br_table_trap = Some(WaspInterface::interface_br_table())
+                        br_table_trap = Some(WaspInterface::interface_br_table());
                     }
                     TrapSignature::TrapCall(TrapCall {
                         call_qualifier: CallQualifier::Before,
@@ -217,11 +216,11 @@ impl From<&WaspRoot> for WaspInterface {
                         ..
                     }) => post_trap_call = Some(WaspInterface::interface_call_post()),
                     TrapSignature::TrapCallIndirectBefore(TrapCallIndirectBefore { .. }) => {
-                        pre_trap_call_indirect = Some(WaspInterface::interface_call_indirect_pre())
+                        pre_trap_call_indirect = Some(WaspInterface::interface_call_indirect_pre());
                     }
                     TrapSignature::TrapCallIndirectAfter(TrapCallIndirectAfter { .. }) => {
                         post_trap_call_indirect =
-                            Some(WaspInterface::interface_call_indirect_post())
+                            Some(WaspInterface::interface_call_indirect_post());
                     }
                 }
             };
@@ -246,6 +245,7 @@ impl From<&WaspRoot> for WaspInterface {
 mod tests {
     use crate::ast::wasp::{
         ApplyGen, BranchFormalCondition, GenericTarget, TrapIfThen, TrapIfThenElse, WasmParameter,
+        WasmType::F32,
     };
 
     use super::*;
@@ -277,14 +277,14 @@ mod tests {
     #[test]
     fn test_generation_empty() {
         // empty wasp root generates empty interface
-        let wasp_root: WaspRoot = WaspRoot(vec![]);
+        let wasp_root: Root = Root(vec![]);
         let wasp_interface = WaspInterface::from(&wasp_root);
         assert_eq!(wasp_interface, WaspInterface::default());
     }
 
     #[test]
     fn test_generation_global_only() {
-        let wasp_root: WaspRoot = WaspRoot(vec![AdviceDefinition::AdviceGlobal(
+        let wasp_root: Root = Root(vec![AdviceDefinition::AdviceGlobal(
             "global functionality".into(),
         )]);
         let wasp_interface = WaspInterface::from(&wasp_root);
@@ -293,7 +293,7 @@ mod tests {
 
     #[test]
     fn test_generation_generic() {
-        let wasp_root = WaspRoot(vec![AdviceDefinition::AdviceTrap(
+        let wasp_root = Root(vec![AdviceDefinition::AdviceTrap(
             TrapSignature::TrapApply(TrapApply {
                 apply_hook_signature: ApplyHookSignature::Gen(ApplyGen {
                     generic_means: GenericTarget::Dynamic,
@@ -317,7 +317,7 @@ mod tests {
 
     #[test]
     fn test_generation_specialized() {
-        let wasp_root = WaspRoot(vec![AdviceDefinition::AdviceTrap(
+        let wasp_root = Root(vec![AdviceDefinition::AdviceTrap(
             TrapSignature::TrapApply(TrapApply {
                 apply_hook_signature: ApplyHookSignature::Spe(ApplySpe {
                     mutable_signature: true,
@@ -357,7 +357,7 @@ mod tests {
 
     #[test]
     fn test_generation_if_then() {
-        let wasp_root = WaspRoot(vec![AdviceDefinition::AdviceTrap(
+        let wasp_root = Root(vec![AdviceDefinition::AdviceTrap(
             TrapSignature::TrapIfThen(TrapIfThen {
                 branch_formal_condition: BranchFormalCondition("condition".into()),
                 body: "trap body".into(),
@@ -376,7 +376,7 @@ mod tests {
 
     #[test]
     fn test_generation_if_then_else() {
-        let wasp_root = WaspRoot(vec![AdviceDefinition::AdviceTrap(
+        let wasp_root = Root(vec![AdviceDefinition::AdviceTrap(
             TrapSignature::TrapIfThenElse(TrapIfThenElse {
                 branch_formal_condition: BranchFormalCondition("condition".into()),
                 body: "trap body".into(),

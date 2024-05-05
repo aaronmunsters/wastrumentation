@@ -43,6 +43,11 @@ pub struct InputModule {
     pub namespace: String,
 }
 
+/// # Errors
+/// When merging fails according to wasm-merge.
+///
+/// # Panics
+/// When accessing resources are failing to be acquired.
 pub fn merge(merge_options: &MergeOptions) -> MergeResult {
     let merges: Vec<(&InputModule, String, NamedTempFile)> = merge_options
         .input_modules

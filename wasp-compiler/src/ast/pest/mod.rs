@@ -6,8 +6,8 @@ use pest_derive::Parser;
 #[grammar = "wasp.pest"]
 pub struct WaspParser;
 
-fn span_into_string(span: Span) -> String {
-    span.as_str().to_string()
+fn span_into_string(span: Span) -> &str {
+    span.as_str()
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -24,13 +24,12 @@ fn span_into_qualifier(span: Span) -> CallQualifier {
     }
 }
 
-fn drop_guest_delimiter(guest_code: String) -> String {
+fn drop_guest_delimiter(guest_code: &str) -> &str {
     guest_code
         .strip_prefix(">>>GUEST>>>")
         .unwrap()
         .strip_suffix("<<<GUEST<<<")
         .unwrap()
-        .to_string()
 }
 
 #[derive(Debug, FromPest)]
@@ -54,7 +53,8 @@ pub enum AdviceDefinition {
 #[derive(Debug, FromPest)]
 #[pest_ast(rule(Rule::advice_global))]
 pub struct AdviceGlobal(
-    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter)))] pub String,
+    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter), with(String::from)))]
+    pub  String,
 );
 
 #[derive(Debug, FromPest)]
@@ -78,7 +78,7 @@ pub enum TrapSignature {
 #[pest_ast(rule(Rule::trap_apply))]
 pub struct TrapApply {
     pub apply_hook_signature: ApplyHookSignature,
-    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter)))]
+    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter), with(String::from)))]
     pub body: String,
 }
 
@@ -88,20 +88,20 @@ pub struct TrapCall {
     #[pest_ast(inner(with(span_into_qualifier)))]
     pub call_qualifier: CallQualifier,
     pub formal_target: FormalTarget,
-    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter)))]
+    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter), with(String::from)))]
     pub body: String,
 }
 
 #[derive(Debug, FromPest)]
 #[pest_ast(rule(Rule::formal_target))]
-pub struct FormalTarget(#[pest_ast(inner(with(span_into_string)))] pub String);
+pub struct FormalTarget(#[pest_ast(inner(with(span_into_string), with(String::from)))] pub String);
 
 #[derive(Debug, FromPest)]
 #[pest_ast(rule(Rule::trap_call_indirect_before))]
 pub struct TrapCallIndirectBefore {
     pub formal_table: FormalTable,
     pub formal_index: FormalIndex,
-    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter)))]
+    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter), with(String::from)))]
     pub body: String,
 }
 
@@ -109,17 +109,17 @@ pub struct TrapCallIndirectBefore {
 #[pest_ast(rule(Rule::trap_call_indirect_after))]
 pub struct TrapCallIndirectAfter {
     pub formal_table: FormalTable,
-    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter)))]
+    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter), with(String::from)))]
     pub body: String,
 }
 
 #[derive(Debug, FromPest)]
 #[pest_ast(rule(Rule::formal_table))]
-pub struct FormalTable(#[pest_ast(inner(with(span_into_string)))] pub String);
+pub struct FormalTable(#[pest_ast(inner(with(span_into_string), with(String::from)))] pub String);
 
 #[derive(Debug, FromPest)]
 #[pest_ast(rule(Rule::formal_index))]
-pub struct FormalIndex(#[pest_ast(inner(with(span_into_string)))] pub String);
+pub struct FormalIndex(#[pest_ast(inner(with(span_into_string), with(String::from)))] pub String);
 
 #[derive(Debug, FromPest)]
 #[pest_ast(rule(Rule::apply_hook_signature))]
@@ -155,7 +155,9 @@ pub struct ApplySpeIntro {
 
 #[derive(Debug, FromPest)]
 #[pest_ast(rule(Rule::apply_formal_wasm_f))]
-pub struct ApplyFormalWasmF(#[pest_ast(inner(with(span_into_string)))] pub String);
+pub struct ApplyFormalWasmF(
+    #[pest_ast(inner(with(span_into_string), with(String::from)))] pub String,
+);
 
 #[derive(Debug, FromPest)]
 #[pest_ast(rule(Rule::apply_formal_argument))]
@@ -169,7 +171,7 @@ pub struct ApplyFormalResult(pub TypedArgument);
 #[pest_ast(rule(Rule::trap_if_then))]
 pub struct TrapIfThen {
     pub branch_formal_condition: BranchFormalCondition,
-    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter)))]
+    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter), with(String::from)))]
     pub body: String,
 }
 
@@ -177,7 +179,7 @@ pub struct TrapIfThen {
 #[pest_ast(rule(Rule::trap_if_then_else))]
 pub struct TrapIfThenElse {
     pub branch_formal_condition: BranchFormalCondition,
-    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter)))]
+    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter), with(String::from)))]
     pub body: String,
 }
 
@@ -186,41 +188,49 @@ pub struct TrapIfThenElse {
 pub struct TrapBrIf {
     pub branch_formal_condition: BranchFormalCondition,
     pub branch_formal_label: BranchFormalLabel,
-    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter)))]
+    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter), with(String::from)))]
     pub body: String,
 }
 
 #[derive(Debug, FromPest)]
 #[pest_ast(rule(Rule::branch_formal_condition))]
-pub struct BranchFormalCondition(#[pest_ast(inner(with(span_into_string)))] pub String);
+pub struct BranchFormalCondition(
+    #[pest_ast(inner(with(span_into_string), with(String::from)))] pub String,
+);
 
 #[derive(Debug, FromPest)]
 #[pest_ast(rule(Rule::branch_formal_label))]
-pub struct BranchFormalLabel(#[pest_ast(inner(with(span_into_string)))] pub String);
+pub struct BranchFormalLabel(
+    #[pest_ast(inner(with(span_into_string), with(String::from)))] pub String,
+);
 
 #[derive(Debug, FromPest)]
 #[pest_ast(rule(Rule::trap_br_table))]
 pub struct TrapBrTable {
     pub branch_formal_target: BranchFormalTarget,
     pub branch_formal_default: BranchFormalDefault,
-    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter)))]
+    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter), with(String::from)))]
     pub body: String,
 }
 
 #[derive(Debug, FromPest)]
 #[pest_ast(rule(Rule::branch_formal_target))]
-pub struct BranchFormalTarget(#[pest_ast(inner(with(span_into_string)))] pub String);
+pub struct BranchFormalTarget(
+    #[pest_ast(inner(with(span_into_string), with(String::from)))] pub String,
+);
 
 #[derive(Debug, FromPest)]
 #[pest_ast(rule(Rule::branch_formal_default))]
-pub struct BranchFormalDefault(#[pest_ast(inner(with(span_into_string)))] pub String);
+pub struct BranchFormalDefault(
+    #[pest_ast(inner(with(span_into_string), with(String::from)))] pub String,
+);
 
 #[derive(Debug, FromPest)]
 #[pest_ast(rule(Rule::typed_argument))]
 pub struct TypedArgument {
-    #[pest_ast(inner(with(span_into_string)))]
+    #[pest_ast(inner(with(span_into_string), with(String::from)))]
     pub identifier: String,
-    #[pest_ast(inner(with(span_into_string)))]
+    #[pest_ast(inner(with(span_into_string), with(String::from)))]
     pub type_identifier: String,
 }
 

@@ -5,3 +5,4 @@ edition = "2021"
 
 [dependencies]
 tempfile = "3.9.0"
+bitmask = "0.5.0"

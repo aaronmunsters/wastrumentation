@@ -7,7 +7,11 @@
 
 use crate::instrument::function_application::INSTRUMENTATION_STACK_MODULE;
 
-use self::stack_library_generator::*;
+use self::stack_library_generator::{
+    generate_allocate_types_buffer_name, generate_allocate_values_buffer_name,
+    generate_free_types_buffer_name, generate_free_values_buffer_name, generate_load_name,
+    generate_store_args_name, generate_store_name, generate_store_rets_name,
+};
 use std::{
     collections::{HashMap, HashSet},
     fmt::Display,
@@ -16,7 +20,7 @@ use wasabi_wasm::{Function, FunctionType, Idx, Module, RefType, ValType};
 
 use wastrumentation_instr_lib::{
     generate_lib,
-    wasm_constructs::{RefType as LibGenRefType, Signature, WasmType},
+    wasm_constructs::{RefType as LibGenRefType, Signature as LibGenSignature, WasmType},
     Langauge,
 };
 
@@ -24,24 +28,23 @@ use wastrumentation_instr_lib::{
 // TODO: tie this together with the generation library, ie. get names from there!
 
 pub struct StackLibrary {
-    pub signature_import_links: HashMap<FunctionType, SignatureStackLibrary>,
+    pub signature_import_links: HashMap<FunctionType, Signature>,
     pub assemblyscript_code: String,
 }
 
 impl StackLibrary {
     pub fn from_module(module: &mut Module, functions: &HashSet<Idx<Function>>) -> Self {
-        let signature_import_links: HashMap<FunctionType, SignatureStackLibrary> =
+        let signature_import_links: HashMap<FunctionType, Signature> =
             functions.iter().fold(HashMap::new(), |mut acc, index| {
                 let function_type = module.function(*index).type_;
                 if acc.contains_key(&function_type) {
                     return acc;
                 }
-                let stack_library =
-                    SignatureStackLibrary::from_function_type_module(function_type, module);
+                let stack_library = Signature::from_function_type_module(function_type, module);
                 acc.insert(function_type, stack_library);
                 acc
             });
-        let signatures: Vec<Signature> = signature_import_links
+        let signatures: Vec<LibGenSignature> = signature_import_links
             .keys()
             .map(WasabiFunctionType)
             .map(Into::into)
@@ -57,7 +60,7 @@ impl StackLibrary {
 struct WasabiFunctionType<'a>(&'a FunctionType);
 
 impl WasabiFunctionType<'_> {
-    fn val_type_to_wasm_type(v: &ValType) -> WasmType {
+    fn val_type_to_wasm_type(v: ValType) -> WasmType {
         match v {
             ValType::I32 => WasmType::I32,
             ValType::I64 => WasmType::I64,
@@ -67,7 +70,7 @@ impl WasabiFunctionType<'_> {
         }
     }
 
-    fn convert_reftype(r: &RefType) -> LibGenRefType {
+    fn convert_reftype(r: RefType) -> LibGenRefType {
         match r {
             RefType::ExternRef => LibGenRefType::ExternRef,
             RefType::FuncRef => LibGenRefType::FuncRef,
@@ -75,25 +78,25 @@ impl WasabiFunctionType<'_> {
     }
 }
 
-impl<'a> From<WasabiFunctionType<'a>> for Signature {
+impl<'a> From<WasabiFunctionType<'a>> for LibGenSignature {
     fn from(value: WasabiFunctionType) -> Self {
         let WasabiFunctionType(function_type) = value;
         Self {
             return_types: function_type
                 .results()
                 .iter()
-                .map(WasabiFunctionType::val_type_to_wasm_type)
+                .map(|v: &ValType| WasabiFunctionType::val_type_to_wasm_type(*v))
                 .collect(),
             argument_types: function_type
                 .inputs()
                 .iter()
-                .map(WasabiFunctionType::val_type_to_wasm_type)
+                .map(|v: &ValType| WasabiFunctionType::val_type_to_wasm_type(*v))
                 .collect(),
         }
     }
 }
 
-pub struct SignatureStackLibrary {
+pub struct Signature {
     pub function_type: FunctionType,
     pub allocate_values_buffer: Idx<Function>,
     pub allocate_types_buffer: Idx<Function>,
@@ -107,13 +110,14 @@ pub struct SignatureStackLibrary {
     pub ret_store_all: Idx<Function>,
 }
 
-impl SignatureStackLibrary {
+impl Signature {
     /// This will add the known imports to the function
     pub fn from_function_type_module(function_type: FunctionType, module: &mut Module) -> Self {
         (function_type, module).into()
     }
 }
 
+#[derive(Clone, Copy)]
 enum SignatureSide {
     Return,
     Argument,
@@ -125,7 +129,7 @@ impl Display for SignatureSide {
             Self::Return => "ret",
             Self::Argument => "arg",
         };
-        write!(f, "{}", str)
+        write!(f, "{str}")
     }
 }
 
@@ -134,7 +138,7 @@ mod stack_library_generator {
 
     use super::SignatureSide;
 
-    fn generate_name(name: &str, function_type: &FunctionType) -> String {
+    fn generate_name(name: &str, function_type: FunctionType) -> String {
         format!(
             "{}_ret_{}_arg_{}",
             name,
@@ -153,34 +157,34 @@ mod stack_library_generator {
         )
     }
 
-    pub(super) fn generate_allocate_values_buffer_name(function_type: &FunctionType) -> String {
+    pub(super) fn generate_allocate_values_buffer_name(function_type: FunctionType) -> String {
         generate_name("allocate", function_type)
     }
 
-    pub(super) fn generate_allocate_types_buffer_name(function_type: &FunctionType) -> String {
+    pub(super) fn generate_allocate_types_buffer_name(function_type: FunctionType) -> String {
         generate_name("allocate_types", function_type)
     }
 
-    pub(super) fn generate_free_values_buffer_name(function_type: &FunctionType) -> String {
+    pub(super) fn generate_free_values_buffer_name(function_type: FunctionType) -> String {
         generate_name("free_values", function_type)
     }
 
-    pub(super) fn generate_free_types_buffer_name(function_type: &FunctionType) -> String {
+    pub(super) fn generate_free_types_buffer_name(function_type: FunctionType) -> String {
         generate_name("free_types", function_type)
     }
 
     fn generate_indexed_name(
         name: &str,
-        function_type: &FunctionType,
+        function_type: FunctionType,
         signature_side: SignatureSide,
         index: usize,
     ) -> String {
-        let prefix = format!("{}_{}{}", name, signature_side, index);
+        let prefix = format!("{name}_{signature_side}{index}");
         generate_name(&prefix, function_type)
     }
 
     pub(super) fn generate_load_name(
-        function_type: &FunctionType,
+        function_type: FunctionType,
         signature_side: SignatureSide,
         index: usize,
     ) -> String {
@@ -188,51 +192,51 @@ mod stack_library_generator {
     }
 
     pub(super) fn generate_store_name(
-        function_type: &FunctionType,
+        function_type: FunctionType,
         signature_side: SignatureSide,
         index: usize,
     ) -> String {
         generate_indexed_name("store", function_type, signature_side, index)
     }
 
-    pub(super) fn generate_store_args_name(function_type: &FunctionType) -> String {
+    pub(super) fn generate_store_args_name(function_type: FunctionType) -> String {
         generate_name("store_args", function_type)
     }
 
-    pub(super) fn generate_store_rets_name(function_type: &FunctionType) -> String {
+    pub(super) fn generate_store_rets_name(function_type: FunctionType) -> String {
         generate_name("store_rets", function_type)
     }
 }
 
-impl From<(FunctionType, &mut Module)> for SignatureStackLibrary {
+impl From<(FunctionType, &mut Module)> for Signature {
     fn from((function_type, module): (FunctionType, &mut Module)) -> Self {
         let allocate_values_buffer_type =
             FunctionType::new(function_type.inputs(), &[ValType::I32]);
         let allocate_values_buffer = module.add_function_import(
             allocate_values_buffer_type,
             INSTRUMENTATION_STACK_MODULE.into(),
-            generate_allocate_values_buffer_name(&function_type),
+            generate_allocate_values_buffer_name(function_type),
         );
 
         let free_values_buffer_type = FunctionType::new(&[], &[]);
         let free_values_buffer = module.add_function_import(
             free_values_buffer_type,
             INSTRUMENTATION_STACK_MODULE.into(),
-            generate_free_values_buffer_name(&function_type),
+            generate_free_values_buffer_name(function_type),
         );
 
         let allocate_types_buffer_type = FunctionType::new(&[], &[ValType::I32]);
         let allocate_types_buffer = module.add_function_import(
             allocate_types_buffer_type,
             INSTRUMENTATION_STACK_MODULE.into(),
-            generate_allocate_types_buffer_name(&function_type),
+            generate_allocate_types_buffer_name(function_type),
         );
 
         let free_types_buffer_type = FunctionType::new(&[], &[]);
         let free_types_buffer = module.add_function_import(
             free_types_buffer_type,
             INSTRUMENTATION_STACK_MODULE.into(),
-            generate_free_types_buffer_name(&function_type),
+            generate_free_types_buffer_name(function_type),
         );
 
         let arg_load_n = function_type
@@ -243,7 +247,7 @@ impl From<(FunctionType, &mut Module)> for SignatureStackLibrary {
                 module.add_function_import(
                     FunctionType::new(&[ValType::I32], &[*val_type]),
                     INSTRUMENTATION_STACK_MODULE.into(),
-                    generate_load_name(&function_type, SignatureSide::Argument, index),
+                    generate_load_name(function_type, SignatureSide::Argument, index),
                 )
             })
             .collect();
@@ -256,7 +260,7 @@ impl From<(FunctionType, &mut Module)> for SignatureStackLibrary {
                 module.add_function_import(
                     FunctionType::new(&[ValType::I32], &[*val_type]),
                     INSTRUMENTATION_STACK_MODULE.into(),
-                    generate_load_name(&function_type, SignatureSide::Return, index),
+                    generate_load_name(function_type, SignatureSide::Return, index),
                 )
             })
             .collect();
@@ -269,7 +273,7 @@ impl From<(FunctionType, &mut Module)> for SignatureStackLibrary {
                 module.add_function_import(
                     FunctionType::new(&[ValType::I32, *val_type], &[]),
                     INSTRUMENTATION_STACK_MODULE.into(),
-                    generate_store_name(&function_type, SignatureSide::Argument, index),
+                    generate_store_name(function_type, SignatureSide::Argument, index),
                 )
             })
             .collect();
@@ -279,7 +283,7 @@ impl From<(FunctionType, &mut Module)> for SignatureStackLibrary {
         let arg_store_all = module.add_function_import(
             FunctionType::new(&store_args_signature, &[]),
             INSTRUMENTATION_STACK_MODULE.into(),
-            generate_store_args_name(&function_type),
+            generate_store_args_name(function_type),
         );
 
         let ret_store_n = function_type
@@ -290,7 +294,7 @@ impl From<(FunctionType, &mut Module)> for SignatureStackLibrary {
                 module.add_function_import(
                     FunctionType::new(&[ValType::I32, *val_type], &[]),
                     INSTRUMENTATION_STACK_MODULE.into(),
-                    generate_store_name(&function_type, SignatureSide::Return, index),
+                    generate_store_name(function_type, SignatureSide::Return, index),
                 )
             })
             .collect();
@@ -300,10 +304,10 @@ impl From<(FunctionType, &mut Module)> for SignatureStackLibrary {
         let ret_store_all = module.add_function_import(
             FunctionType::new(&store_rets_signature, &[]),
             INSTRUMENTATION_STACK_MODULE.into(),
-            generate_store_rets_name(&function_type),
+            generate_store_rets_name(function_type),
         );
 
-        SignatureStackLibrary {
+        Signature {
             function_type,
             allocate_values_buffer,
             allocate_types_buffer,

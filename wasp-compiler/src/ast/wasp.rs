@@ -20,7 +20,7 @@ const I64_STR: &str = "I64";
 const F64_STR: &str = "F64";
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct WaspRoot(pub Vec<AdviceDefinition>);
+pub struct Root(pub Vec<AdviceDefinition>);
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum AdviceDefinition {
@@ -157,12 +157,14 @@ pub struct WasmParameter {
 }
 
 impl WasmParameter {
+    #[must_use]
     pub fn get_type(&self) -> WasmType {
         self.identifier_type
     }
 }
 
-impl WaspRoot {
+impl Root {
+    #[must_use]
     pub fn instruments_generic_apply(&self) -> bool {
         let Self(advice_definitions) = self;
         advice_definitions
@@ -178,6 +180,7 @@ impl WaspRoot {
             })
     }
 
+    #[must_use]
     pub fn instruments_if(&self) -> bool {
         let Self(advice_definitions) = self;
         advice_definitions
@@ -199,6 +202,7 @@ impl WaspRoot {
             })
     }
 
+    #[must_use]
     pub fn instruments_call(&self) -> bool {
         let Self(advice_definitions) = self;
         advice_definitions
@@ -218,7 +222,7 @@ impl WaspRoot {
     }
 }
 
-impl TryFrom<pest_ast::WaspInput> for WaspRoot {
+impl TryFrom<pest_ast::WaspInput> for Root {
     type Error = anyhow::Error;
 
     fn try_from(pest_wasp_input: pest_ast::WaspInput) -> Result<Self, Self::Error> {
@@ -232,7 +236,7 @@ impl TryFrom<pest_ast::WaspInput> for WaspRoot {
         for advice_definition in pest_advice_definitions {
             advice_definitions.push(AdviceDefinition::try_from(advice_definition)?);
         }
-        Ok(WaspRoot(advice_definitions))
+        Ok(Root(advice_definitions))
     }
 }
 
@@ -547,7 +551,7 @@ impl TryFrom<Vec<pest_ast::TypedArgument>> for WasmParameterVec {
             wasm_type_vec.push(WasmParameter {
                 identifier,
                 identifier_type,
-            })
+            });
         }
         Ok(WasmParameterVec(wasm_type_vec))
     }
@@ -633,10 +637,10 @@ mod tests {
                     (table FunctionTable)
                 >>>GUEST>>>👀🏄<<<GUEST<<<))"#;
 
-    fn program_to_wasp_root(program: &str) -> anyhow::Result<WaspRoot> {
+    fn program_to_wasp_root(program: &str) -> anyhow::Result<Root> {
         let mut pest_parse = WaspParser::parse(Rule::wasp_input, program).unwrap();
         let wasp_input = ast::pest::WaspInput::from_pest(&mut pest_parse).unwrap();
-        let wasp_root = WaspRoot::try_from(wasp_input)?;
+        let wasp_root = Root::try_from(wasp_input)?;
         Ok(wasp_root)
     }
 
@@ -644,7 +648,7 @@ mod tests {
     fn should_convert_success_ast() {
         assert_eq!(
             program_to_wasp_root(CORRECT_PROGRAM).unwrap(),
-            WaspRoot(vec![
+            Root(vec![
                 AdviceDefinition::AdviceTrap(TrapSignature::TrapApply(TrapApply {
                     apply_hook_signature: ApplyHookSignature::Gen(ApplyGen {
                         generic_means: GenericTarget::HighLevel,

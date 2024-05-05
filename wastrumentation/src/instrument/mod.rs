@@ -67,7 +67,7 @@ pub fn instrument(module: &[u8], wasp_interface: WaspInterface) -> Instrumentati
             trap_export,
             function_call_indirect::Target::CallIndirectPre,
         )
-        .unwrap() // TODO: handle
+        .unwrap(); // TODO: handle
     }
 
     if let Some(trap_export) = post_trap_call_indirect {
@@ -77,7 +77,7 @@ pub fn instrument(module: &[u8], wasp_interface: WaspInterface) -> Instrumentati
             trap_export,
             function_call_indirect::Target::CallIndirectPost,
         )
-        .unwrap() // TODO: handle
+        .unwrap(); // TODO: handle
     }
 
     if let Some(trap_export) = if_then_trap {
@@ -87,7 +87,7 @@ pub fn instrument(module: &[u8], wasp_interface: WaspInterface) -> Instrumentati
             trap_export,
             branch_if::Target::IfThen,
         )
-        .unwrap() // TODO: handle
+        .unwrap(); // TODO: handle
     };
 
     if let Some(trap_export) = if_then_else_trap {
@@ -97,7 +97,7 @@ pub fn instrument(module: &[u8], wasp_interface: WaspInterface) -> Instrumentati
             trap_export,
             branch_if::Target::IfThenElse,
         )
-        .unwrap() // TODO: handle
+        .unwrap(); // TODO: handle
     };
 
     if let Some((generic_import, generic_export)) = generic_interface {
@@ -118,7 +118,7 @@ pub fn instrument(module: &[u8], wasp_interface: WaspInterface) -> Instrumentati
             trap_export,
             branch_if::Target::BrIf,
         )
-        .unwrap() // TODO: handle
+        .unwrap(); // TODO: handle
     }
 
     if let Some(trap_export) = br_table_trap {
@@ -128,7 +128,7 @@ pub fn instrument(module: &[u8], wasp_interface: WaspInterface) -> Instrumentati
             trap_export,
             branch_if::Target::BrTable,
         )
-        .unwrap() // TODO: handle
+        .unwrap(); // TODO: handle
     }
 
     InstrumentationResult {

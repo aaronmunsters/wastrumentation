@@ -35,7 +35,7 @@ impl Signature {
 
     fn comma_separated_types(&self) -> String {
         if self.is_empty() {
-            "".to_string()
+            String::new()
         } else {
             let comma_separated_types = self
                 .return_types
@@ -50,7 +50,7 @@ impl Signature {
 
     fn comma_separated_generics(rets_count: usize, args_count: usize) -> String {
         if rets_count + args_count == 0 {
-            "".to_string()
+            String::new()
         } else {
             format!("<{}>", Self::generics(rets_count, args_count).join(", "))
         }
@@ -444,7 +444,7 @@ fn generate_store_rets_specialized(signature: &Signature) -> String {
     let rets_signature = signature_rets
         .iter()
         .enumerate()
-        .map(|(index, _ty)| format!("a{index}: {_ty}"));
+        .map(|(index, ty)| format!("a{index}: {ty}"));
     // eg: `stack_ptr: usize, a0: R0, a1: R1`
     let total_signature = (vec![String::from("stack_ptr: usize")])
         .into_iter()
@@ -497,7 +497,7 @@ fn generate_lib_for(signatures: &[Signature]) -> String {
                 generate_allocate_types_buffer_generic,
                 generate_free_types_buffer_generic,
             ] {
-                program.push_str(generator(signature_ret_count, signature_arg_count).as_str())
+                program.push_str(generator(signature_ret_count, signature_arg_count).as_str());
             }
         }
         if !processed_signatures.contains(signature) {

@@ -10,7 +10,7 @@ type Body = Vec<Instr>;
 
 /// Equal to `wasabi_wasm::Instr` minus `Else` and `End` instruction
 /// Which occur in `Block`, `Loop` and `If`
-/// https://webassembly.github.io/spec/core/syntax/instructions.html#syntax-instr-control
+/// Cfr. [Control Instructions](https://webassembly.github.io/spec/core/syntax/instructions.html#syntax-instr-control)
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub enum Instr {
     Unreachable,
@@ -64,10 +64,12 @@ pub enum Instr {
 }
 
 impl Instr {
+    #[must_use]
     pub fn if_then(type_: FunctionType, then: Body) -> Self {
         Instr::If(type_, then, None)
     }
 
+    #[must_use]
     pub fn if_then_else(type_: FunctionType, then: Body, else_: Body) -> Self {
         Instr::If(type_, then, Some(else_))
     }
@@ -134,13 +136,6 @@ impl TryFrom<LowLevelBody> for HighLevelBody {
     type Error = &'static str;
 
     fn try_from(low_level_body: LowLevelBody) -> Result<Self, Self::Error> {
-        let LowLevelBody(body) = low_level_body;
-
-        let instructions = match &body[..] {
-            [instructions @ .., wasabi_wasm::Instr::End] => instructions,
-            _ => return Err("Expected low level body to terminate in `End`"),
-        };
-
         enum Entered {
             Block {
                 type_: FunctionType,
@@ -156,6 +151,12 @@ impl TryFrom<LowLevelBody> for HighLevelBody {
                 then_body: Vec<Instr>,
             },
         }
+
+        let LowLevelBody(body) = low_level_body;
+
+        let [instructions @ .., wasabi_wasm::Instr::End] = &body[..] else {
+            return Err("Expected low level body to terminate in `End`");
+        };
 
         let mut entered_stack: Vec<Entered> = Vec::new();
         let mut body_stack: Vec<Vec<Instr>> = Vec::new();
@@ -254,12 +255,12 @@ impl LowLevelBody {
                 Instr::Br(v) => result.push(wasabi_wasm::Instr::Br(v)),
                 Instr::BrIf(v) => result.push(wasabi_wasm::Instr::BrIf(v)),
                 Instr::BrTable { table, default } => {
-                    result.push(wasabi_wasm::Instr::BrTable { table, default })
+                    result.push(wasabi_wasm::Instr::BrTable { table, default });
                 }
                 Instr::Return => result.push(wasabi_wasm::Instr::Return),
                 Instr::Call(v) => result.push(wasabi_wasm::Instr::Call(v)),
                 Instr::CallIndirect(v1, v2) => {
-                    result.push(wasabi_wasm::Instr::CallIndirect(v1, v2))
+                    result.push(wasabi_wasm::Instr::CallIndirect(v1, v2));
                 }
                 Instr::RefNull(v) => result.push(wasabi_wasm::Instr::RefNull(v)),
                 Instr::RefIsNull => result.push(wasabi_wasm::Instr::RefIsNull),

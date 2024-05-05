@@ -23,7 +23,7 @@ impl Alphabetical for usize {
             let mut number = *self;
             while number != 0 {
                 let (div, rem) = div_rem(number, 26);
-                result.push(char::from(b'a' + rem as u8));
+                result.push(char::from(b'a' + u8::try_from(rem).unwrap()));
                 number = div;
             }
             result.chars().rev().collect()

@@ -1,6 +1,6 @@
 use ast::assemblyscript::AssemblyScriptProgram;
 use ast::pest::{Rule, WaspInput, WaspParser};
-use ast::wasp::WaspRoot;
+use ast::wasp::Root;
 use from_pest::FromPest;
 use joinpoints::JoinPoints;
 use pest::Parser;
@@ -18,10 +18,12 @@ pub struct CompilationResult {
     pub wasp_interface: WaspInterface,
 }
 
+/// # Errors
+/// Whenever compilation would fail due to parsing or compiling the code.
 pub fn compile(wasp: &str) -> anyhow::Result<CompilationResult> {
     let mut pest_parse = WaspParser::parse(Rule::wasp_input, wasp)?;
-    let wasp_input = WaspInput::from_pest(&mut pest_parse).expect("pest to input");
-    let wasp_root = WaspRoot::try_from(wasp_input)?;
+    let wasp_input = WaspInput::from_pest(&mut pest_parse)?;
+    let wasp_root = Root::try_from(wasp_input)?;
     let wasp_interface = WaspInterface::from(&wasp_root);
     let join_points = wasp_root.join_points();
     let assemblyscript_program = AssemblyScriptProgram::from(wasp_root);
@@ -39,7 +41,7 @@ impl<'a> TryFrom<&'a str> for AssemblyScriptProgram {
     fn try_from(program: &'a str) -> Result<Self, Self::Error> {
         let mut pest_parse = WaspParser::parse(Rule::wasp_input, program)?;
         let wasp_input = WaspInput::from_pest(&mut pest_parse).expect("pest to input");
-        let wasp_root = WaspRoot::try_from(wasp_input)?;
+        let wasp_root = Root::try_from(wasp_input)?;
         let assemblyscript_program = AssemblyScriptProgram::from(wasp_root);
         Ok(assemblyscript_program)
     }

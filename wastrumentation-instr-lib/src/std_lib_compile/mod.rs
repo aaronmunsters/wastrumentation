@@ -9,5 +9,7 @@ pub trait CompilerOptions {
 }
 
 pub trait CompilerResult {
+    /// # Errors
+    /// Errors when compilation for the given module fails
     fn module(&self) -> Result<WasmModule, String>;
 }

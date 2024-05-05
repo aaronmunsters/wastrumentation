@@ -3,7 +3,7 @@ use instrument::function_application::{
     INSTRUMENTATION_ANALYSIS_MODULE, INSTRUMENTATION_INSTRUMENTED_MODULE,
     INSTRUMENTATION_STACK_MODULE,
 };
-use wasm_merge::{InputModule, MergeOptions};
+use wasm_merge::{InputModule, MergeError, MergeOptions};
 use wasp_compiler::{
     ast::assemblyscript::AssemblyScriptProgram, compile as wasp_compile,
     wasp_interface::WaspInterface, CompilationResult as WaspCompilationResult,
@@ -11,12 +11,14 @@ use wasp_compiler::{
 use wastrumentation_instr_lib::std_lib_compile::assemblyscript::compiler_options::CompilerOptions as AssemblyscriptCompilerOptions;
 use wastrumentation_instr_lib::std_lib_compile::{CompilerOptions, WasmModule};
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
 mod instrument;
 pub mod parse_nesting;
 mod stack_library;
 
+/// # Errors
+/// Errors upon failing to compile, instrument or merge.
 pub fn wastrument(input_program: &WasmModule, wasp_source: &str) -> Result<WasmModule> {
     // 1. Compile wasp_source
     let WaspCompilationResult {
@@ -25,7 +27,7 @@ pub fn wastrument(input_program: &WasmModule, wasp_source: &str) -> Result<WasmM
         ..
     } = wasp_compile(wasp_source)?;
     // 2. Instrument the input program
-    let (instrumented_input, instrumentation_lib) = instrument(input_program, wasp_interface)?;
+    let (instrumented_input, instrumentation_lib) = instrument(input_program, wasp_interface);
     // 3. Compile the analysis & instrumentation lib
     let compiled_analysis = compile(analysis_source_code)?;
     let compiled_instrumentation_lib = compile(instrumentation_lib)?;
@@ -44,12 +46,12 @@ pub fn wastrument(input_program: &WasmModule, wasp_source: &str) -> Result<WasmM
 fn instrument(
     input_program: &WasmModule,
     wasp_interface: WaspInterface,
-) -> Result<(WasmModule, AssemblyScriptProgram)> {
+) -> (WasmModule, AssemblyScriptProgram) {
     let InstrumentationResult {
         module,
         instrumentation_lib,
     } = instrument::instrument(input_program, wasp_interface);
-    Ok((module, instrumentation_lib))
+    (module, instrumentation_lib)
 }
 
 fn merge(
@@ -77,16 +79,16 @@ fn merge(
             },
         ],
     };
-    Ok(wasm_merge::merge(&merge_options).unwrap())
+    wasm_merge::merge(&merge_options)
+        .map_err(|MergeError(reason)| anyhow!("MergeError: {}", reason))
 }
 
 fn compile(assemblyscript_program: AssemblyScriptProgram) -> Result<WasmModule> {
     let AssemblyScriptProgram { content } = assemblyscript_program;
-    let compilation_result = AssemblyscriptCompilerOptions::no_wasi(content)
+    AssemblyscriptCompilerOptions::no_wasi(content)
         .compile()
         .module()
-        .unwrap();
-    Ok(compilation_result)
+        .map_err(|e| anyhow!(e))
 }
 
 #[cfg(test)]

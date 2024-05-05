@@ -7,7 +7,7 @@ use wasabi_wasm::Function;
 use wasabi_wasm::FunctionType;
 use wasabi_wasm::Idx;
 use wasabi_wasm::Instr;
-use wasabi_wasm::Instr::*;
+use wasabi_wasm::Instr::{Call, CallIndirect, Const, End, Local, RefFunc};
 use wasabi_wasm::Limits;
 use wasabi_wasm::LocalOp;
 use wasabi_wasm::Module;
@@ -25,6 +25,7 @@ pub const INSTRUMENTATION_STACK_MODULE: &str = "wastrumentation_stack";
 pub const INSTRUMENTATION_ANALYSIS_MODULE: &str = "WASP_ANALYSIS";
 pub const INSTRUMENTATION_INSTRUMENTED_MODULE: &str = "instrumented_input";
 
+#[allow(clippy::too_many_lines)]
 pub fn instrument(
     module: &mut Module,
     pre_instrumentation_function_indices: &HashSet<Idx<Function>>,
@@ -86,7 +87,7 @@ pub fn instrument(
 
         for load_call in &stack_library_for_target.arg_load_n {
             apply_instructions.push(local_get_stack_ptr());
-            apply_instructions.push(Call(*load_call))
+            apply_instructions.push(Call(*load_call));
         }
 
         apply_instructions.extend_from_slice(&[call_base, call_stack_store_rets, End]);
@@ -116,9 +117,13 @@ pub fn instrument(
         let call_allocate_types_buffer = Call(stack_library_for_target.allocate_types_buffer);
         let local_set_types_buffer_ptr = Local(LocalOp::Set, stack_ptr_types_local);
 
-        let argc = Const(Val::I32((target_function_type.inputs().len()) as i32));
-        let resc = Const(Val::I32((target_function_type.results().len()) as i32));
-        let const_apply_table_index = Const(Val::I32(apply_table_index as i32));
+        let argc = Const(Val::I32(
+            i32::try_from(target_function_type.inputs().len()).unwrap(),
+        ));
+        let resc = Const(Val::I32(
+            i32::try_from(target_function_type.results().len()).unwrap(),
+        ));
+        let const_apply_table_index = Const(Val::I32(i32::try_from(apply_table_index).unwrap()));
         let local_get_stack_ptr = || Local(LocalOp::Get, stack_ptr_local);
         let local_get_stack_types_ptr = Local(LocalOp::Get, stack_ptr_types_local);
         let call_generic_apply = Call(generic_apply_index);
@@ -143,7 +148,7 @@ pub fn instrument(
 
         for load_call in &stack_library_for_target.ret_load_n {
             instrumented_body.push(local_get_stack_ptr());
-            instrumented_body.push(Call(*load_call))
+            instrumented_body.push(Call(*load_call));
         }
 
         instrumented_body.push(call_free_values_buffer);
@@ -152,7 +157,7 @@ pub fn instrument(
         original_function.code_mut().unwrap().body = instrumented_body;
     }
 
-    let apply_count = apply_table_funs.len() as u32;
+    let apply_count = u32::try_from(apply_table_funs.len()).unwrap();
     let apply_table_idx = module.tables.len();
     module.tables.push(Table {
         limits: Limits {
@@ -197,6 +202,7 @@ pub fn instrument(
         .function_mut(call_base_idx)
         .export
         .push(wasp_imported_generic_apply_base.name);
+
     AssemblyScriptProgram {
         content: assemblyscript_code,
     }

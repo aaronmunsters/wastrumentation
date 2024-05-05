@@ -38,7 +38,7 @@ impl TargetCall<WasmExport> {
                     INSTRUMENTATION_ANALYSIS_MODULE.to_string(),
                     trap.name.to_string(),
                 );
-                TargetCall::Pre(trap)
+                TargetCall::Post(trap)
             }
             TargetCall::Both {
                 pre_call_trap,
@@ -70,7 +70,7 @@ impl TargetCall<Idx<Function>> {
         module: &mut Module,
         target_functions: &HashSet<Idx<Function>>,
     ) -> Result<(), CallTransformationError> {
-        for target_function_idx in target_functions.iter() {
+        for target_function_idx in target_functions {
             let target_function = module.function_mut(*target_function_idx);
             if target_function.code().is_none() {
                 return Err("Attempt to instrument call on import function");
@@ -107,9 +107,9 @@ fn delta_to_instrument_body(body: &[Instr]) -> usize {
         .map(|instr| -> usize {
             delta_to_instrument_instr(instr)
                 + match instr {
-                    Instr::Loop(_, body) => delta_to_instrument_body(body),
-                    Instr::Block(_, body) => delta_to_instrument_body(body),
-                    Instr::If(_, then, None) => delta_to_instrument_body(then),
+                    Instr::Loop(_, body) | Instr::Block(_, body) | Instr::If(_, body, None) => {
+                        delta_to_instrument_body(body)
+                    }
                     Instr::If(_, then, Some(els)) => {
                         delta_to_instrument_body(then) + delta_to_instrument_body(els)
                     }
@@ -121,6 +121,7 @@ fn delta_to_instrument_body(body: &[Instr]) -> usize {
 }
 
 impl HighLevelBody {
+    #[must_use]
     pub fn transform_call(&self, target: &TargetCall<Idx<Function>>) -> Self {
         let Self(body) = self;
         let transformed_body = Self::transform_call_inner(body, target);
@@ -135,7 +136,7 @@ impl HighLevelBody {
                 (TargetCall::Pre(pre_call_trap), Instr::Call(index)) => {
                     result.extend_from_slice(&[
                         // STACK: [type_in]
-                        Instr::Const(Val::I32(index.to_u32() as i32)),
+                        Instr::Const(Val::I32(i32::try_from(index.to_u32()).unwrap())),
                         // STACK: [type_in, f_idx]
                         Instr::Call(*pre_call_trap),
                         // STACK: [type_in]
@@ -148,7 +149,7 @@ impl HighLevelBody {
                         // STACK: [type_in]
                         instr.clone(),
                         // STACK: [type_out]
-                        Instr::Const(Val::I32(index.to_u32() as i32)),
+                        Instr::Const(Val::I32(i32::try_from(index.to_u32()).unwrap())),
                         // STACK: [type_out, f_idx]
                         Instr::Call(*post_call_trap),
                         // STACK: [type_out]
@@ -163,13 +164,13 @@ impl HighLevelBody {
                 ) => {
                     result.extend_from_slice(&[
                         // STACK: [type_in]
-                        Instr::Const(Val::I32(index.to_u32() as i32)),
+                        Instr::Const(Val::I32(i32::try_from(index.to_u32()).unwrap())),
                         // STACK: [type_in, f_idx]
                         Instr::Call(*pre_call_trap),
                         // STACK: [type_in]
                         instr.clone(),
                         // STACK: [type_out]
-                        Instr::Const(Val::I32(index.to_u32() as i32)),
+                        Instr::Const(Val::I32(i32::try_from(index.to_u32()).unwrap())),
                         // STACK: [type_out, f_idx]
                         Instr::Call(*post_call_trap),
                         // STACK: [type_out]
