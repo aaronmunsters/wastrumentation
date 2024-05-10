@@ -90,115 +90,81 @@ impl TargetCall<Idx<Function>> {
     }
 }
 
-// Amount of constant instructions in transformation
-const TRANSFORM_COST_PER_CALL: usize = 4;
-
-fn delta_to_instrument_instr(instr: &Instr) -> usize {
-    match instr {
-        Instr::Call(..) => TRANSFORM_COST_PER_CALL,
-        _ => 0,
-    }
-}
-
-#[allow(dead_code)] /* TODO: */
-fn delta_to_instrument_body(body: &[Instr]) -> usize {
-    let res = body
-        .iter()
-        .map(|instr| -> usize {
-            delta_to_instrument_instr(instr)
-                + match instr {
-                    Instr::Loop(_, body) | Instr::Block(_, body) | Instr::If(_, body, None) => {
-                        delta_to_instrument_body(body)
-                    }
-                    Instr::If(_, then, Some(els)) => {
-                        delta_to_instrument_body(then) + delta_to_instrument_body(els)
-                    }
-                    _ => 0,
-                }
-        })
-        .sum();
-    res
-}
-
 impl HighLevelBody {
     #[must_use]
     pub fn transform_call(&self, target: &TargetCall<Idx<Function>>) -> Self {
         let Self(body) = self;
-        let transformed_body = Self::transform_call_inner(body, target);
+        let transformed_body = transform(body, target);
         Self(transformed_body)
     }
+}
 
-    fn transform_call_inner(body: &Vec<Instr>, target: &TargetCall<Idx<Function>>) -> Vec<Instr> {
-        let mut result = Vec::new();
+fn transform(body: &Vec<Instr>, target: &TargetCall<Idx<Function>>) -> Vec<Instr> {
+    let mut result = Vec::new();
 
-        for instr in body {
-            match (target, instr) {
-                (TargetCall::Pre(pre_call_trap), Instr::Call(index)) => {
-                    result.extend_from_slice(&[
-                        // STACK: [type_in]
-                        Instr::Const(Val::I32(i32::try_from(index.to_u32()).unwrap())),
-                        // STACK: [type_in, f_idx]
-                        Instr::Call(*pre_call_trap),
-                        // STACK: [type_in]
-                        instr.clone(),
-                        // STACK: [type_out]
-                    ]);
-                }
-                (TargetCall::Post(post_call_trap), Instr::Call(index)) => {
-                    result.extend_from_slice(&[
-                        // STACK: [type_in]
-                        instr.clone(),
-                        // STACK: [type_out]
-                        Instr::Const(Val::I32(i32::try_from(index.to_u32()).unwrap())),
-                        // STACK: [type_out, f_idx]
-                        Instr::Call(*post_call_trap),
-                        // STACK: [type_out]
-                    ]);
-                }
-                (
-                    TargetCall::Both {
-                        pre_call_trap,
-                        post_call_trap,
-                    },
-                    Instr::Call(index),
-                ) => {
-                    result.extend_from_slice(&[
-                        // STACK: [type_in]
-                        Instr::Const(Val::I32(i32::try_from(index.to_u32()).unwrap())),
-                        // STACK: [type_in, f_idx]
-                        Instr::Call(*pre_call_trap),
-                        // STACK: [type_in]
-                        instr.clone(),
-                        // STACK: [type_out]
-                        Instr::Const(Val::I32(i32::try_from(index.to_u32()).unwrap())),
-                        // STACK: [type_out, f_idx]
-                        Instr::Call(*post_call_trap),
-                        // STACK: [type_out]
-                    ]);
-                }
-                (target, Instr::If(type_, then, None)) => result.push(Instr::If(
-                    *type_,
-                    Self::transform_call_inner(then, target),
-                    None,
-                )),
-                (target, Instr::If(type_, then, Some(else_))) => result.push(Instr::If(
-                    *type_,
-                    Self::transform_call_inner(then, target),
-                    Some(Self::transform_call_inner(else_, target)),
-                )),
-                (target, Instr::Loop(type_, body)) => result.push(Instr::Loop(
-                    *type_,
-                    Self::transform_call_inner(body, target),
-                )),
-                (target, Instr::Block(type_, body)) => result.push(Instr::Block(
-                    *type_,
-                    Self::transform_call_inner(body, target),
-                )),
-                _ => result.push(instr.clone()),
+    for instr in body {
+        match (target, instr) {
+            (TargetCall::Pre(pre_call_trap), Instr::Call(index)) => {
+                result.extend_from_slice(&[
+                    // STACK: [type_in]
+                    Instr::Const(Val::I32(i32::try_from(index.to_u32()).unwrap())),
+                    // STACK: [type_in, f_idx]
+                    Instr::Call(*pre_call_trap),
+                    // STACK: [type_in]
+                    instr.clone(),
+                    // STACK: [type_out]
+                ]);
             }
+            (TargetCall::Post(post_call_trap), Instr::Call(index)) => {
+                result.extend_from_slice(&[
+                    // STACK: [type_in]
+                    instr.clone(),
+                    // STACK: [type_out]
+                    Instr::Const(Val::I32(i32::try_from(index.to_u32()).unwrap())),
+                    // STACK: [type_out, f_idx]
+                    Instr::Call(*post_call_trap),
+                    // STACK: [type_out]
+                ]);
+            }
+            (
+                TargetCall::Both {
+                    pre_call_trap,
+                    post_call_trap,
+                },
+                Instr::Call(index),
+            ) => {
+                result.extend_from_slice(&[
+                    // STACK: [type_in]
+                    Instr::Const(Val::I32(i32::try_from(index.to_u32()).unwrap())),
+                    // STACK: [type_in, f_idx]
+                    Instr::Call(*pre_call_trap),
+                    // STACK: [type_in]
+                    instr.clone(),
+                    // STACK: [type_out]
+                    Instr::Const(Val::I32(i32::try_from(index.to_u32()).unwrap())),
+                    // STACK: [type_out, f_idx]
+                    Instr::Call(*post_call_trap),
+                    // STACK: [type_out]
+                ]);
+            }
+            (target, Instr::If(type_, then, None)) => {
+                result.push(Instr::If(*type_, transform(then, target), None))
+            }
+            (target, Instr::If(type_, then, Some(else_))) => result.push(Instr::If(
+                *type_,
+                transform(then, target),
+                Some(transform(else_, target)),
+            )),
+            (target, Instr::Loop(type_, body)) => {
+                result.push(Instr::Loop(*type_, transform(body, target)))
+            }
+            (target, Instr::Block(type_, body)) => {
+                result.push(Instr::Block(*type_, transform(body, target)))
+            }
+            _ => result.push(instr.clone()),
         }
-        result
     }
+    result
 }
 
 // TODO: implement tests

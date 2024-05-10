@@ -48,81 +48,82 @@ fn delta_to_instrument_body(body: &[Instr]) -> usize {
 impl TransformationStrategy for Target {
     fn transform(&self, high_level_body: &HighLevelBody) -> HighLevelBody {
         let HighLevelBody(body) = high_level_body;
-        let transformed_body = HighLevelBody::transform_branch_inner(body, *self);
+        let transformed_body = transform(body, *self);
         HighLevelBody(transformed_body)
     }
 }
 
-impl HighLevelBody {
-    /// # Panics
-    /// When the index cannot be cast from u32 to i32
-    pub fn transform_branch_inner(body: &Vec<Instr>, target: Target) -> Vec<Instr> {
-        let mut result = Vec::with_capacity(
-            body.iter().map(delta_to_instrument_instr).sum::<usize>() + body.len(),
-        );
+/// # Panics
+/// When the index cannot be cast from u32 to i32
+fn transform(body: &Vec<Instr>, target: Target) -> Vec<Instr> {
+    let mut result =
+        Vec::with_capacity(body.iter().map(delta_to_instrument_instr).sum::<usize>() + body.len());
 
-        for instr in body {
-            match (target, instr) {
-                (Target::BrTable(br_table_trap_idx), Instr::BrTable { table: _, default }) => {
-                    result.extend_from_slice(&[
-                        // STACK: [table_target_index]
-                        Instr::Const(Val::I32(i32::try_from(default.to_u32()).expect("i32->u32"))),
-                        // STACK: [table_target_index, default]
-                        Instr::Call(br_table_trap_idx),
-                        // STACK: [table_target_index]
-                        instr.clone(),
-                    ]);
-                }
-                (Target::IfThen(if_then_trap_idx), Instr::If(type_, then, None)) => result
-                    .extend_from_slice(&[
-                        // STACK: [type_in, condition]
-                        Instr::Call(if_then_trap_idx),
-                        // STACK: [type_in, kontinuation]
-                        Instr::if_then(*type_, Self::transform_branch_inner(then, target)),
-                        // STACK: [type_out]
-                    ]),
-                (
-                    Target::IfThenElse(if_then_else_trap_idx),
-                    Instr::If(type_, then, Some(else_)),
-                ) => result.extend_from_slice(&[
+    for instr in body {
+        match (target, instr) {
+            (Target::BrTable(br_table_trap_idx), Instr::BrTable { table: _, default }) => {
+                result.extend_from_slice(&[
+                    // STACK: [table_target_index]
+                    Instr::Const(Val::I32(i32::try_from(default.to_u32()).expect("i32->u32"))),
+                    // STACK: [table_target_index, default]
+                    Instr::Call(br_table_trap_idx),
+                    // STACK: [table_target_index]
+                    instr.clone(),
+                ]);
+            }
+            (Target::IfThen(if_then_trap_idx), Instr::If(type_, then, None)) => result
+                .extend_from_slice(&[
+                    // STACK: [type_in, condition]
+                    Instr::Call(if_then_trap_idx),
+                    // STACK: [type_in, kontinuation]
+                    Instr::if_then(*type_, transform(then, target)),
+                    // STACK: [type_out]
+                ]),
+            (Target::IfThenElse(if_then_else_trap_idx), Instr::If(type_, then, Some(else_))) => {
+                result.extend_from_slice(&[
                     // STACK: [type_in, condition]
                     Instr::Call(if_then_else_trap_idx),
                     // STACK: [type_in, kontinuation]
                     Instr::if_then_else(
                         *type_,
                         // STACK: [type_in]
-                        Self::transform_branch_inner(then, target),
+                        transform(then, target),
                         // STACK: [type_in]
-                        Self::transform_branch_inner(else_, target),
+                        transform(else_, target),
                     ),
                     // STACK: [type_out]
-                ]),
-                (Target::BrIf(br_if_trap_idx), Instr::BrIf(label)) => {
-                    result.extend_from_slice(&[
-                        // STACK: [condition]
-                        Instr::Const(Val::I32(i32::try_from(label.to_u32()).unwrap())),
-                        // STACK: [condition, label]
-                        Instr::Call(br_if_trap_idx),
-                        // STACK: [kontinuation]
-                        instr.clone(),
-                        // STACK: []
-                    ]);
-                }
-
-                (target, Instr::Loop(type_, body)) => result.push(Instr::Loop(
-                    *type_,
-                    Self::transform_branch_inner(body, target),
-                )),
-                (target, Instr::Block(type_, body)) => result.push(Instr::Block(
-                    *type_,
-                    Self::transform_branch_inner(body, target),
-                )),
-
-                _ => result.push(instr.clone()),
+                ])
             }
+            (Target::BrIf(br_if_trap_idx), Instr::BrIf(label)) => {
+                result.extend_from_slice(&[
+                    // STACK: [condition]
+                    Instr::Const(Val::I32(i32::try_from(label.to_u32()).unwrap())),
+                    // STACK: [condition, label]
+                    Instr::Call(br_if_trap_idx),
+                    // STACK: [kontinuation]
+                    instr.clone(),
+                    // STACK: []
+                ]);
+            }
+
+            (target, Instr::If(type_, then, None)) => {
+                result.push(Instr::If(*type_, transform(then, target), None))
+            }
+            (target, Instr::If(type_, then, Some(else_))) => result.push(Instr::If(
+                *type_,
+                transform(then, target),
+                Some(transform(else_, target)),
+            )),
+            (target, Instr::Loop(type_, body)) => {
+                result.push(Instr::Loop(*type_, transform(body, target)))
+            }
+            (target, Instr::Block(type_, body)) => {
+                result.push(Instr::Block(*type_, transform(body, target)))
+            }
+            _ => result.push(instr.clone()),
         }
-        result
     }
+    result
 }
 
 #[cfg(test)]
