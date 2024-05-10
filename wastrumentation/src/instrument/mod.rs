@@ -84,6 +84,14 @@ pub fn instrument(module: &[u8], wasp_interface: WaspInterface) -> Instrumentati
         .map(|export| module.install(export))
         .map(|index| module.instrument_function_bodies(&target_indices, &IfThenElse(index)));
 
+    br_if_trap
+        .map(|export| module.install(export))
+        .map(|index| module.instrument_function_bodies(&target_indices, &BrIf(index)));
+
+    br_table_trap
+        .map(|export| module.install(export))
+        .map(|index| module.instrument_function_bodies(&target_indices, &BrTable(index)));
+
     if let Some((generic_import, generic_export)) = generic_interface {
         let generic_function_instrumentation_lib = function_application::instrument(
             &mut module,
@@ -94,14 +102,6 @@ pub fn instrument(module: &[u8], wasp_interface: WaspInterface) -> Instrumentati
 
         instrumentation_lib.push_str(&generic_function_instrumentation_lib.content);
     };
-
-    br_if_trap
-        .map(|export| module.install(export))
-        .map(|index| module.instrument_function_bodies(&target_indices, &BrIf(index)));
-
-    br_table_trap
-        .map(|export| module.install(export))
-        .map(|index| module.instrument_function_bodies(&target_indices, &BrTable(index)));
 
     InstrumentationResult {
         instrumentation_lib: AssemblyScriptProgram {
