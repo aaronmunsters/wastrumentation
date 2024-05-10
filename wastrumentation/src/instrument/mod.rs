@@ -53,7 +53,7 @@ pub fn instrument(module: &[u8], wasp_interface: WaspInterface) -> Instrumentati
         .map(|(idx, _)| idx)
         .collect();
 
-    // Instrument call / call_indirect first, to prevent new calls to be instrumented too.
+    // Instrument call / call_indirect first, to prevent new call instructions to be instrumented too.
     let target_call = match (pre_trap_call, post_trap_call) {
         (None, None) => TargetCall::None,
         (Some(pre_call_trap), None) => TargetCall::Pre(pre_call_trap),
