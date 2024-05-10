@@ -66,6 +66,10 @@ pub struct AdviceTrap(pub TrapSignature);
 pub enum TrapSignature {
     TrapApply(TrapApply),
     TrapCall(TrapCall),
+    TrapBlockBefore(TrapBlockBefore),
+    TrapBlockAfter(TrapBlockAfter),
+    TrapLoopBefore(TrapLoopBefore),
+    TrapLoopAfter(TrapLoopAfter),
     TrapCallIndirectBefore(TrapCallIndirectBefore),
     TrapCallIndirectAfter(TrapCallIndirectAfter),
     TrapIfThen(TrapIfThen),
@@ -95,6 +99,34 @@ pub struct TrapCall {
 #[derive(Debug, FromPest)]
 #[pest_ast(rule(Rule::formal_target))]
 pub struct FormalTarget(#[pest_ast(inner(with(span_into_string), with(String::from)))] pub String);
+
+#[derive(Debug, FromPest)]
+#[pest_ast(rule(Rule::trap_block_before))]
+pub struct TrapBlockBefore {
+    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter), with(String::from)))]
+    pub body: String,
+}
+
+#[derive(Debug, FromPest)]
+#[pest_ast(rule(Rule::trap_block_after))]
+pub struct TrapBlockAfter {
+    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter), with(String::from)))]
+    pub body: String,
+}
+
+#[derive(Debug, FromPest)]
+#[pest_ast(rule(Rule::trap_loop_before))]
+pub struct TrapLoopBefore {
+    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter), with(String::from)))]
+    pub body: String,
+}
+
+#[derive(Debug, FromPest)]
+#[pest_ast(rule(Rule::trap_loop_after))]
+pub struct TrapLoopAfter {
+    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter), with(String::from)))]
+    pub body: String,
+}
 
 #[derive(Debug, FromPest)]
 #[pest_ast(rule(Rule::trap_call_indirect_before))]

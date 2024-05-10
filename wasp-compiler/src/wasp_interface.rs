@@ -1,14 +1,19 @@
 use crate::ast::{
     pest::CallQualifier,
     wasp::{
-        AdviceDefinition, ApplyHookSignature, ApplySpe, Root, TrapApply, TrapCall,
-        TrapCallIndirectAfter, TrapCallIndirectBefore, TrapSignature,
+        AdviceDefinition, ApplyHookSignature, ApplySpe, Root, TrapApply, TrapBlockAfter,
+        TrapBlockBefore, TrapCall, TrapCallIndirectAfter, TrapCallIndirectBefore, TrapLoopAfter,
+        TrapLoopBefore, TrapSignature,
         WasmType::{self, I32},
     },
 };
 
+pub const FUNCTION_NAME_BLOCK_PRE: &str = "block_pre";
+pub const FUNCTION_NAME_BLOCK_POST: &str = "block_post";
 pub const FUNCTION_NAME_CALL_BASE: &str = "call_base";
 pub const FUNCTION_NAME_GENERIC_APPLY: &str = "generic_apply";
+pub const FUNCTION_NAME_LOOP_PRE: &str = "loop_pre";
+pub const FUNCTION_NAME_LOOP_POST: &str = "loop_post";
 pub const FUNCTION_NAME_SPECIALIZED_BR_IF: &str = "specialized_br_if";
 pub const FUNCTION_NAME_SPECIALIZED_BR_TABLE: &str = "specialized_br_table";
 pub const FUNCTION_NAME_SPECIALIZED_CALL_POST: &str = "specialized_call_post";
@@ -33,6 +38,10 @@ pub struct WaspInterface {
     pub pre_trap_call_indirect: Option<WasmExport>,
     pub post_trap_call: Option<WasmExport>,
     pub post_trap_call_indirect: Option<WasmExport>,
+    pub pre_block: Option<WasmExport>,
+    pub post_block: Option<WasmExport>,
+    pub pre_loop: Option<WasmExport>,
+    pub post_loop: Option<WasmExport>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -151,21 +160,40 @@ impl WaspInterface {
             results: vec![],
         }
     }
+
+    fn interface_block_pre() -> WasmExport {
+        WasmExport {
+            name: FUNCTION_NAME_BLOCK_PRE.into(),
+            args: vec![],
+            results: vec![],
+        }
+    }
+    fn interface_block_post() -> WasmExport {
+        WasmExport {
+            name: FUNCTION_NAME_BLOCK_POST.into(),
+            args: vec![],
+            results: vec![],
+        }
+    }
+    fn interface_loop_pre() -> WasmExport {
+        WasmExport {
+            name: FUNCTION_NAME_LOOP_PRE.into(),
+            args: vec![],
+            results: vec![],
+        }
+    }
+    fn interface_loop_post() -> WasmExport {
+        WasmExport {
+            name: FUNCTION_NAME_LOOP_POST.into(),
+            args: vec![],
+            results: vec![],
+        }
+    }
 }
 
 impl From<&Root> for WaspInterface {
     fn from(wasp_root: &Root) -> Self {
-        let mut generic_interface = None;
-        let mut wasm_imports: Vec<WasmImport> = Vec::new();
-        let mut wasm_exports: Vec<WasmExport> = Vec::new();
-        let mut if_then_trap: Option<WasmExport> = None;
-        let mut if_then_else_trap: Option<WasmExport> = None;
-        let mut br_if_trap: Option<WasmExport> = None;
-        let mut pre_trap_call: Option<WasmExport> = None;
-        let mut pre_trap_call_indirect: Option<WasmExport> = None;
-        let mut post_trap_call: Option<WasmExport> = None;
-        let mut post_trap_call_indirect: Option<WasmExport> = None;
-        let mut br_table_trap = None;
+        let mut wasp_interface = Self::default();
         let Root(advice_definitions) = wasp_root;
         for advice_definition in advice_definitions {
             if let AdviceDefinition::AdviceTrap(trap_signature) = advice_definition {
@@ -173,7 +201,10 @@ impl From<&Root> for WaspInterface {
                     TrapSignature::TrapApply(TrapApply {
                         apply_hook_signature: ApplyHookSignature::Gen(_),
                         ..
-                    }) => generic_interface = Some(WaspInterface::interface_generic_apply()),
+                    }) => {
+                        wasp_interface.generic_interface =
+                            Some(WaspInterface::interface_generic_apply())
+                    }
                     TrapSignature::TrapApply(TrapApply {
                         apply_hook_signature:
                             ApplyHookSignature::Spe(ApplySpe {
@@ -184,60 +215,66 @@ impl From<&Root> for WaspInterface {
                             }),
                         ..
                     }) => {
-                        wasm_imports.push(WasmImport::for_extern_call_base(
+                        wasp_interface.inputs.push(WasmImport::for_extern_call_base(
                             *mutable_signature,
                             parameters_arguments,
                             parameters_results,
                         ));
-                        wasm_exports.push(WasmExport::for_exported_apply_trap(
-                            *mutable_signature,
-                            parameters_arguments,
-                            parameters_results,
-                        ));
+                        wasp_interface
+                            .outputs
+                            .push(WasmExport::for_exported_apply_trap(
+                                *mutable_signature,
+                                parameters_arguments,
+                                parameters_results,
+                            ));
                     }
                     TrapSignature::TrapIfThen(_) => {
-                        if_then_trap = Some(WaspInterface::interface_if_then());
+                        wasp_interface.if_then_trap = Some(WaspInterface::interface_if_then())
                     }
                     TrapSignature::TrapIfThenElse(_) => {
-                        if_then_else_trap = Some(WaspInterface::interface_if_then_else());
+                        wasp_interface.if_then_else_trap =
+                            Some(WaspInterface::interface_if_then_else())
                     }
                     TrapSignature::TrapBrIf(_) => {
-                        br_if_trap = Some(WaspInterface::interface_br_if());
+                        wasp_interface.br_if_trap = Some(WaspInterface::interface_br_if())
                     }
                     TrapSignature::TrapBrTable(_) => {
-                        br_table_trap = Some(WaspInterface::interface_br_table());
+                        wasp_interface.br_table_trap = Some(WaspInterface::interface_br_table())
                     }
                     TrapSignature::TrapCall(TrapCall {
                         call_qualifier: CallQualifier::Before,
                         ..
-                    }) => pre_trap_call = Some(WaspInterface::interface_call_pre()),
+                    }) => wasp_interface.pre_trap_call = Some(WaspInterface::interface_call_pre()),
                     TrapSignature::TrapCall(TrapCall {
                         call_qualifier: CallQualifier::After,
                         ..
-                    }) => post_trap_call = Some(WaspInterface::interface_call_post()),
+                    }) => {
+                        wasp_interface.post_trap_call = Some(WaspInterface::interface_call_post())
+                    }
                     TrapSignature::TrapCallIndirectBefore(TrapCallIndirectBefore { .. }) => {
-                        pre_trap_call_indirect = Some(WaspInterface::interface_call_indirect_pre());
+                        wasp_interface.pre_trap_call_indirect =
+                            Some(WaspInterface::interface_call_indirect_pre())
                     }
                     TrapSignature::TrapCallIndirectAfter(TrapCallIndirectAfter { .. }) => {
-                        post_trap_call_indirect =
-                            Some(WaspInterface::interface_call_indirect_post());
+                        wasp_interface.post_trap_call_indirect =
+                            Some(WaspInterface::interface_call_indirect_post())
+                    }
+                    TrapSignature::TrapBlockBefore(TrapBlockBefore { .. }) => {
+                        wasp_interface.pre_block = Some(WaspInterface::interface_block_pre())
+                    }
+                    TrapSignature::TrapBlockAfter(TrapBlockAfter { .. }) => {
+                        wasp_interface.post_block = Some(WaspInterface::interface_block_post())
+                    }
+                    TrapSignature::TrapLoopBefore(TrapLoopBefore { .. }) => {
+                        wasp_interface.pre_loop = Some(WaspInterface::interface_loop_pre())
+                    }
+                    TrapSignature::TrapLoopAfter(TrapLoopAfter { .. }) => {
+                        wasp_interface.post_loop = Some(WaspInterface::interface_loop_post())
                     }
                 }
             };
         }
-        Self {
-            inputs: wasm_imports,
-            outputs: wasm_exports,
-            generic_interface,
-            if_then_trap,
-            if_then_else_trap,
-            br_if_trap,
-            pre_trap_call,
-            pre_trap_call_indirect,
-            post_trap_call,
-            post_trap_call_indirect,
-            br_table_trap,
-        }
+        wasp_interface
     }
 }
 

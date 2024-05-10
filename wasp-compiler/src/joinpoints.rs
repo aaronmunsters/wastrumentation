@@ -18,6 +18,10 @@ pub struct JoinPoints {
     pub call_post: bool,
     pub call_indirect_pre: bool,
     pub call_indirect_post: bool,
+    pub block_pre: bool,
+    pub block_post: bool,
+    pub loop_pre: bool,
+    pub loop_post: bool,
 }
 
 #[derive(Debug, Eq, PartialEq, Hash, Clone)]
@@ -41,6 +45,10 @@ impl JoinPoints {
             JoinPoint::CallIndirectPre => self.call_indirect_pre = true,
             JoinPoint::CallIndirectPost => self.call_indirect_post = true,
             JoinPoint::TrapBrTable => self.br_table = true,
+            JoinPoint::BlockBefore => self.block_pre = true,
+            JoinPoint::BlockAfter => self.block_post = true,
+            JoinPoint::LoopBefore => self.loop_pre = true,
+            JoinPoint::LoopAfter => self.loop_post = true,
         };
     }
 }
@@ -48,6 +56,10 @@ impl JoinPoints {
 enum JoinPoint {
     Generic,
     Specialised(SpecialisedJoinPoint),
+    BlockBefore,
+    BlockAfter,
+    LoopBefore,
+    LoopAfter,
     CallPre,
     CallPost,
     CallIndirectPre,
@@ -93,6 +105,10 @@ impl TrapSignature {
             TrapSignature::TrapCallIndirectBefore(_) => JoinPoint::CallIndirectPre,
             TrapSignature::TrapCallIndirectAfter(_) => JoinPoint::CallIndirectPost,
             TrapSignature::TrapBrTable(_) => JoinPoint::TrapBrTable,
+            TrapSignature::TrapBlockBefore(_) => JoinPoint::BlockBefore,
+            TrapSignature::TrapBlockAfter(_) => JoinPoint::BlockAfter,
+            TrapSignature::TrapLoopBefore(_) => JoinPoint::LoopBefore,
+            TrapSignature::TrapLoopAfter(_) => JoinPoint::LoopAfter,
         }
     }
 }
@@ -182,6 +198,10 @@ mod tests {
                 call_post: false,
                 call_indirect_pre: false,
                 call_indirect_post: false,
+                block_pre: false,
+                block_post: false,
+                loop_pre: false,
+                loop_post: false,
             }"#}
         )
     }
@@ -380,6 +400,14 @@ mod tests {
                     (advice br_table (target  Target)
                                      (default Default)
                         >>>GUEST>>>🏓<<<GUEST<<<)
+                        (advice block before
+                            >>>GUEST>>>🧐🧱<<<GUEST<<<)
+                        (advice block after
+                            >>>GUEST>>>👀🧱<<<GUEST<<<)
+                        (advice loop before
+                            >>>GUEST>>>🧐➰<<<GUEST<<<)
+                        (advice loop after
+                            >>>GUEST>>>👀➰<<<GUEST<<<)
                     (advice call before (f FunctionIndex)
                         >>>GUEST>>>🧐🏃<<<GUEST<<<)
                     (advice call after (f FunctionIndex)
@@ -414,7 +442,11 @@ mod tests {
                 call_pre: true,
                 call_post: true,
                 call_indirect_pre: true,
-                call_indirect_post: true
+                call_indirect_post: true,
+                block_post: true,
+                block_pre: true,
+                loop_post: true,
+                loop_pre: true,
             }
         )
     }

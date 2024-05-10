@@ -9,11 +9,13 @@ use crate::{
         TrapSignature, WasmParameter, WasmType,
     },
     wasp_interface::{
-        WasmExport, WasmImport, FUNCTION_NAME_GENERIC_APPLY, FUNCTION_NAME_SPECIALIZED_BR_IF,
-        FUNCTION_NAME_SPECIALIZED_BR_TABLE, FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_POST,
-        FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_PRE, FUNCTION_NAME_SPECIALIZED_CALL_POST,
-        FUNCTION_NAME_SPECIALIZED_CALL_PRE, FUNCTION_NAME_SPECIALIZED_IF_THEN,
-        FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE, NAMESPACE_TRANSFORMED_INPUT,
+        WasmExport, WasmImport, FUNCTION_NAME_BLOCK_POST, FUNCTION_NAME_BLOCK_PRE,
+        FUNCTION_NAME_GENERIC_APPLY, FUNCTION_NAME_LOOP_POST, FUNCTION_NAME_LOOP_PRE,
+        FUNCTION_NAME_SPECIALIZED_BR_IF, FUNCTION_NAME_SPECIALIZED_BR_TABLE,
+        FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_POST, FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_PRE,
+        FUNCTION_NAME_SPECIALIZED_CALL_POST, FUNCTION_NAME_SPECIALIZED_CALL_PRE,
+        FUNCTION_NAME_SPECIALIZED_IF_THEN, FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE,
+        NAMESPACE_TRANSFORMED_INPUT,
     },
 };
 
@@ -21,7 +23,7 @@ use crate::util::Alphabetical;
 
 use super::wasp::{
     BranchFormalDefault, BranchFormalTarget, FormalIndex, FormalTable, FormalTarget,
-    TrapCallIndirectAfter,
+    TrapBlockAfter, TrapBlockBefore, TrapCallIndirectAfter, TrapLoopAfter, TrapLoopBefore,
 };
 use super::wasp::{TrapBrTable, TrapCallIndirectBefore};
 
@@ -93,6 +95,12 @@ impl TrapSignature {
             TrapSignature::TrapCallIndirectAfter(trap_call_indirect_after) => {
                 trap_call_indirect_after.to_assemblyscript()
             }
+            TrapSignature::TrapBlockBefore(trap_block_before) => {
+                trap_block_before.to_assemblyscript()
+            }
+            TrapSignature::TrapBlockAfter(trap_block_after) => trap_block_after.to_assemblyscript(),
+            TrapSignature::TrapLoopBefore(trap_loop_before) => trap_loop_before.to_assemblyscript(),
+            TrapSignature::TrapLoopAfter(trap_loop_after) => trap_loop_after.to_assemblyscript(),
         }
     }
 }
@@ -516,6 +524,86 @@ impl TrapCallIndirectAfter {
                 FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_POST,
             body = body,
             parameter_table = parameter_table,
+        )
+        .to_string()
+    }
+}
+
+impl TrapBlockBefore {
+    fn to_assemblyscript(&self) -> String {
+        let Self { body } = &self;
+
+        format!(
+            indoc! {r#"
+            export function {FUNCTION_NAME_BLOCK_PRE}(
+                function_table: i32,
+            ): void {{
+                {body}
+            }}
+            "#
+            },
+            FUNCTION_NAME_BLOCK_PRE = FUNCTION_NAME_BLOCK_PRE,
+            body = body,
+        )
+        .to_string()
+    }
+}
+
+impl TrapBlockAfter {
+    fn to_assemblyscript(&self) -> String {
+        let Self { body } = &self;
+
+        format!(
+            indoc! {r#"
+            export function {FUNCTION_NAME_BLOCK_POST}(
+                function_table: i32,
+            ): void {{
+                {body}
+            }}
+            "#
+            },
+            FUNCTION_NAME_BLOCK_POST = FUNCTION_NAME_BLOCK_POST,
+            body = body,
+        )
+        .to_string()
+    }
+}
+
+impl TrapLoopBefore {
+    fn to_assemblyscript(&self) -> String {
+        let Self { body } = &self;
+
+        format!(
+            indoc! {r#"
+            export function {FUNCTION_NAME_LOOP_PRE}(
+                function_table: i32,
+            ): void {{
+                {body}
+            }}
+            "#
+            },
+            FUNCTION_NAME_LOOP_PRE = FUNCTION_NAME_LOOP_PRE,
+            body = body,
+        )
+        .to_string()
+    }
+}
+
+impl TrapLoopAfter {
+    fn to_assemblyscript(&self) -> String {
+        let Self { body } = &self;
+
+        format!(
+            indoc! {r#"
+            export function {FUNCTION_NAME_LOOP_POST}(
+                function_table: i32,
+            ): void {{
+                {body}
+            }}
+            "#
+            },
+            FUNCTION_NAME_LOOP_POST = FUNCTION_NAME_LOOP_POST,
+            body = body,
         )
         .to_string()
     }

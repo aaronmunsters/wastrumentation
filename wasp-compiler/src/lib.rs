@@ -177,6 +177,10 @@ mod tests {
                     call_post: false,
                     call_indirect_pre: false,
                     call_indirect_post: false,
+                    block_pre: false,
+                    block_post: false,
+                    loop_pre: false,
+                    loop_post: false,
                 },
                 wasp_interface: WaspInterface {
                     inputs: [],
@@ -190,6 +194,10 @@ mod tests {
                     pre_trap_call_indirect: None,
                     post_trap_call: None,
                     post_trap_call_indirect: None,
+                    pre_block: None,
+                    post_block: None,
+                    pre_loop: None,
+                    post_loop: None,
                 },
             }"#
             }

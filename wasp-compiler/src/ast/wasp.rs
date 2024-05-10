@@ -32,6 +32,10 @@ pub enum AdviceDefinition {
 pub enum TrapSignature {
     TrapApply(TrapApply),
     TrapCall(TrapCall),
+    TrapBlockBefore(TrapBlockBefore),
+    TrapBlockAfter(TrapBlockAfter),
+    TrapLoopBefore(TrapLoopBefore),
+    TrapLoopAfter(TrapLoopAfter),
     TrapCallIndirectBefore(TrapCallIndirectBefore),
     TrapCallIndirectAfter(TrapCallIndirectAfter),
     TrapIfThen(TrapIfThen),
@@ -84,6 +88,26 @@ pub struct TrapCall {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct FormalTarget(pub String);
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct TrapBlockBefore {
+    pub body: String,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct TrapBlockAfter {
+    pub body: String,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct TrapLoopBefore {
+    pub body: String,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct TrapLoopAfter {
+    pub body: String,
+}
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct TrapCallIndirectBefore {
@@ -328,6 +352,18 @@ impl TryFrom<pest_ast::TrapSignature> for TrapSignature {
                 branch_formal_default: branch_formal_default.into(),
                 body,
             })),
+            pest_ast::TrapSignature::TrapBlockBefore(pest_ast::TrapBlockBefore { body }) => {
+                Ok(TrapSignature::TrapBlockBefore(TrapBlockBefore { body }))
+            }
+            pest_ast::TrapSignature::TrapBlockAfter(pest_ast::TrapBlockAfter { body }) => {
+                Ok(TrapSignature::TrapBlockAfter(TrapBlockAfter { body }))
+            }
+            pest_ast::TrapSignature::TrapLoopBefore(pest_ast::TrapLoopBefore { body }) => {
+                Ok(TrapSignature::TrapLoopBefore(TrapLoopBefore { body }))
+            }
+            pest_ast::TrapSignature::TrapLoopAfter(pest_ast::TrapLoopAfter { body }) => {
+                Ok(TrapSignature::TrapLoopAfter(TrapLoopAfter { body }))
+            }
         }
     }
 }
