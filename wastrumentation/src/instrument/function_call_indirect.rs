@@ -1,57 +1,18 @@
-use std::collections::HashSet;
+use crate::parse_nesting::{HighLevelBody, Instr};
+use wasabi_wasm::{Function, Idx, Val};
 
-use crate::parse_nesting::{HighLevelBody, Instr, LowLevelBody};
-use wasabi_wasm::{Code, Function, Idx, ImportOrPresent, Module, Val};
-use wasp_compiler::wasp_interface::WasmExport;
-
-use super::{function_application::INSTRUMENTATION_ANALYSIS_MODULE, FunctionTypeConvertible};
-
-type CallTransformationError = &'static str;
+use super::TransformationStrategy;
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum Target {
-    CallIndirectPre,
-    CallIndirectPost,
+    CallIndirectPre(Idx<Function>),
+    CallIndirectPost(Idx<Function>),
 }
 
-pub fn instrument(
-    module: &mut Module,
-    target_functions: &HashSet<Idx<Function>>,
-    trap: WasmExport,
-    target: Target,
-) -> Result<(), CallTransformationError> {
-    let trap = module.add_function_import(
-        trap.as_function_type(),
-        INSTRUMENTATION_ANALYSIS_MODULE.to_string(),
-        trap.name,
-    );
-
-    instrument_bodies(module, target_functions, trap, target)
-}
-
-pub fn instrument_bodies(
-    module: &mut Module,
-    target_functions: &HashSet<Idx<Function>>,
-    trap: Idx<Function>,
-    target: Target,
-) -> Result<(), CallTransformationError> {
-    for target_function_idx in target_functions {
-        let target_function = module.function_mut(*target_function_idx);
-        if target_function.code().is_none() {
-            return Err("Attempt to instrument call indirect on import function");
-        }
-
-        let code = target_function.code_mut().unwrap(); // checked above
-        let high_level_body: HighLevelBody = LowLevelBody(code.body.clone()).try_into()?;
-        let high_level_body_transformed = high_level_body.transform_call_indirect(trap, target);
-        let LowLevelBody(transformed_low_level_body) = high_level_body_transformed.into();
-
-        target_function.code = ImportOrPresent::Present(Code {
-            body: transformed_low_level_body,
-            locals: code.locals.clone(),
-        });
+impl TransformationStrategy for Target {
+    fn transform(&self, high_level_body: &HighLevelBody) -> HighLevelBody {
+        high_level_body.transform_call_indirect(*self)
     }
-    Ok(())
 }
 
 // Amount of constant instructions in transformation
@@ -86,60 +47,62 @@ fn delta_to_instrument_body(body: &[Instr]) -> usize {
 
 impl HighLevelBody {
     #[must_use]
-    pub fn transform_call_indirect(&self, trap: Idx<Function>, target: Target) -> Self {
+    pub fn transform_call_indirect(&self, target: Target) -> Self {
         let Self(body) = self;
-        let transformed_body = Self::transform_call_indirect_inner(body, trap, target);
+        let transformed_body = Self::transform_call_indirect_inner(body, target);
         Self(transformed_body)
     }
 
-    fn transform_call_indirect_inner(
-        body: &Vec<Instr>,
-        trap: Idx<Function>,
-        target: Target,
-    ) -> Vec<Instr> {
+    fn transform_call_indirect_inner(body: &Vec<Instr>, target: Target) -> Vec<Instr> {
         let mut result = Vec::new();
 
         for instr in body {
             match (target, instr) {
-                (Target::CallIndirectPre, Instr::CallIndirect(_function_type, table_index)) => {
+                (
+                    Target::CallIndirectPre(call_pre_idx),
+                    Instr::CallIndirect(_function_type, table_index),
+                ) => {
                     result.extend_from_slice(&[
                         // STACK: [type_in, table_function_index]
                         Instr::Const(Val::I32(i32::try_from(table_index.to_u32()).unwrap())),
                         // STACK: [type_in, table_function_index, table_index]
-                        Instr::Call(trap),
+                        Instr::Call(call_pre_idx),
                         // STACK: [type_in, table_function_index]
                         instr.clone(),
                         // STACK: [type_out]
                     ]);
                 }
-                (Target::CallIndirectPost, Instr::CallIndirect(_function_type, table_index)) => {
+                (
+                    Target::CallIndirectPost(call_post_idx),
+                    Instr::CallIndirect(_function_type, table_index),
+                ) => {
                     result.extend_from_slice(&[
                         // STACK: [type_in, table_function_index]
                         instr.clone(),
                         // STACK: [type_out]
                         Instr::Const(Val::I32(i32::try_from(table_index.to_u32()).unwrap())),
                         // STACK: [type_out, table_index]
-                        Instr::Call(trap),
+                        Instr::Call(call_post_idx),
                         // STACK: [type_out]
                     ]);
                 }
                 (target, Instr::If(type_, then, None)) => result.push(Instr::If(
                     *type_,
-                    Self::transform_call_indirect_inner(then, trap, target),
+                    Self::transform_call_indirect_inner(then, target),
                     None,
                 )),
                 (target, Instr::If(type_, then, Some(else_))) => result.push(Instr::If(
                     *type_,
-                    Self::transform_call_indirect_inner(then, trap, target),
-                    Some(Self::transform_call_indirect_inner(else_, trap, target)),
+                    Self::transform_call_indirect_inner(then, target),
+                    Some(Self::transform_call_indirect_inner(else_, target)),
                 )),
                 (target, Instr::Loop(type_, body)) => result.push(Instr::Loop(
                     *type_,
-                    Self::transform_call_indirect_inner(body, trap, target),
+                    Self::transform_call_indirect_inner(body, target),
                 )),
                 (target, Instr::Block(type_, body)) => result.push(Instr::Block(
                     *type_,
-                    Self::transform_call_indirect_inner(body, trap, target),
+                    Self::transform_call_indirect_inner(body, target),
                 )),
                 _ => result.push(instr.clone()),
             }

@@ -1,6 +1,8 @@
 use std::collections::HashSet;
 
+use wasabi_wasm::Code;
 use wasabi_wasm::FunctionType;
+use wasabi_wasm::ImportOrPresent;
 use wasabi_wasm::Module;
 use wasabi_wasm::ValType;
 use wasp_compiler::ast::assemblyscript::AssemblyScriptProgram;
@@ -12,7 +14,13 @@ use wasp_compiler::wasp_interface::WaspInterface;
 use wasabi_wasm::Function;
 use wasabi_wasm::Idx;
 
+use crate::parse_nesting::HighLevelBody;
+use crate::parse_nesting::LowLevelBody;
+
+use self::branch_if::Target::{BrIf, BrTable, IfThen, IfThenElse};
+use self::function_application::INSTRUMENTATION_ANALYSIS_MODULE;
 use self::function_call::TargetCall;
+use self::function_call_indirect::Target::{CallIndirectPost, CallIndirectPre};
 
 pub mod branch_if;
 pub mod function_application;
@@ -39,7 +47,7 @@ pub fn instrument(module: &[u8], wasp_interface: WaspInterface) -> Instrumentati
     } = wasp_interface;
     let mut instrumentation_lib = String::new();
     let (mut module, _offsets, _issue) = Module::from_bytes(module).unwrap();
-    let pre_instrumentation_function_indices: HashSet<Idx<Function>> = module
+    let target_indices: HashSet<Idx<Function>> = module
         .functions()
         .filter(|(_index, f)| f.code().is_some())
         .map(|(idx, _)| idx)
@@ -57,53 +65,29 @@ pub fn instrument(module: &[u8], wasp_interface: WaspInterface) -> Instrumentati
     };
 
     target_call
-        .instrument(&mut module, &pre_instrumentation_function_indices)
+        .instrument(&mut module, &target_indices)
         .unwrap();
 
-    if let Some(trap_export) = pre_trap_call_indirect {
-        function_call_indirect::instrument(
-            &mut module,
-            &pre_instrumentation_function_indices,
-            trap_export,
-            function_call_indirect::Target::CallIndirectPre,
-        )
-        .unwrap(); // TODO: handle
-    }
+    pre_trap_call_indirect
+        .map(|export| module.install(export))
+        .map(|index| module.instrument_function_bodies(&target_indices, &CallIndirectPre(index)));
 
-    if let Some(trap_export) = post_trap_call_indirect {
-        function_call_indirect::instrument(
-            &mut module,
-            &pre_instrumentation_function_indices,
-            trap_export,
-            function_call_indirect::Target::CallIndirectPost,
-        )
-        .unwrap(); // TODO: handle
-    }
+    post_trap_call_indirect
+        .map(|export| module.install(export))
+        .map(|index| module.instrument_function_bodies(&target_indices, &CallIndirectPost(index)));
 
-    if let Some(trap_export) = if_then_trap {
-        branch_if::instrument(
-            &mut module,
-            &pre_instrumentation_function_indices,
-            trap_export,
-            branch_if::Target::IfThen,
-        )
-        .unwrap(); // TODO: handle
-    };
+    if_then_trap
+        .map(|export| module.install(export))
+        .map(|index| module.instrument_function_bodies(&target_indices, &IfThen(index)));
 
-    if let Some(trap_export) = if_then_else_trap {
-        branch_if::instrument(
-            &mut module,
-            &pre_instrumentation_function_indices,
-            trap_export,
-            branch_if::Target::IfThenElse,
-        )
-        .unwrap(); // TODO: handle
-    };
+    if_then_else_trap
+        .map(|export| module.install(export))
+        .map(|index| module.instrument_function_bodies(&target_indices, &IfThenElse(index)));
 
     if let Some((generic_import, generic_export)) = generic_interface {
         let generic_function_instrumentation_lib = function_application::instrument(
             &mut module,
-            &pre_instrumentation_function_indices,
+            &target_indices,
             generic_import,
             generic_export,
         );
@@ -111,31 +95,65 @@ pub fn instrument(module: &[u8], wasp_interface: WaspInterface) -> Instrumentati
         instrumentation_lib.push_str(&generic_function_instrumentation_lib.content);
     };
 
-    if let Some(trap_export) = br_if_trap {
-        branch_if::instrument(
-            &mut module,
-            &pre_instrumentation_function_indices,
-            trap_export,
-            branch_if::Target::BrIf,
-        )
-        .unwrap(); // TODO: handle
-    }
+    br_if_trap
+        .map(|export| module.install(export))
+        .map(|index| module.instrument_function_bodies(&target_indices, &BrIf(index)));
 
-    if let Some(trap_export) = br_table_trap {
-        branch_if::instrument(
-            &mut module,
-            &pre_instrumentation_function_indices,
-            trap_export,
-            branch_if::Target::BrTable,
-        )
-        .unwrap(); // TODO: handle
-    }
+    br_table_trap
+        .map(|export| module.install(export))
+        .map(|index| module.instrument_function_bodies(&target_indices, &BrTable(index)));
 
     InstrumentationResult {
         instrumentation_lib: AssemblyScriptProgram {
             content: instrumentation_lib,
         },
         module: module.to_bytes().unwrap(),
+    }
+}
+
+trait Instrumentable {
+    fn install(&mut self, export: WasmExport) -> Idx<Function>;
+    fn instrument_function_bodies(
+        &mut self,
+        target_functions: &HashSet<Idx<Function>>,
+        instrumentation_strategy: &impl TransformationStrategy,
+    ) -> Result<(), &'static str>;
+}
+impl Instrumentable for Module {
+    fn install(&mut self, export: WasmExport) -> Idx<Function> {
+        self.add_function_import(
+            export.as_function_type(),
+            INSTRUMENTATION_ANALYSIS_MODULE.to_string(),
+            export.name,
+        )
+    }
+
+    fn instrument_function_bodies(
+        &mut self,
+        target_functions: &HashSet<Idx<Function>>,
+        instrumentation_strategy: &impl TransformationStrategy,
+    ) -> Result<(), &'static str> {
+        for target_function_idx in target_functions {
+            let target_function = self.function_mut(*target_function_idx);
+            let code = target_function.code_mut();
+            match code {
+                None => return Err("Attempt to instrument an `import` function"),
+                Some(code) => {
+                    let high_level_body: HighLevelBody =
+                        LowLevelBody(code.body.clone()).try_into()?;
+                    let high_level_body_transformed =
+                        high_level_body.transform_for(instrumentation_strategy);
+                    let LowLevelBody(transformed_low_level_body) =
+                        high_level_body_transformed.into();
+
+                    target_function.code = ImportOrPresent::Present(Code {
+                        body: transformed_low_level_body,
+                        locals: code.locals.clone(),
+                    });
+                }
+            }
+        }
+        Ok(())
     }
 }
 
@@ -182,5 +200,16 @@ impl FunctionTypeConvertible for WasmImport {
         let args: &[ValType] = &ValTypeVec::from(args.clone()).0;
         let results: &[ValType] = &ValTypeVec::from(results.clone()).0;
         FunctionType::new(args, results)
+    }
+}
+
+pub trait TransformationStrategy {
+    fn transform(&self, high_level_body: &HighLevelBody) -> HighLevelBody;
+}
+
+impl HighLevelBody {
+    #[must_use]
+    pub fn transform_for(&self, transformation_strategy: &impl TransformationStrategy) -> Self {
+        transformation_strategy.transform(self)
     }
 }

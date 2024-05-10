@@ -1,59 +1,14 @@
-use std::collections::HashSet;
+use crate::parse_nesting::{HighLevelBody, Instr};
+use wasabi_wasm::{Function, Idx, Val};
 
-use crate::parse_nesting::{HighLevelBody, Instr, LowLevelBody};
-use wasabi_wasm::{Code, Function, Idx, ImportOrPresent, Module, Val};
-use wasp_compiler::wasp_interface::WasmExport;
-
-use super::{function_application::INSTRUMENTATION_ANALYSIS_MODULE, FunctionTypeConvertible};
-
-type BranchTransformationError = &'static str;
+use super::TransformationStrategy;
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum Target {
-    IfThen,
-    IfThenElse,
-    BrIf,
-    BrTable,
-}
-
-pub fn instrument(
-    module: &mut Module,
-    target_functions: &HashSet<Idx<Function>>,
-    trap_export: WasmExport,
-    target: Target,
-) -> Result<(), BranchTransformationError> {
-    let if_k_f_idx = module.add_function_import(
-        trap_export.as_function_type(),
-        INSTRUMENTATION_ANALYSIS_MODULE.to_string(),
-        trap_export.name,
-    );
-
-    instrument_bodies(module, target_functions, if_k_f_idx, target)
-}
-
-pub fn instrument_bodies(
-    module: &mut Module,
-    target_functions: &HashSet<Idx<Function>>,
-    if_k_f_idx: Idx<Function>,
-    target: Target,
-) -> Result<(), BranchTransformationError> {
-    for target_function_idx in target_functions {
-        let target_function = module.function_mut(*target_function_idx);
-        if target_function.code().is_none() {
-            return Err("Attempt to instrument if-then-else on import function");
-        }
-
-        let code = target_function.code_mut().unwrap(); // checked above
-        let high_level_body: HighLevelBody = LowLevelBody(code.body.clone()).try_into()?;
-        let high_level_body_transformed = high_level_body.transform_branch(if_k_f_idx, target);
-        let LowLevelBody(transformed_low_level_body) = high_level_body_transformed.into();
-
-        target_function.code = ImportOrPresent::Present(Code {
-            body: transformed_low_level_body,
-            locals: code.locals.clone(),
-        });
-    }
-    Ok(())
+    IfThen(Idx<Function>),
+    IfThenElse(Idx<Function>),
+    BrIf(Idx<Function>),
+    BrTable(Idx<Function>),
 }
 
 // Amount of constant instructions in transformation
@@ -90,75 +45,77 @@ fn delta_to_instrument_body(body: &[Instr]) -> usize {
     res
 }
 
-impl HighLevelBody {
-    #[must_use]
-    pub fn transform_branch(&self, if_k_f_idx: Idx<Function>, target: Target) -> Self {
-        let Self(body) = self;
-        let transformed_body = Self::transform_branch_inner(body, if_k_f_idx, target);
-        Self(transformed_body)
+impl TransformationStrategy for Target {
+    fn transform(&self, high_level_body: &HighLevelBody) -> HighLevelBody {
+        let HighLevelBody(body) = high_level_body;
+        let transformed_body = HighLevelBody::transform_branch_inner(body, *self);
+        HighLevelBody(transformed_body)
     }
+}
 
-    fn transform_branch_inner(
-        body: &Vec<Instr>,
-        if_k_f_idx: Idx<Function>,
-        target: Target,
-    ) -> Vec<Instr> {
+impl HighLevelBody {
+    /// # Panics
+    /// When the index cannot be cast from u32 to i32
+    pub fn transform_branch_inner(body: &Vec<Instr>, target: Target) -> Vec<Instr> {
         let mut result = Vec::with_capacity(
             body.iter().map(delta_to_instrument_instr).sum::<usize>() + body.len(),
         );
 
         for instr in body {
             match (target, instr) {
-                (Target::BrTable, Instr::BrTable { table: _, default }) => result
-                    .extend_from_slice(&[
+                (Target::BrTable(br_table_trap_idx), Instr::BrTable { table: _, default }) => {
+                    result.extend_from_slice(&[
                         // STACK: [table_target_index]
-                        Instr::Const(Val::I32(i32::try_from(default.to_u32()).unwrap())),
+                        Instr::Const(Val::I32(i32::try_from(default.to_u32()).expect("i32->u32"))),
                         // STACK: [table_target_index, default]
-                        Instr::Call(if_k_f_idx),
+                        Instr::Call(br_table_trap_idx),
                         // STACK: [table_target_index]
                         instr.clone(),
+                    ]);
+                }
+                (Target::IfThen(if_then_trap_idx), Instr::If(type_, then, None)) => result
+                    .extend_from_slice(&[
+                        // STACK: [type_in, condition]
+                        Instr::Call(if_then_trap_idx),
+                        // STACK: [type_in, kontinuation]
+                        Instr::if_then(*type_, Self::transform_branch_inner(then, target)),
+                        // STACK: [type_out]
                     ]),
-                (Target::IfThen, Instr::If(type_, then, None)) => result.extend_from_slice(&[
+                (
+                    Target::IfThenElse(if_then_else_trap_idx),
+                    Instr::If(type_, then, Some(else_)),
+                ) => result.extend_from_slice(&[
                     // STACK: [type_in, condition]
-                    Instr::Call(if_k_f_idx),
+                    Instr::Call(if_then_else_trap_idx),
                     // STACK: [type_in, kontinuation]
-                    Instr::if_then(
+                    Instr::if_then_else(
                         *type_,
-                        Self::transform_branch_inner(then, if_k_f_idx, target),
+                        // STACK: [type_in]
+                        Self::transform_branch_inner(then, target),
+                        // STACK: [type_in]
+                        Self::transform_branch_inner(else_, target),
                     ),
                     // STACK: [type_out]
                 ]),
-                (Target::IfThenElse, Instr::If(type_, then, Some(else_))) => result
-                    .extend_from_slice(&[
-                        // STACK: [type_in, condition]
-                        Instr::Call(if_k_f_idx),
-                        // STACK: [type_in, kontinuation]
-                        Instr::if_then_else(
-                            *type_,
-                            // STACK: [type_in]
-                            Self::transform_branch_inner(then, if_k_f_idx, target),
-                            // STACK: [type_in]
-                            Self::transform_branch_inner(else_, if_k_f_idx, target),
-                        ),
-                        // STACK: [type_out]
-                    ]),
-                (Target::BrIf, Instr::BrIf(label)) => result.extend_from_slice(&[
-                    // STACK: [condition]
-                    Instr::Const(Val::I32(i32::try_from(label.to_u32()).unwrap())),
-                    // STACK: [condition, label]
-                    Instr::Call(if_k_f_idx),
-                    // STACK: [kontinuation]
-                    instr.clone(),
-                    // STACK: []
-                ]),
+                (Target::BrIf(br_if_trap_idx), Instr::BrIf(label)) => {
+                    result.extend_from_slice(&[
+                        // STACK: [condition]
+                        Instr::Const(Val::I32(i32::try_from(label.to_u32()).unwrap())),
+                        // STACK: [condition, label]
+                        Instr::Call(br_if_trap_idx),
+                        // STACK: [kontinuation]
+                        instr.clone(),
+                        // STACK: []
+                    ]);
+                }
 
                 (target, Instr::Loop(type_, body)) => result.push(Instr::Loop(
                     *type_,
-                    Self::transform_branch_inner(body, if_k_f_idx, target),
+                    Self::transform_branch_inner(body, target),
                 )),
                 (target, Instr::Block(type_, body)) => result.push(Instr::Block(
                     *type_,
-                    Self::transform_branch_inner(body, if_k_f_idx, target),
+                    Self::transform_branch_inner(body, target),
                 )),
 
                 _ => result.push(instr.clone()),
@@ -177,6 +134,8 @@ mod tests {
 
     use wasabi_wasm::{FunctionType, Val, ValType};
     use wasmtime::{Engine, Instance, Module, Store};
+
+    use crate::{instrument::Instrumentable, parse_nesting::LowLevelBody};
 
     use super::*;
 
@@ -347,18 +306,18 @@ mod tests {
         assert_outcome(&wasm_module, uninstrumented_assertions);
 
         // Instrument
-        let if_k_f_idx = wasm_module.add_function(
+        let if_then_else_trap_idx = wasm_module.add_function(
             FunctionType::new(&[ValType::I32], &[ValType::I32]),
             vec![],
             instrumentation_body,
         );
-        instrument_bodies(
-            &mut wasm_module,
-            &HashSet::from_iter(vec![0_usize.into()]),
-            if_k_f_idx,
-            Target::IfThenElse,
-        )
-        .unwrap();
+
+        wasm_module
+            .instrument_function_bodies(
+                &HashSet::from_iter(vec![0_usize.into()]),
+                &Target::IfThenElse(if_then_else_trap_idx),
+            )
+            .unwrap();
 
         // Execute instrumented:
         assert_outcome(&wasm_module, instrumented_assertions);
@@ -388,11 +347,9 @@ mod tests {
 
         assert_eq!(
             Err("Expected low level body to terminate in `End`"),
-            instrument_bodies(
-                &mut wasm_module,
+            wasm_module.instrument_function_bodies(
                 &HashSet::from_iter(vec![0_usize.into()]),
-                0_usize.into(),
-                Target::IfThenElse
+                &Target::IfThenElse(0_usize.into())
             )
         );
     }
@@ -408,12 +365,10 @@ mod tests {
 
         // Instrument
         assert_eq!(
-            Err("Attempt to instrument if-then-else on import function"),
-            instrument_bodies(
-                &mut wasm_module,
+            Err("Attempt to instrument an `import` function"),
+            wasm_module.instrument_function_bodies(
                 &HashSet::from_iter(vec![0_usize.into()]),
-                0_usize.into(),
-                Target::IfThenElse
+                &Target::IfThenElse(0_usize.into())
             )
         );
     }
@@ -532,13 +487,12 @@ mod tests {
 
         let length_uninstrumented = body_length(&wasm_module, 0);
 
-        instrument_bodies(
-            &mut wasm_module,
-            &HashSet::from_iter(vec![0_usize.into()]),
-            0_usize.into(),
-            Target::IfThenElse,
-        )
-        .unwrap();
+        wasm_module
+            .instrument_function_bodies(
+                &HashSet::from_iter(vec![0_usize.into()]),
+                &Target::IfThenElse(0_usize.into()),
+            )
+            .unwrap();
 
         let length_instrumented = body_length(&wasm_module, 0);
         assert!(length_uninstrumented < length_instrumented);
@@ -550,8 +504,8 @@ mod tests {
 
     #[test]
     fn test_target() {
-        let target = Target::IfThen;
+        let target = Target::IfThen(0_usize.into());
         assert_eq!(target.clone(), target);
-        assert_eq!(format!("{target:?}"), "IfThen");
+        assert_eq!(format!("{target:?}"), "IfThen(Function 0)");
     }
 }
