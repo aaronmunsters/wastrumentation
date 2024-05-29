@@ -3,10 +3,8 @@ use test_conf::{
     AssemblyScript, InputProgram, InstrumentedAssertion, PostExecutionAssertion,
     UninstrumentedAssertion, WasmValue,
 };
-use wasi_common::{pipe::WritePipe, WasiCtx};
 use wasmer::wat2wasm;
 use wasmtime::*;
-use wasmtime_wasi::sync::WasiCtxBuilder;
 use wastrumentation_instr_lib::std_lib_compile::{
     assemblyscript::compiler_options::{
         CompilerOptions as AssemblScriptCompilerOptions, OptimizationStrategy, RuntimeStrategy,
@@ -17,7 +15,6 @@ use wastrumentation_instr_lib::std_lib_compile::{
 use crate::test_conf::{CallYields, GlobalValueEquals, InputProgramAssertion, TestConfiguration};
 use std::{
     fs::{read, read_to_string},
-    io::Cursor,
     path::PathBuf,
 };
 
@@ -66,39 +63,19 @@ impl WasmValue {
 }
 
 struct WasiEngineSetup {
-    store: Store<WasiCtx>,
+    store: Store<()>,
     engine: Engine,
-    stdout: WritePipe<Cursor<Vec<u8>>>,
-    stdin: WritePipe<Cursor<Vec<u8>>>,
-    stderr: WritePipe<Cursor<Vec<u8>>>,
 }
 
 impl WasiEngineSetup {
     fn new() -> Self {
         let engine: Engine = Engine::new(Config::default().wasm_multi_memory(true)).unwrap();
-        let mut linker = Linker::new(&engine);
+        let mut linker: Linker<()> = Linker::new(&engine);
         linker.allow_unknown_exports(true);
-        wasmtime_wasi::add_to_linker(&mut linker, |s: &mut WasiCtx| s).unwrap();
 
-        // Generate STD IO
-        let stdout = WritePipe::new_in_memory();
-        let stderr = WritePipe::new_in_memory();
-        let stdin = WritePipe::new_in_memory();
+        let store = Store::new(&engine, ());
 
-        let wasi = WasiCtxBuilder::new()
-            .stdout(Box::new(stdout.clone()))
-            .stderr(Box::new(stderr.clone()))
-            .stdin(Box::new(stdin.clone()))
-            .build();
-        let store = Store::new(&engine, wasi);
-
-        Self {
-            store,
-            engine,
-            stdout,
-            stdin,
-            stderr,
-        }
+        Self { store, engine }
     }
 }
 
@@ -148,13 +125,7 @@ impl TestConfiguration {
     }
 
     fn assert_uninstrumented(&self, input_program_wasm: &[u8]) {
-        let WasiEngineSetup {
-            mut store,
-            engine,
-            stderr,
-            stdin,
-            stdout,
-        } = WasiEngineSetup::new();
+        let WasiEngineSetup { mut store, engine } = WasiEngineSetup::new();
         let module = Module::from_binary(&engine, input_program_wasm).unwrap();
         let instance = Instance::new(&mut store, &module, &[]).unwrap();
 
@@ -169,9 +140,6 @@ impl TestConfiguration {
             &self.uninstrumented_assertion.results,
             &actual_results,
         );
-
-        // TODO: read from WASI if enabled
-        let (_, _, _) = (stderr, stdin, stdout);
     }
 
     fn assert_instrumented(&self, input_program_wasm: &[u8]) {
@@ -201,7 +169,7 @@ impl TestConfiguration {
 
             let env_abort = Func::wrap(
                 &mut store,
-                |_: Caller<'_, WasiCtx>, _: i32, _: i32, _: i32, _: i32| {
+                |_: Caller<'_, ()>, _: i32, _: i32, _: i32, _: i32| {
                     panic!("Wasm program pannicked!");
                 },
             );
@@ -296,53 +264,4 @@ impl GlobalValueEquals {
             .get(store.as_context_mut());
         result.assert_equals_wasmtime(&global);
     }
-}
-
-// TODO: implement using Wasi, writing to buffers etc.
-#[allow(dead_code)]
-fn test() {
-    let engine: Engine = Engine::new(Config::default().wasm_multi_memory(true)).unwrap();
-    let mut linker = Linker::new(&engine);
-    linker.allow_unknown_exports(true);
-    wasmtime_wasi::add_to_linker(&mut linker, |s| s).unwrap();
-
-    // Generate STDOUT for checkout output later on
-    let stdout = WritePipe::new_in_memory();
-
-    let wasi = WasiCtxBuilder::new()
-        .stdout(Box::new(stdout.clone()))
-        .build();
-    let mut store = Store::new(&engine, wasi);
-
-    // Instantiate our module with the imports we've created, and run it.
-    let module = Module::from_file(&engine, "../merged.wasm").unwrap();
-
-    linker.module(&mut store, "main", &module).unwrap();
-    linker
-        .get_default(&mut store, "main")
-        .unwrap()
-        .typed::<(), ()>(&store)
-        .unwrap()
-        .call(&mut store, ())
-        .unwrap();
-
-    let mut results = [Val::I32(i32::default())];
-
-    if let Some(Extern::Func(function)) = linker.get(&mut store, "main", "add-two") {
-        function
-            .call(&mut store, &[Val::I32(10), Val::I32(20)], &mut results)
-            .unwrap()
-    };
-
-    // ensuring store is dropped will flush the stdout buffer
-    drop(store);
-
-    assert_eq!(
-        results.first().unwrap().i32().unwrap(),
-        10 * 9 * 8 * 7 * 6 * 5 * 4 * 3 * 2
-    );
-
-    let stdout_stream = stdout.try_into_inner().unwrap().into_inner();
-    let stdout_content = String::from_utf8(stdout_stream).unwrap();
-    assert_eq!(stdout_content, r#""#);
 }
