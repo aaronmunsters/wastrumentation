@@ -6,12 +6,12 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0.75"
+anyhow = "1.0"
 from-pest = "0.3.2"
-num-integer = "0.1.45"
-pest = "2.7.5"
+num-integer = "0.1"
+pest = "2.7"
 pest-ast = "0.3.4"
-pest_derive = "2.7.5"
+pest_derive = "2.7"
 indoc = "2"
 
 [dev-dependencies]
