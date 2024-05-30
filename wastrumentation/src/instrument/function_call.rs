@@ -148,7 +148,7 @@ fn transform(body: &Vec<Instr>, target: &TargetCall<Idx<Function>>) -> Vec<Instr
                 ]);
             }
             (target, Instr::If(type_, then, None)) => {
-                result.push(Instr::If(*type_, transform(then, target), None))
+                result.push(Instr::If(*type_, transform(then, target), None));
             }
             (target, Instr::If(type_, then, Some(else_))) => result.push(Instr::If(
                 *type_,
@@ -156,10 +156,10 @@ fn transform(body: &Vec<Instr>, target: &TargetCall<Idx<Function>>) -> Vec<Instr
                 Some(transform(else_, target)),
             )),
             (target, Instr::Loop(type_, body)) => {
-                result.push(Instr::Loop(*type_, transform(body, target)))
+                result.push(Instr::Loop(*type_, transform(body, target)));
             }
             (target, Instr::Block(type_, body)) => {
-                result.push(Instr::Block(*type_, transform(body, target)))
+                result.push(Instr::Block(*type_, transform(body, target)));
             }
             _ => result.push(instr.clone()),
         }

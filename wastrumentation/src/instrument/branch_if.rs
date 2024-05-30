@@ -92,7 +92,7 @@ fn transform(body: &Vec<Instr>, target: Target) -> Vec<Instr> {
                         transform(else_, target),
                     ),
                     // STACK: [type_out]
-                ])
+                ]);
             }
             (Target::BrIf(br_if_trap_idx), Instr::BrIf(label)) => {
                 result.extend_from_slice(&[
@@ -107,7 +107,7 @@ fn transform(body: &Vec<Instr>, target: Target) -> Vec<Instr> {
             }
 
             (target, Instr::If(type_, then, None)) => {
-                result.push(Instr::If(*type_, transform(then, target), None))
+                result.push(Instr::If(*type_, transform(then, target), None));
             }
             (target, Instr::If(type_, then, Some(else_))) => result.push(Instr::If(
                 *type_,
@@ -115,10 +115,10 @@ fn transform(body: &Vec<Instr>, target: Target) -> Vec<Instr> {
                 Some(transform(else_, target)),
             )),
             (target, Instr::Loop(type_, body)) => {
-                result.push(Instr::Loop(*type_, transform(body, target)))
+                result.push(Instr::Loop(*type_, transform(body, target)));
             }
             (target, Instr::Block(type_, body)) => {
-                result.push(Instr::Block(*type_, transform(body, target)))
+                result.push(Instr::Block(*type_, transform(body, target)));
             }
             _ => result.push(instr.clone()),
         }

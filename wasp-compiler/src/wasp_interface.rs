@@ -203,7 +203,7 @@ impl From<&Root> for WaspInterface {
                         ..
                     }) => {
                         wasp_interface.generic_interface =
-                            Some(WaspInterface::interface_generic_apply())
+                            Some(WaspInterface::interface_generic_apply());
                     }
                     TrapSignature::TrapApply(TrapApply {
                         apply_hook_signature:
@@ -229,17 +229,17 @@ impl From<&Root> for WaspInterface {
                             ));
                     }
                     TrapSignature::TrapIfThen(_) => {
-                        wasp_interface.if_then_trap = Some(WaspInterface::interface_if_then())
+                        wasp_interface.if_then_trap = Some(WaspInterface::interface_if_then());
                     }
                     TrapSignature::TrapIfThenElse(_) => {
                         wasp_interface.if_then_else_trap =
-                            Some(WaspInterface::interface_if_then_else())
+                            Some(WaspInterface::interface_if_then_else());
                     }
                     TrapSignature::TrapBrIf(_) => {
-                        wasp_interface.br_if_trap = Some(WaspInterface::interface_br_if())
+                        wasp_interface.br_if_trap = Some(WaspInterface::interface_br_if());
                     }
                     TrapSignature::TrapBrTable(_) => {
-                        wasp_interface.br_table_trap = Some(WaspInterface::interface_br_table())
+                        wasp_interface.br_table_trap = Some(WaspInterface::interface_br_table());
                     }
                     TrapSignature::TrapCall(TrapCall {
                         call_qualifier: CallQualifier::Before,
@@ -249,27 +249,27 @@ impl From<&Root> for WaspInterface {
                         call_qualifier: CallQualifier::After,
                         ..
                     }) => {
-                        wasp_interface.post_trap_call = Some(WaspInterface::interface_call_post())
+                        wasp_interface.post_trap_call = Some(WaspInterface::interface_call_post());
                     }
                     TrapSignature::TrapCallIndirectBefore(TrapCallIndirectBefore { .. }) => {
                         wasp_interface.pre_trap_call_indirect =
-                            Some(WaspInterface::interface_call_indirect_pre())
+                            Some(WaspInterface::interface_call_indirect_pre());
                     }
                     TrapSignature::TrapCallIndirectAfter(TrapCallIndirectAfter { .. }) => {
                         wasp_interface.post_trap_call_indirect =
-                            Some(WaspInterface::interface_call_indirect_post())
+                            Some(WaspInterface::interface_call_indirect_post());
                     }
                     TrapSignature::TrapBlockBefore(TrapBlockBefore { .. }) => {
-                        wasp_interface.pre_block = Some(WaspInterface::interface_block_pre())
+                        wasp_interface.pre_block = Some(WaspInterface::interface_block_pre());
                     }
                     TrapSignature::TrapBlockAfter(TrapBlockAfter { .. }) => {
-                        wasp_interface.post_block = Some(WaspInterface::interface_block_post())
+                        wasp_interface.post_block = Some(WaspInterface::interface_block_post());
                     }
                     TrapSignature::TrapLoopBefore(TrapLoopBefore { .. }) => {
-                        wasp_interface.pre_loop = Some(WaspInterface::interface_loop_pre())
+                        wasp_interface.pre_loop = Some(WaspInterface::interface_loop_pre());
                     }
                     TrapSignature::TrapLoopAfter(TrapLoopAfter { .. }) => {
-                        wasp_interface.post_loop = Some(WaspInterface::interface_loop_post())
+                        wasp_interface.post_loop = Some(WaspInterface::interface_loop_post());
                     }
                 }
             };
