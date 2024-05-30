@@ -16,6 +16,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Update rustup
+        run: rustup update $toolchain && rustup default $toolchain
+        shell: bash
       - name: Install Binaryen
         run: |
           mkdir $HOME/binaryen
@@ -24,9 +27,6 @@ jobs:
           echo "$HOME/binaryen/bin" >> $GITHUB_PATH
       - name: Verify Binaryen installation
         run: wasm-merge --version
-      - name: Update rustup
-        run: rustup update $toolchain && rustup default $toolchain
-        shell: bash
       - name: Build all targets with all features
         run: cargo build
         shell: bash
