@@ -33,10 +33,7 @@ jobs:
       - name: Install latest nextest release
         uses: taiki-e/install-action@nextest
       - name: Test with latest nextest release
-        uses: actions-rs/cargo@v1
-        with:
-          command: nextest
-          args: run --all-features
+        run: cargo nextest run --all-features
 
   clippy_check:
     runs-on: ubuntu-latest
