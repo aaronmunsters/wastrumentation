@@ -451,7 +451,7 @@
             "input_program_assertion": "EqualToUninstrumented",
             "post_execution_assertions": []
         },{
-            "analysis":"./analysis/call_chain.wasp",
+            "analysis":"./analysis/call_chain_before_after.wasp",
             "wasi_enabled": false,
             "input_program_assertion": "EqualToUninstrumented",
             "post_execution_assertions": [
@@ -460,6 +460,83 @@
                         "identifier": "amount_of_calls_before",
                         "result": {
                             "I32": 5
+                        }
+                    }
+                },
+                {
+                    "GlobalValueEquals": {
+                        "identifier": "amount_of_calls_after",
+                        "result": {
+                            "I32": 5
+                        }
+                    }
+                },
+                {
+                    "GlobalValueEquals": {
+                        "identifier": "amount_of_apply_before",
+                        "result": {
+                            "I32": 6
+                        }
+                    }
+                },
+                {
+                    "GlobalValueEquals": {
+                        "identifier": "amount_of_apply_after",
+                        "result": {
+                            "I32": 6
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "analysis":"./analysis/call_chain_before.wasp",
+            "wasi_enabled": false,
+            "input_program_assertion": "EqualToUninstrumented",
+            "post_execution_assertions": [
+                {
+                    "GlobalValueEquals": {
+                        "identifier": "amount_of_calls_before",
+                        "result": {
+                            "I32": 5
+                        }
+                    }
+                },
+                {
+                    "GlobalValueEquals": {
+                        "identifier": "amount_of_calls_after",
+                        "result": {
+                            "I32": 0
+                        }
+                    }
+                },
+                {
+                    "GlobalValueEquals": {
+                        "identifier": "amount_of_apply_before",
+                        "result": {
+                            "I32": 6
+                        }
+                    }
+                },
+                {
+                    "GlobalValueEquals": {
+                        "identifier": "amount_of_apply_after",
+                        "result": {
+                            "I32": 6
+                        }
+                    }
+                }
+            ]
+        },{
+            "analysis":"./analysis/call_chain_after.wasp",
+            "wasi_enabled": false,
+            "input_program_assertion": "EqualToUninstrumented",
+            "post_execution_assertions": [
+                {
+                    "GlobalValueEquals": {
+                        "identifier": "amount_of_calls_before",
+                        "result": {
+                            "I32": 0
                         }
                     }
                 },
