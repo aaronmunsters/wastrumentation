@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, vec};
 
 use crate::wasm_constructs::{Signature, WasmType};
 
@@ -118,7 +118,7 @@ fn generate_allocate_generic(rets_count: usize, args_count: usize) -> String {
 
     // eg: `sizeof<R0>() +  sizeof<R1>() +  sizeof<T0>() +  sizeof<T1>()`
     let total_allocation = Signature::compute_type_allocation(rets_count, args_count);
-    let all_stores = (0..args_count)
+    let all_stores_followed_by_return = (0..args_count)
         .map(|n| {
             let offset = arg_offset(n, rets_count, args_count);
             format!(
@@ -127,6 +127,7 @@ fn generate_allocate_generic(rets_count: usize, args_count: usize) -> String {
     wastrumentation_memory_store<T{n}>(stack_begin, a{n}, a{n}_offset); // inlined"
             )
         })
+        .chain(vec!["return stack_begin;".into()])
         .collect::<Vec<String>>()
         .join("\n    ");
 
@@ -136,8 +137,7 @@ fn generate_allocate_generic(rets_count: usize, args_count: usize) -> String {
 function allocate_{generic_name}{string_all_generics}({signature}): usize {{
     const to_allocate = {total_allocation}; // constant folded
     const stack_begin = stack_allocate(to_allocate); // inlined
-    {all_stores}
-    return stack_begin;
+    {all_stores_followed_by_return}
 }}"
     )
 }
@@ -194,7 +194,7 @@ fn generate_allocate_types_buffer_specialized(signature: &Signature) -> String {
     // eg: [`f64`, `f32`]
     let signature_args = &signature.argument_types;
     // eg: `i64, i32, f64, f32`
-    let all_stores = signature_rets
+    let all_stores_followed_by_return = signature_rets
         .iter()
         .chain(signature_args.iter())
         .map(WasmType::runtime_enum_value)
@@ -202,6 +202,7 @@ fn generate_allocate_types_buffer_specialized(signature: &Signature) -> String {
         .map(|(index, enum_value)| {
             format!("wastrumentation_memory_store<i32>(types_buffer, {enum_value}, (sizeof<i32>()*{index}));")
         })
+        .chain(vec!["return types_buffer;".into()])
         .collect::<Vec<String>>()
         .join("\n    ");
 
@@ -212,8 +213,7 @@ fn generate_allocate_types_buffer_specialized(signature: &Signature) -> String {
         "
 export function allocate_types_{mangled_name}(): usize {{
     const types_buffer = allocate_signature_types_buffer_{mangled_by_count_name}();
-    {all_stores}
-    return types_buffer;
+    {all_stores_followed_by_return}
 }}"
     )
 }
@@ -413,12 +413,13 @@ fn generate_store_rets_generic(rets_count: usize, args_count: usize) -> String {
         .collect::<Vec<String>>()
         .join(", ");
     let all_stores = (0..rets_count)
-        .map(|n| {
-            format!(
-                "// store a{n}
-    store_ret{n}_{generic_name}{string_all_generics}(stack_ptr, a{n});"
-            )
+        .flat_map(|n| {
+            vec![
+                format!("// store a{n}"),
+                format!("store_ret{n}_{generic_name}{string_all_generics}(stack_ptr, a{n});"),
+            ]
         })
+        .chain(vec!["return;".into()])
         .collect::<Vec<String>>()
         .join("\n    ");
 
@@ -427,7 +428,6 @@ fn generate_store_rets_generic(rets_count: usize, args_count: usize) -> String {
 @inline
 function store_rets_{generic_name}{string_all_generics}({total_signature}): void {{
     {all_stores}
-    return;
 }}"
     )
 }
@@ -475,7 +475,7 @@ const LIB_BOILERPLATE: &str = include_str!("lib_boilerplate.ts");
 pub fn generate_lib(signatures: &[Signature]) -> String {
     let mut lib = String::from(LIB_BOILERPLATE);
     lib.push_str(&generate_lib_for(signatures));
-    lib
+    format!("{lib}\n")
 }
 
 fn generate_lib_for(signatures: &[Signature]) -> String {
@@ -592,6 +592,17 @@ mod tests {
 
     #[test]
     fn generating_allocate_generic_instructions() {
+        assert_eq!(
+            generate_allocate_generic(0, 0),
+            "
+@inline
+function allocate_ret_0_arg_0(): usize {
+    const to_allocate = 0; // constant folded
+    const stack_begin = stack_allocate(to_allocate); // inlined
+    return stack_begin;
+}"
+        );
+
         assert_eq!(
             generate_allocate_generic(0, 1),
             "
@@ -1001,7 +1012,6 @@ export function free_types_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(): void {
             "
 @inline
 function store_rets_ret_0_arg_1<T0>(stack_ptr: usize): void {
-    
     return;
 }",
         );
@@ -1065,6 +1075,18 @@ function allocate_signature_types_buffer_ret_5_arg_5(): usize {
 
     #[test]
     fn generating_allocate_types_buffer_specialized_instruction() {
+        let signature_empty = Signature {
+            return_types: vec![],
+            argument_types: vec![],
+        };
+        assert_eq!(
+            generate_allocate_types_buffer_specialized(&signature_empty),
+            "
+export function allocate_types_ret__arg_(): usize {
+    const types_buffer = allocate_signature_types_buffer_ret_0_arg_0();
+    return types_buffer;
+}"
+        );
         let signature_0 = Signature {
             return_types: vec![WasmType::F64, WasmType::F32],
             argument_types: vec![WasmType::I32, WasmType::I64],

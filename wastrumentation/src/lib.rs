@@ -113,7 +113,7 @@ mod tests {
                 return a > b ? a : b;
             }
         <<<GUEST<<<)
-    
+
         (advice apply (func    WasmFunction)
                       (args    MutDynArgs)
                       (results MutDynResults) >>>GUEST>>>
@@ -123,8 +123,8 @@ mod tests {
             // [3] Ensure call count is incremented
             // After call:
             // [4] Ensure call count is decremented
-    
-    
+
+
             /* [1] */
             call_stack += 1;
             /* [2] */
@@ -134,7 +134,7 @@ mod tests {
             func.apply();
             /* [4] */
             call_stack -= 1;
-    
+
         <<<GUEST<<<))"#;
 
     const SOURCE_CODE_INPUT: &str = r#"

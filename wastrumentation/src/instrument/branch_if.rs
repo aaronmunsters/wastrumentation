@@ -222,7 +222,7 @@ mod tests {
             (if (type $void=>i32)
               (i32.eq (i32.const 1) (local.get $a))
               (then (i32.const 1))
-              (else 
+              (else
                 (if (type $void=>i32)
                   (i32.eq (i32.const 2) (local.get $a))
                   (then (i32.const 2))

@@ -12,7 +12,25 @@ env:
   binaryen_version: 117
 
 jobs:
+  pre-commit-hooks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checking out code from GitHub
+        uses: actions/checkout@v4
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pre-commit
+        run: |
+          pip install pre-commit
+          pre-commit --version
+      - name: Run pre-commit on all files
+        run: |
+          pre-commit run --all-files --show-diff-on-failure
+
   build_test:
+    needs: pre-commit-hooks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -36,6 +54,7 @@ jobs:
         run: cargo nextest run --all-features
 
   clippy_check:
+    needs: pre-commit-hooks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

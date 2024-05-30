@@ -87,7 +87,7 @@ class MutDynArgsResults {
         this.resc = resc;
         this.sigv = sigv;
         this.sigtypv = sigtypv;
-        
+
         /**
          *   <4>   <4>     <8>     <4>
          * |-i32-|-i32-|---f64---|-i32-|
@@ -189,7 +189,7 @@ class MutDynArgsResults {
 abstract class DynValues {
     protected mutDynArgsResults: MutDynArgsResults;
     readonly length: i32;
-    
+
     constructor(mutDynArgsResults: MutDynArgsResults) {
         this.mutDynArgsResults = mutDynArgsResults;
     }

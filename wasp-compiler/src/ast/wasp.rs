@@ -836,7 +836,7 @@ mod tests {
 
         for (parameter_arguments, parameter_results, message) in outcomes {
             let program = format!(
-                "(aspect 
+                "(aspect
                     (advice apply (func WasmFunction) {} {}
                         >>>GUEST>>>🟢<<<GUEST<<<))",
                 parameter_arguments, parameter_results

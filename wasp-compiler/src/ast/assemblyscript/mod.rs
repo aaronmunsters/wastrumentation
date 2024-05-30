@@ -114,7 +114,7 @@ impl ApplyGen {
             parameter_results,
         } = self;
         format!(
-            indoc! {r#"
+            indoc! { r#"
             export function {GENERIC_APPLY_FUNCTION_NAME}(
                 f_apply: i32,
                 argc: i32,
@@ -133,8 +133,7 @@ impl ApplyGen {
                 let {parameter_results} = new MutDynRess(argsResults);
                 {body}
             }}
-            "#
-            },
+            "# },
             GENERIC_APPLY_FUNCTION_NAME = FUNCTION_NAME_GENERIC_APPLY,
             parameter_function = parameter_function,
             parameter_arguments = parameter_arguments,
@@ -219,10 +218,14 @@ impl WasmImport {
             .collect::<Vec<String>>()
             .join(", ");
         format!(
-            r#"
-        @external("{namespace}", "{name}")
-        declare function {name}({args_signature}): {ress_signature};        
-        "#
+            indoc! { r#"
+            @external("{namespace}", "{name}")
+            declare function {name}({args_signature}): {ress_signature};
+            "# },
+            namespace = namespace,
+            name = name,
+            args_signature = args_signature,
+            ress_signature = ress_signature,
         )
     }
 }
@@ -286,7 +289,7 @@ impl ApplySpe {
         let exported_func_inst_name = export.name;
 
         format!(
-            r#"
+            indoc! { r#"
             {import_declaration}
             export function {exported_func_inst_name}({args_signature}): {ress_signature} {{
                 let func = {external_call_base_name};
@@ -294,7 +297,13 @@ impl ApplySpe {
                     {body}
                 }}
             }}
-            "#
+            "# },
+            import_declaration = import_declaration,
+            exported_func_inst_name = exported_func_inst_name,
+            args_signature = args_signature,
+            ress_signature = ress_signature,
+            external_call_base_name = external_call_base_name,
+            body = body,
         )
     }
 
@@ -332,7 +341,7 @@ impl TrapIfThen {
         } = &self;
 
         format!(
-            indoc! {r#"
+            indoc! { r#"
             export function {FUNCTION_NAME_SPECIALIZED_IF_THEN}(
                 path_kontinuation: i32,
             ): i32 {{
@@ -341,8 +350,7 @@ impl TrapIfThen {
                 // Fallback, if no return value
                 return path_kontinuation;
             }}
-            "#
-            },
+            "# },
             FUNCTION_NAME_SPECIALIZED_IF_THEN = FUNCTION_NAME_SPECIALIZED_IF_THEN,
             body = body,
             parameter_condition = parameter_condition,
@@ -359,7 +367,7 @@ impl TrapIfThenElse {
         } = &self;
 
         format!(
-            indoc! {r#"
+            indoc! { r#"
             export function {FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE}(
                 path_kontinuation: i32,
             ): i32 {{
@@ -368,8 +376,7 @@ impl TrapIfThenElse {
                 // Fallback, if no return value
                 return path_kontinuation;
             }}
-            "#
-            },
+            "# },
             FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE = FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE,
             body = body,
             parameter_condition = parameter_condition,
@@ -387,7 +394,7 @@ impl TrapBrIf {
         } = &self;
 
         format!(
-            indoc! {r#"
+            indoc! { r#"
             export function {FUNCTION_NAME_SPECIALIZED_BR_IF}(
                 path_kontinuation: i32,
                 low_level_label: i32,
@@ -418,7 +425,7 @@ impl TrapBrTable {
         } = &self;
 
         format!(
-            indoc! {r#"
+            indoc! { r#"
             export function {FUNCTION_NAME_SPECIALIZED_BR_TABLE}(
                 br_table_target: i32,
                 br_table_default: i32,
@@ -454,7 +461,7 @@ impl TrapCall {
         };
 
         format!(
-            indoc! {r#"
+            indoc! { r#"
             export function {specialized_name}(
                 function_target: i32,
             ): void {{
@@ -480,7 +487,7 @@ impl TrapCallIndirectBefore {
         } = &self;
 
         format!(
-            indoc! {r#"
+            indoc! { r#"
             export function {FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_PRE}(
                 function_table_index: i32, // NOTE: index first, eases transformation!
                 function_table: i32,
@@ -511,7 +518,7 @@ impl TrapCallIndirectAfter {
         } = &self;
 
         format!(
-            indoc! {r#"
+            indoc! { r#"
             export function {FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_POST}(
                 function_table: i32,
             ): void {{
@@ -534,7 +541,7 @@ impl TrapBlockBefore {
         let Self { body } = &self;
 
         format!(
-            indoc! {r#"
+            indoc! { r#"
             export function {FUNCTION_NAME_BLOCK_PRE}(
                 function_table: i32,
             ): void {{
@@ -554,14 +561,13 @@ impl TrapBlockAfter {
         let Self { body } = &self;
 
         format!(
-            indoc! {r#"
+            indoc! { r#"
             export function {FUNCTION_NAME_BLOCK_POST}(
                 function_table: i32,
             ): void {{
                 {body}
             }}
-            "#
-            },
+            "# },
             FUNCTION_NAME_BLOCK_POST = FUNCTION_NAME_BLOCK_POST,
             body = body,
         )
@@ -574,14 +580,13 @@ impl TrapLoopBefore {
         let Self { body } = &self;
 
         format!(
-            indoc! {r#"
+            indoc! { r#"
             export function {FUNCTION_NAME_LOOP_PRE}(
                 function_table: i32,
             ): void {{
                 {body}
             }}
-            "#
-            },
+            "# },
             FUNCTION_NAME_LOOP_PRE = FUNCTION_NAME_LOOP_PRE,
             body = body,
         )
@@ -594,14 +599,13 @@ impl TrapLoopAfter {
         let Self { body } = &self;
 
         format!(
-            indoc! {r#"
+            indoc! { r#"
             export function {FUNCTION_NAME_LOOP_POST}(
                 function_table: i32,
             ): void {{
                 {body}
             }}
-            "#
-            },
+            "# },
             FUNCTION_NAME_LOOP_POST = FUNCTION_NAME_LOOP_POST,
             body = body,
         )
@@ -639,25 +643,22 @@ mod tests {
                     identifier_type: WasmType::F64,
                 }],
             }),
-            body: " console.log(a); return func(a); ".into(),
+            body: "console.log(a); return func(a);".into(),
         });
 
         assert_eq!(
             ast.to_assemblyscript(),
-            format!(
-                r#"
-            
-        @external("transformed_input", "call_base_mut_args_i32_f32_i64_ress_f64")
-        declare function call_base_mut_args_i32_f32_i64_ress_f64(a: i32, b: f32, c: i64): f64;        
-        
-            export function apply_func_mut_args_i32_f32_i64_ress_f64(a: i32, b: f32, c: i64): f64 {{
-                let func = call_base_mut_args_i32_f32_i64_ress_f64;
-                {{
-                     console.log(a); return func(a); 
-                }}
-            }}
-            "#
-            )
+            indoc! { r#"
+                @external("transformed_input", "call_base_mut_args_i32_f32_i64_ress_f64")
+                declare function call_base_mut_args_i32_f32_i64_ress_f64(a: i32, b: f32, c: i64): f64;
+
+                export function apply_func_mut_args_i32_f32_i64_ress_f64(a: i32, b: f32, c: i64): f64 {
+                    let func = call_base_mut_args_i32_f32_i64_ress_f64;
+                    {
+                        console.log(a); return func(a);
+                    }
+                }
+                "# }
         )
     }
 
@@ -686,25 +687,22 @@ mod tests {
                     identifier_type: WasmType::F64,
                 }],
             }),
-            body: " console.log(a); return func(a); ".into(),
+            body: "console.log(a); return func(a);".into(),
         });
 
         assert_eq!(
             ast.to_assemblyscript(),
-            format!(
-                r#"
-            
-        @external("transformed_input", "call_base_args_i32_f32_i64_ress_f64")
-        declare function call_base_args_i32_f32_i64_ress_f64(a: i32, b: f32, c: i64): f64;        
-        
-            export function apply_func_args_i32_f32_i64_ress_f64(a: i32, b: f32, c: i64): f64 {{
-                let func = call_base_args_i32_f32_i64_ress_f64;
-                {{
-                     console.log(a); return func(a); 
-                }}
-            }}
-            "#
-            )
+            indoc! { r#"
+                @external("transformed_input", "call_base_args_i32_f32_i64_ress_f64")
+                declare function call_base_args_i32_f32_i64_ress_f64(a: i32, b: f32, c: i64): f64;
+
+                export function apply_func_args_i32_f32_i64_ress_f64(a: i32, b: f32, c: i64): f64 {
+                    let func = call_base_args_i32_f32_i64_ress_f64;
+                    {
+                        console.log(a); return func(a);
+                    }
+                }
+                "# }
         )
     }
 
@@ -792,16 +790,10 @@ mod tests {
             (aspect
                 (global >>>GUEST>>>console.log("Hello world!");
                 <<<GUEST<<<)
-            
                 (advice apply (func    WasmFunction)
-                            (args    MutDynArgs)
-                            (results MutDynResults) >>>GUEST>>>
-                    console.log(args.get<i32>(0));
-                    func.apply();
-                <<<GUEST<<<)
-                (advice if_then_else (cond Condition) >>>GUEST>>>
-                    console.log('ite');
-                <<<GUEST<<<))"# };
+                              (args    MutDynArgs)
+                              (results MutDynResults) >>>GUEST>>>console.log(args.get<i32>(0)); func.apply();<<<GUEST<<<)
+                (advice if_then_else (cond Condition) >>>GUEST>>>console.log('ite');<<<GUEST<<<))"# };
         let assemblyscript_program = AssemblyScriptProgram::try_from(input_program).unwrap();
         let expected_outcome = format!(
             "{}{}{}",
@@ -825,18 +817,13 @@ mod tests {
                 );
                 let args = new MutDynArgs(argsResults);
                 let results = new MutDynRess(argsResults);
-                
-                    console.log(args.get<i32>(0));
-                    func.apply();
-                
+                console.log(args.get<i32>(0)); func.apply();
             }
             export function specialized_if_then_else_k(
                 path_kontinuation: i32,
             ): i32 {
                 let cond = new ParameterIfThenElseCondition(path_kontinuation);
-                
-                    console.log('ite');
-                
+                console.log('ite');
                 // Fallback, if no return value
                 return path_kontinuation;
             }
@@ -849,7 +836,7 @@ mod tests {
     #[test]
     fn should_debug() {
         let assemblyscript_program = AssemblyScriptProgram {
-            content: r#"console.log(43)"#.to_string(),
+            content: "console.log(43)".to_string(),
         };
         assert_eq!(
             format!("{assemblyscript_program:?}"),

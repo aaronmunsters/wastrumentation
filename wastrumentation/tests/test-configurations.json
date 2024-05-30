@@ -1,680 +1,977 @@
 [
-    {
-        "input_program": {
-            "path":"./input-programs/wat/add_three.wat",
-            "type": "Wat"
-        },
-        "uninstrumented_assertion": {
-            "input_entry_point":"add_three",
-            "arguments":[{"I32":1}, {"I32":2}, {"I32":3}],
-            "results":[{"I32":6}],
-            "post_execution_assertions": []
-        },
-        "instrumented_assertions": [{
-            "analysis":"./analysis/forward.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": "EqualToUninstrumented",
-            "post_execution_assertions": []
-        },{
-            "analysis":"./analysis/call_stack.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": "EqualToUninstrumented",
-            "post_execution_assertions": [
-                {
-                    "GlobalValueEquals": {
-                        "identifier": "amount_of_calls",
-                        "result": {"I32": 0}
-                    }
-                },
-                {
-                    "GlobalValueEquals": {
-                        "identifier": "max_call_depth",
-                        "result": {"I32": 0}}
-                },
-                {
-                    "GlobalValueEquals": {
-                        "identifier": "amount_of_applys",
-                        "result": {"I32": 1}
-                    }
-                },
-                {
-                    "GlobalValueEquals": {
-                        "identifier": "max_apply_depth",
-                        "result": {"I32": 1}}
-                }
-           ]
-        }]
+  {
+    "input_program": {
+      "path": "./input-programs/wat/add_three.wat",
+      "type": "Wat"
     },
-    {
-        "input_program": {
-            "path":"./input-programs/wat/fib.wat",
-            "type": "Wat"
-        },
-        "uninstrumented_assertion": {
-            "input_entry_point":"fib",
-            "arguments":[{"I32":10}],
-            "results":[{"I32":89}],
-            "post_execution_assertions": []
-        },
-        "instrumented_assertions": [{
-            "analysis":"./analysis/forward.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": "EqualToUninstrumented",
-            "post_execution_assertions": []
-        },{
-            "analysis":"./analysis/call_stack.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": "EqualToUninstrumented",
-            "post_execution_assertions": [
-                {
-                    "GlobalValueEquals": {
-                        "identifier": "amount_of_calls",
-                        "result": {"I32": 176}
-                    }
-                },
-                {
-                    "GlobalValueEquals": {
-                        "identifier": "max_call_depth",
-                        "result": {"I32": 9}}
-                },
-                {
-                    "GlobalValueEquals": {
-                        "identifier": "amount_of_applys",
-                        "result": {"I32": 177}
-                    }
-                },
-                {
-                    "GlobalValueEquals": {
-                        "identifier": "max_apply_depth",
-                        "result": {"I32": 10}}
-                }
-           ]
-        }]
-    },
-    {
-        "input_program": {
-            "path":"./input-programs/wat/different_signatures.wat",
-            "type": "Wat"
-        },
-        "uninstrumented_assertion": {
-            "input_entry_point":"execute_tests",
-            "arguments":[],
-            "results":[],
-            "post_execution_assertions": []
-        },
-        "instrumented_assertions": [{
-            "analysis":"./analysis/forward.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": "EqualToUninstrumented",
-            "post_execution_assertions": []
-        },{
-            "analysis":"./analysis/signatures_check.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": "EqualToUninstrumented",
-            "post_execution_assertions": [
-                {
-                    "GlobalValueEquals": {
-                        "identifier": "all_expectations_met",
-                        "result": {"I32": 1}
-                    }
-                }
-           ]
-        }]
-    },
-    {
-        "input_program": {
-            "path":"./input-programs/assemblyscript/controlflow-recursive.ts",
-            "type": {
-                "AssemblyScript": {
-                    "wasi_enabled": false
-                }
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/forward.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      },
+      {
+        "analysis": "./analysis/call_stack.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [
+          {
+            "GlobalValueEquals": {
+              "identifier": "amount_of_calls",
+              "result": {
+                "I32": 0
+              }
             }
-        },
-        "uninstrumented_assertion": {
-            "input_entry_point":"execute_tests",
-            "arguments":[],
-            "results":[],
-            "post_execution_assertions": []
-        },
-        "instrumented_assertions": [{
-            "analysis":"./analysis/forward.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": "EqualToUninstrumented",
-            "post_execution_assertions": []
-        },{
-            "analysis":"./analysis/call_stack.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": "EqualToUninstrumented",
-            "post_execution_assertions": [
-                {
-                    "GlobalValueEquals": {
-                        "identifier": "amount_of_calls",
-                        "result": {"I32": 981956}
-                    }
-                },
-                {
-                    "GlobalValueEquals": {
-                        "identifier": "max_call_depth",
-                        "result": {"I32": 255}}
-                },
-                {
-                    "GlobalValueEquals": {
-                        "identifier": "amount_of_applys",
-                        "result": {"I32": 981957}
-                    }
-                },
-                {
-                    "GlobalValueEquals": {
-                        "identifier": "max_apply_depth",
-                        "result": {"I32": 256}}
-                }
-           ]
-        }]
-    },
-    {
-        "input_program": {
-            "path":"./input-programs/assemblyscript/simply_return.ts",
-            "type": {
-                "AssemblyScript": {
-                    "wasi_enabled": false
-                }
+          },
+          {
+            "GlobalValueEquals": {
+              "identifier": "max_call_depth",
+              "result": {
+                "I32": 0
+              }
             }
-        },"uninstrumented_assertion": {
-            "input_entry_point":"main",
-            "arguments":[],
-            "results":[{"I32":10}],
-            "post_execution_assertions": []
-        },
-        "instrumented_assertions": [{
-            "analysis":"./analysis/forward.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": "EqualToUninstrumented",
-            "post_execution_assertions": []
-        },{
-            "analysis":"./analysis/set_arg_ret_to_zero.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": {
-                "DifferentReturnValue":[{"I32":0}]
-            },
-            "post_execution_assertions": []
-        }]
-    },
-    {
-        "input_program": {
-            "path":"./input-programs/wat/if-then-else-simple.wat",
-            "type": "Wat"
-        },
-        "uninstrumented_assertion": {
-            "input_entry_point":"main",
-            "arguments":[{"I32":0}],
-            "results":[{"I32":1}],
-            "post_execution_assertions": []
-        },
-        "instrumented_assertions": [{
-            "analysis":"./analysis/forward.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": "EqualToUninstrumented",
-            "post_execution_assertions": []
-        },{
-            "analysis":"./analysis/if-then-else-alter.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": {
-                "DifferentReturnValue": [{"I32": 2}]
-            },
-            "post_execution_assertions": []
-        }]
-    },
-    {
-        "input_program": {
-            "path":"./input-programs/wat/if-then-else-simple.wat",
-            "type": "Wat"
-        },
-        "uninstrumented_assertion": {
-            "input_entry_point":"main",
-            "arguments":[{"I32":1}],
-            "results":[{"I32":2}],
-            "post_execution_assertions": []
-        },
-        "instrumented_assertions": [{
-            "analysis":"./analysis/if-then-else-alter.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": {
-                "DifferentReturnValue": [{"I32": 1}]
-            },
-            "post_execution_assertions": []
-        }]
-    },{
-        "input_program": {
-            "path":"./input-programs/wat/if-then-else-2-times.wat",
-            "type": "Wat"
-        },
-        "uninstrumented_assertion": {
-            "input_entry_point":"main",
-            "arguments":[],
-            "results":[{"I32":4401001}],
-            "post_execution_assertions": []
-        },
-        "instrumented_assertions": [{
-            "analysis":"./analysis/forward.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": "EqualToUninstrumented",
-            "post_execution_assertions": []
-        },{
-            "analysis":"./analysis/if-then-else-alter.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": {
-                "DifferentReturnValue": [{"I32": 4400110}]
-            },
-            "post_execution_assertions": []
-        }]
-    },{
-        "input_program": {
-            "path":"./input-programs/wat/if-then-simple.wat",
-            "type": "Wat"
-        },
-        "uninstrumented_assertion": {
-            "input_entry_point":"main",
-            "arguments":[{"I32":0}],
-            "results":[{"I32":1}],
-            "post_execution_assertions": []
-        },
-        "instrumented_assertions": [{
-            "analysis":"./analysis/forward.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": "EqualToUninstrumented",
-            "post_execution_assertions": []
-        },{
-            "analysis":"./analysis/if-then-alter.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": {
-                "DifferentReturnValue": [{"I32": 2}]
-            },
-            "post_execution_assertions": []
-        }]
-    },{
-        "input_program": {
-            "path":"./input-programs/wat/if-then-simple.wat",
-            "type": "Wat"
-        },
-        "uninstrumented_assertion": {
-            "input_entry_point":"main",
-            "arguments":[{"I32":1}],
-            "results":[{"I32":2}],
-            "post_execution_assertions": []
-        },
-        "instrumented_assertions": [{
-            "analysis":"./analysis/if-then-alter.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": {
-                "DifferentReturnValue": [{"I32": 1}]
-            },
-            "post_execution_assertions": []
-        }]
-    },{
-        "input_program": {
-            "path":"./input-programs/wat/br-if-to-blocks.wat",
-            "type": "Wat"
-        },
-        "uninstrumented_assertion": {
-            "input_entry_point":"if-label",
-            "arguments":[{"I32":111}],
-            "results":[{"I32":100}],
-            "post_execution_assertions": []
-        },
-        "instrumented_assertions": [{
-            "analysis":"./analysis/forward.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": "EqualToUninstrumented",
-            "post_execution_assertions": []
-        },{
-            "analysis":"./analysis/branch-if-alter.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": {
-                "DifferentReturnValue": [{"I32": 101}]
-            },
-            "post_execution_assertions": []
-        }]
-    },{
-        "input_program": {
-            "path":"./input-programs/wat/br-if-to-blocks.wat",
-            "type": "Wat"
-        },
-        "uninstrumented_assertion": {
-            "input_entry_point":"if-label",
-            "arguments":[{"I32":222}],
-            "results":[{"I32":101}],
-            "post_execution_assertions": []
-        },
-        "instrumented_assertions": [{
-            "analysis":"./analysis/forward.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": "EqualToUninstrumented",
-            "post_execution_assertions": []
-        },{
-            "analysis":"./analysis/branch-if-alter.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": {
-                "DifferentReturnValue": [{"I32": 100}]
-            },
-            "post_execution_assertions": []
-        }]
-    },{
-        "input_program": {
-            "path":"./input-programs/wat/br-if-to-blocks.wat",
-            "type": "Wat"
-        },
-        "uninstrumented_assertion": {
-            "input_entry_point":"if-label",
-            "arguments":[{"I32":333}],
-            "results":[{"I32":111}],
-            "post_execution_assertions": []
-        },
-        "instrumented_assertions": [{
-            "analysis":"./analysis/forward.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": "EqualToUninstrumented",
-            "post_execution_assertions": []
-        },{
-            "analysis":"./analysis/branch-if-alter.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": {
-                "DifferentReturnValue": [{"I32": 100}]
-            },
-            "post_execution_assertions": []
-        }]
-    },
-    {
-        "input_program": {
-            "path":"./input-programs/wat/call_indirect.wat",
-            "type": "Wat"
-        },
-        "uninstrumented_assertion": {
-            "input_entry_point":"main",
-            "arguments":[{"I32":0}, {"I32":10}, {"I32":5}],
-            "results":[{"I32":15}],
-            "post_execution_assertions": []
-        },
-        "instrumented_assertions": [{
-            "analysis":"./analysis/forward.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": "EqualToUninstrumented",
-            "post_execution_assertions": []
-        }]
-    },{
-        "input_program": {
-            "path":"./input-programs/wat/call_indirect.wat",
-            "type": "Wat"
-        },
-        "uninstrumented_assertion": {
-            "input_entry_point":"main",
-            "arguments":[{"I32":1}, {"I32":10}, {"I32":5}],
-            "results":[{"I32":5}],
-            "post_execution_assertions": []
-        },
-        "instrumented_assertions": [{
-            "analysis":"./analysis/forward.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": "EqualToUninstrumented",
-            "post_execution_assertions": []
-        }]
-    },{
-        "input_program": {
-            "path":"./input-programs/wat/call_indirect.wat",
-            "type": "Wat"
-        },
-        "uninstrumented_assertion": {
-            "input_entry_point":"main",
-            "arguments":[{"I32":2}, {"I32":10}, {"I32":5}],
-            "results":[{"I32":50}],
-            "post_execution_assertions": []
-        },
-        "instrumented_assertions": [{
-            "analysis":"./analysis/forward.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": "EqualToUninstrumented",
-            "post_execution_assertions": []
-        }]
-    },{
-        "input_program": {
-            "path": "./input-programs/wat/call_chain.wat",
-            "type": "Wat"
-        },
-        "uninstrumented_assertion": {
-            "input_entry_point":"main",
-            "arguments":[],
-            "results":[],
-            "post_execution_assertions": []
-        },
-        "instrumented_assertions": [{
-            "analysis":"./analysis/forward.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": "EqualToUninstrumented",
-            "post_execution_assertions": []
-        },{
-            "analysis":"./analysis/call_chain_before_after.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": "EqualToUninstrumented",
-            "post_execution_assertions": [
-                {
-                    "GlobalValueEquals": {
-                        "identifier": "amount_of_calls_before",
-                        "result": {
-                            "I32": 5
-                        }
-                    }
-                },
-                {
-                    "GlobalValueEquals": {
-                        "identifier": "amount_of_calls_after",
-                        "result": {
-                            "I32": 5
-                        }
-                    }
-                },
-                {
-                    "GlobalValueEquals": {
-                        "identifier": "amount_of_apply_before",
-                        "result": {
-                            "I32": 6
-                        }
-                    }
-                },
-                {
-                    "GlobalValueEquals": {
-                        "identifier": "amount_of_apply_after",
-                        "result": {
-                            "I32": 6
-                        }
-                    }
-                }
-            ]
+          },
+          {
+            "GlobalValueEquals": {
+              "identifier": "amount_of_applys",
+              "result": {
+                "I32": 1
+              }
+            }
+          },
+          {
+            "GlobalValueEquals": {
+              "identifier": "max_apply_depth",
+              "result": {
+                "I32": 1
+              }
+            }
+          }
+        ],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [
+        {
+          "I32": 1
         },
         {
-            "analysis":"./analysis/call_chain_before.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": "EqualToUninstrumented",
-            "post_execution_assertions": [
-                {
-                    "GlobalValueEquals": {
-                        "identifier": "amount_of_calls_before",
-                        "result": {
-                            "I32": 5
-                        }
-                    }
-                },
-                {
-                    "GlobalValueEquals": {
-                        "identifier": "amount_of_calls_after",
-                        "result": {
-                            "I32": 0
-                        }
-                    }
-                },
-                {
-                    "GlobalValueEquals": {
-                        "identifier": "amount_of_apply_before",
-                        "result": {
-                            "I32": 6
-                        }
-                    }
-                },
-                {
-                    "GlobalValueEquals": {
-                        "identifier": "amount_of_apply_after",
-                        "result": {
-                            "I32": 6
-                        }
-                    }
-                }
-            ]
-        },{
-            "analysis":"./analysis/call_chain_after.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": "EqualToUninstrumented",
-            "post_execution_assertions": [
-                {
-                    "GlobalValueEquals": {
-                        "identifier": "amount_of_calls_before",
-                        "result": {
-                            "I32": 0
-                        }
-                    }
-                },
-                {
-                    "GlobalValueEquals": {
-                        "identifier": "amount_of_calls_after",
-                        "result": {
-                            "I32": 5
-                        }
-                    }
-                },
-                {
-                    "GlobalValueEquals": {
-                        "identifier": "amount_of_apply_before",
-                        "result": {
-                            "I32": 6
-                        }
-                    }
-                },
-                {
-                    "GlobalValueEquals": {
-                        "identifier": "amount_of_apply_after",
-                        "result": {
-                            "I32": 6
-                        }
-                    }
-                }
-            ]
-        }]
-    },{
-        "input_program": {
-            "path": "./input-programs/wat/br-table.wat",
-            "type": "Wat"
+          "I32": 2
         },
-        "uninstrumented_assertion": {
-            "input_entry_point":"main",
-            "arguments":[{
-                "I32": 0
-            }],
-            "results":[{
-                "I32": 0
-            }],
-            "post_execution_assertions": []
-        },
-        "instrumented_assertions": [{
-            "analysis":"./analysis/forward.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": "EqualToUninstrumented",
-            "post_execution_assertions": []
-        },{
-            "analysis":"./analysis/br-table-alter.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": {
-                "DifferentReturnValue":[{"I32":1}]
-            },
-            "post_execution_assertions": []
-        }]
-    },{
-        "input_program": {
-            "path": "./input-programs/wat/br-table.wat",
-            "type": "Wat"
-        },
-        "uninstrumented_assertion": {
-            "input_entry_point":"main",
-            "arguments":[{
-                "I32": 1
-            }],
-            "results":[{
-                "I32": 1
-            }],
-            "post_execution_assertions": []
-        },
-        "instrumented_assertions": [{
-            "analysis":"./analysis/forward.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": "EqualToUninstrumented",
-            "post_execution_assertions": []
-        },{
-            "analysis":"./analysis/br-table-alter.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": {
-                "DifferentReturnValue":[{"I32":2}]
-            },
-            "post_execution_assertions": []
-        }]
-    },{
-        "input_program": {
-            "path": "./input-programs/wat/br-table.wat",
-            "type": "Wat"
-        },
-        "uninstrumented_assertion": {
-            "input_entry_point":"main",
-            "arguments":[{
-                "I32": 2
-            }],
-            "results":[{
-                "I32": 2
-            }],
-            "post_execution_assertions": []
-        },
-        "instrumented_assertions": [{
-            "analysis":"./analysis/forward.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": "EqualToUninstrumented",
-            "post_execution_assertions": []
-        },{
-            "analysis":"./analysis/br-table-alter.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": {
-                "DifferentReturnValue":[{"I32":-1}]
-            },
-            "post_execution_assertions": []
-        }]
-    },{
-        "input_program": {
-            "path": "./input-programs/wat/br-table.wat",
-            "type": "Wat"
-        },
-        "uninstrumented_assertion": {
-            "input_entry_point":"main",
-            "arguments":[{
-                "I32": 5
-            }],
-            "results":[{
-                "I32": -1
-            }],
-            "post_execution_assertions": []
-        },
-        "instrumented_assertions": [{
-            "analysis":"./analysis/forward.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": "EqualToUninstrumented",
-            "post_execution_assertions": []
-        },{
-            "analysis":"./analysis/br-table-alter.wasp",
-            "wasi_enabled": false,
-            "input_program_assertion": "EqualToUninstrumented",
-            "post_execution_assertions": []
-        }]
+        {
+          "I32": 3
+        }
+      ],
+      "input_entry_point": "add_three",
+      "post_execution_assertions": [],
+      "results": [
+        {
+          "I32": 6
+        }
+      ]
     }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/wat/fib.wat",
+      "type": "Wat"
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/forward.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      },
+      {
+        "analysis": "./analysis/call_stack.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [
+          {
+            "GlobalValueEquals": {
+              "identifier": "amount_of_calls",
+              "result": {
+                "I32": 176
+              }
+            }
+          },
+          {
+            "GlobalValueEquals": {
+              "identifier": "max_call_depth",
+              "result": {
+                "I32": 9
+              }
+            }
+          },
+          {
+            "GlobalValueEquals": {
+              "identifier": "amount_of_applys",
+              "result": {
+                "I32": 177
+              }
+            }
+          },
+          {
+            "GlobalValueEquals": {
+              "identifier": "max_apply_depth",
+              "result": {
+                "I32": 10
+              }
+            }
+          }
+        ],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [
+        {
+          "I32": 10
+        }
+      ],
+      "input_entry_point": "fib",
+      "post_execution_assertions": [],
+      "results": [
+        {
+          "I32": 89
+        }
+      ]
+    }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/wat/different_signatures.wat",
+      "type": "Wat"
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/forward.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      },
+      {
+        "analysis": "./analysis/signatures_check.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [
+          {
+            "GlobalValueEquals": {
+              "identifier": "all_expectations_met",
+              "result": {
+                "I32": 1
+              }
+            }
+          }
+        ],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [],
+      "input_entry_point": "execute_tests",
+      "post_execution_assertions": [],
+      "results": []
+    }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/assemblyscript/controlflow-recursive.ts",
+      "type": {
+        "AssemblyScript": {
+          "wasi_enabled": false
+        }
+      }
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/forward.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      },
+      {
+        "analysis": "./analysis/call_stack.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [
+          {
+            "GlobalValueEquals": {
+              "identifier": "amount_of_calls",
+              "result": {
+                "I32": 981956
+              }
+            }
+          },
+          {
+            "GlobalValueEquals": {
+              "identifier": "max_call_depth",
+              "result": {
+                "I32": 255
+              }
+            }
+          },
+          {
+            "GlobalValueEquals": {
+              "identifier": "amount_of_applys",
+              "result": {
+                "I32": 981957
+              }
+            }
+          },
+          {
+            "GlobalValueEquals": {
+              "identifier": "max_apply_depth",
+              "result": {
+                "I32": 256
+              }
+            }
+          }
+        ],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [],
+      "input_entry_point": "execute_tests",
+      "post_execution_assertions": [],
+      "results": []
+    }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/assemblyscript/simply_return.ts",
+      "type": {
+        "AssemblyScript": {
+          "wasi_enabled": false
+        }
+      }
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/forward.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      },
+      {
+        "analysis": "./analysis/set_arg_ret_to_zero.wasp",
+        "input_program_assertion": {
+          "DifferentReturnValue": [
+            {
+              "I32": 0
+            }
+          ]
+        },
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [],
+      "input_entry_point": "main",
+      "post_execution_assertions": [],
+      "results": [
+        {
+          "I32": 10
+        }
+      ]
+    }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/wat/if-then-else-simple.wat",
+      "type": "Wat"
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/forward.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      },
+      {
+        "analysis": "./analysis/if-then-else-alter.wasp",
+        "input_program_assertion": {
+          "DifferentReturnValue": [
+            {
+              "I32": 2
+            }
+          ]
+        },
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [
+        {
+          "I32": 0
+        }
+      ],
+      "input_entry_point": "main",
+      "post_execution_assertions": [],
+      "results": [
+        {
+          "I32": 1
+        }
+      ]
+    }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/wat/if-then-else-simple.wat",
+      "type": "Wat"
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/if-then-else-alter.wasp",
+        "input_program_assertion": {
+          "DifferentReturnValue": [
+            {
+              "I32": 1
+            }
+          ]
+        },
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [
+        {
+          "I32": 1
+        }
+      ],
+      "input_entry_point": "main",
+      "post_execution_assertions": [],
+      "results": [
+        {
+          "I32": 2
+        }
+      ]
+    }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/wat/if-then-else-2-times.wat",
+      "type": "Wat"
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/forward.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      },
+      {
+        "analysis": "./analysis/if-then-else-alter.wasp",
+        "input_program_assertion": {
+          "DifferentReturnValue": [
+            {
+              "I32": 4400110
+            }
+          ]
+        },
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [],
+      "input_entry_point": "main",
+      "post_execution_assertions": [],
+      "results": [
+        {
+          "I32": 4401001
+        }
+      ]
+    }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/wat/if-then-simple.wat",
+      "type": "Wat"
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/forward.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      },
+      {
+        "analysis": "./analysis/if-then-alter.wasp",
+        "input_program_assertion": {
+          "DifferentReturnValue": [
+            {
+              "I32": 2
+            }
+          ]
+        },
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [
+        {
+          "I32": 0
+        }
+      ],
+      "input_entry_point": "main",
+      "post_execution_assertions": [],
+      "results": [
+        {
+          "I32": 1
+        }
+      ]
+    }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/wat/if-then-simple.wat",
+      "type": "Wat"
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/if-then-alter.wasp",
+        "input_program_assertion": {
+          "DifferentReturnValue": [
+            {
+              "I32": 1
+            }
+          ]
+        },
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [
+        {
+          "I32": 1
+        }
+      ],
+      "input_entry_point": "main",
+      "post_execution_assertions": [],
+      "results": [
+        {
+          "I32": 2
+        }
+      ]
+    }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/wat/br-if-to-blocks.wat",
+      "type": "Wat"
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/forward.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      },
+      {
+        "analysis": "./analysis/branch-if-alter.wasp",
+        "input_program_assertion": {
+          "DifferentReturnValue": [
+            {
+              "I32": 101
+            }
+          ]
+        },
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [
+        {
+          "I32": 111
+        }
+      ],
+      "input_entry_point": "if-label",
+      "post_execution_assertions": [],
+      "results": [
+        {
+          "I32": 100
+        }
+      ]
+    }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/wat/br-if-to-blocks.wat",
+      "type": "Wat"
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/forward.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      },
+      {
+        "analysis": "./analysis/branch-if-alter.wasp",
+        "input_program_assertion": {
+          "DifferentReturnValue": [
+            {
+              "I32": 100
+            }
+          ]
+        },
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [
+        {
+          "I32": 222
+        }
+      ],
+      "input_entry_point": "if-label",
+      "post_execution_assertions": [],
+      "results": [
+        {
+          "I32": 101
+        }
+      ]
+    }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/wat/br-if-to-blocks.wat",
+      "type": "Wat"
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/forward.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      },
+      {
+        "analysis": "./analysis/branch-if-alter.wasp",
+        "input_program_assertion": {
+          "DifferentReturnValue": [
+            {
+              "I32": 100
+            }
+          ]
+        },
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [
+        {
+          "I32": 333
+        }
+      ],
+      "input_entry_point": "if-label",
+      "post_execution_assertions": [],
+      "results": [
+        {
+          "I32": 111
+        }
+      ]
+    }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/wat/call_indirect.wat",
+      "type": "Wat"
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/forward.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [
+        {
+          "I32": 0
+        },
+        {
+          "I32": 10
+        },
+        {
+          "I32": 5
+        }
+      ],
+      "input_entry_point": "main",
+      "post_execution_assertions": [],
+      "results": [
+        {
+          "I32": 15
+        }
+      ]
+    }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/wat/call_indirect.wat",
+      "type": "Wat"
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/forward.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [
+        {
+          "I32": 1
+        },
+        {
+          "I32": 10
+        },
+        {
+          "I32": 5
+        }
+      ],
+      "input_entry_point": "main",
+      "post_execution_assertions": [],
+      "results": [
+        {
+          "I32": 5
+        }
+      ]
+    }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/wat/call_indirect.wat",
+      "type": "Wat"
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/forward.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [
+        {
+          "I32": 2
+        },
+        {
+          "I32": 10
+        },
+        {
+          "I32": 5
+        }
+      ],
+      "input_entry_point": "main",
+      "post_execution_assertions": [],
+      "results": [
+        {
+          "I32": 50
+        }
+      ]
+    }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/wat/call_chain.wat",
+      "type": "Wat"
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/forward.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      },
+      {
+        "analysis": "./analysis/call_chain_before_after.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [
+          {
+            "GlobalValueEquals": {
+              "identifier": "amount_of_calls_before",
+              "result": {
+                "I32": 5
+              }
+            }
+          },
+          {
+            "GlobalValueEquals": {
+              "identifier": "amount_of_calls_after",
+              "result": {
+                "I32": 5
+              }
+            }
+          },
+          {
+            "GlobalValueEquals": {
+              "identifier": "amount_of_apply_before",
+              "result": {
+                "I32": 6
+              }
+            }
+          },
+          {
+            "GlobalValueEquals": {
+              "identifier": "amount_of_apply_after",
+              "result": {
+                "I32": 6
+              }
+            }
+          }
+        ],
+        "wasi_enabled": false
+      },
+      {
+        "analysis": "./analysis/call_chain_before.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [
+          {
+            "GlobalValueEquals": {
+              "identifier": "amount_of_calls_before",
+              "result": {
+                "I32": 5
+              }
+            }
+          },
+          {
+            "GlobalValueEquals": {
+              "identifier": "amount_of_calls_after",
+              "result": {
+                "I32": 0
+              }
+            }
+          },
+          {
+            "GlobalValueEquals": {
+              "identifier": "amount_of_apply_before",
+              "result": {
+                "I32": 6
+              }
+            }
+          },
+          {
+            "GlobalValueEquals": {
+              "identifier": "amount_of_apply_after",
+              "result": {
+                "I32": 6
+              }
+            }
+          }
+        ],
+        "wasi_enabled": false
+      },
+      {
+        "analysis": "./analysis/call_chain_after.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [
+          {
+            "GlobalValueEquals": {
+              "identifier": "amount_of_calls_before",
+              "result": {
+                "I32": 0
+              }
+            }
+          },
+          {
+            "GlobalValueEquals": {
+              "identifier": "amount_of_calls_after",
+              "result": {
+                "I32": 5
+              }
+            }
+          },
+          {
+            "GlobalValueEquals": {
+              "identifier": "amount_of_apply_before",
+              "result": {
+                "I32": 6
+              }
+            }
+          },
+          {
+            "GlobalValueEquals": {
+              "identifier": "amount_of_apply_after",
+              "result": {
+                "I32": 6
+              }
+            }
+          }
+        ],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [],
+      "input_entry_point": "main",
+      "post_execution_assertions": [],
+      "results": []
+    }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/wat/br-table.wat",
+      "type": "Wat"
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/forward.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      },
+      {
+        "analysis": "./analysis/br-table-alter.wasp",
+        "input_program_assertion": {
+          "DifferentReturnValue": [
+            {
+              "I32": 1
+            }
+          ]
+        },
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [
+        {
+          "I32": 0
+        }
+      ],
+      "input_entry_point": "main",
+      "post_execution_assertions": [],
+      "results": [
+        {
+          "I32": 0
+        }
+      ]
+    }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/wat/br-table.wat",
+      "type": "Wat"
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/forward.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      },
+      {
+        "analysis": "./analysis/br-table-alter.wasp",
+        "input_program_assertion": {
+          "DifferentReturnValue": [
+            {
+              "I32": 2
+            }
+          ]
+        },
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [
+        {
+          "I32": 1
+        }
+      ],
+      "input_entry_point": "main",
+      "post_execution_assertions": [],
+      "results": [
+        {
+          "I32": 1
+        }
+      ]
+    }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/wat/br-table.wat",
+      "type": "Wat"
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/forward.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      },
+      {
+        "analysis": "./analysis/br-table-alter.wasp",
+        "input_program_assertion": {
+          "DifferentReturnValue": [
+            {
+              "I32": -1
+            }
+          ]
+        },
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [
+        {
+          "I32": 2
+        }
+      ],
+      "input_entry_point": "main",
+      "post_execution_assertions": [],
+      "results": [
+        {
+          "I32": 2
+        }
+      ]
+    }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/wat/br-table.wat",
+      "type": "Wat"
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/forward.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      },
+      {
+        "analysis": "./analysis/br-table-alter.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [
+        {
+          "I32": 5
+        }
+      ],
+      "input_entry_point": "main",
+      "post_execution_assertions": [],
+      "results": [
+        {
+          "I32": -1
+        }
+      ]
+    }
+  }
 ]

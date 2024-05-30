@@ -78,7 +78,7 @@ mod tests {
                     // Keep global function counter
                     let global_function_count = 0;
                     <<<GUEST<<<)
-            
+
                 (advice apply (func    WasmFunction)
                               (args    Args)
                               (results Results)

@@ -18,7 +18,7 @@
             (br_if $add-one-more-and-exit)
             ;; $total += 10;
             (local.set
-              $total  
+              $total
               (i32.add
                 (local.get $total)
                 (i32.const 10))))

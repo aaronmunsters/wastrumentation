@@ -60,7 +60,7 @@
     (func $execute_tests
         (; [TEST] ;)
         (call $void=>void)
-        
+
         (; [TEST] ;)
         (call $i32=>void (i32.const 123456))
 
@@ -78,7 +78,7 @@
         (call $assert (i32.eq (i32.const 3)))
         (call $assert (i32.eq (i32.const 3)))
         (call $assert (i32.eq (i32.const 3)))
-        
+
         (; [TEST] ;)
         (call $i32=>i32_i32
             (i32.const 4))

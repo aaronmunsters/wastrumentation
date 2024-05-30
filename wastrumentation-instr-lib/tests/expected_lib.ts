@@ -3,7 +3,6 @@
 function allocate_ret_0_arg_0(): usize {
     const to_allocate = 0; // constant folded
     const stack_begin = stack_allocate(to_allocate); // inlined
-    
     return stack_begin;
 }
 @inline
@@ -14,7 +13,6 @@ function free_values_ret_0_arg_0(): void {
 }
 @inline
 function store_rets_ret_0_arg_0(stack_ptr: usize): void {
-    
     return;
 }
 @inline
@@ -41,7 +39,6 @@ export function store_rets_ret__arg_(stack_ptr: usize): void {
 };
 export function allocate_types_ret__arg_(): usize {
     const types_buffer = allocate_signature_types_buffer_ret_0_arg_0();
-    
     return types_buffer;
 }
 export function free_types_ret__arg_(): void {
