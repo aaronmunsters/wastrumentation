@@ -36,7 +36,7 @@ fn test_parse_simple() {
 }
 
 fn wat_to_low_level(wat: &str) -> LowLevelBody {
-    let wasm_bytes = wasmer::wat2wasm(wat.as_bytes()).unwrap();
+    let wasm_bytes = wat::parse_str(wat).unwrap();
     let (module, _, _) = wasabi_wasm::Module::from_bytes(&wasm_bytes).unwrap();
     let foo_body = &module.function(0_usize.into()).code().unwrap().body;
     LowLevelBody(foo_body.to_vec())

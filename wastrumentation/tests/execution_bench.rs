@@ -3,7 +3,6 @@ use test_conf::{
     AssemblyScript, InputProgram, InstrumentedAssertion, PostExecutionAssertion,
     UninstrumentedAssertion, WasmValue,
 };
-use wasmer::wat2wasm;
 use wasmtime::*;
 use wastrumentation_instr_lib::std_lib_compile::{
     assemblyscript::compiler_options::{
@@ -202,7 +201,7 @@ impl TestConfiguration {
     }
 
     fn compile_as_wat(&self, content: &[u8]) -> WatModule {
-        let content: Vec<u8> = wat2wasm(content)
+        let content: Vec<u8> = wat::parse_bytes(content)
             .expect("wat2wasm of input program failed")
             .into();
         WatModule(content)

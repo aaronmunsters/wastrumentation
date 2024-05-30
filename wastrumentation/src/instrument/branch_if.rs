@@ -286,7 +286,7 @@ mod tests {
         instrumented_assertions: &[BranchExpectation],
     ) {
         // For execution
-        let wasm_bytes = wasmer::wat2wasm(branch_program_wasm.as_bytes()).unwrap();
+        let wasm_bytes = wat::parse_str(branch_program_wasm).unwrap();
         let (mut wasm_module, _, _) = wasabi_wasm::Module::from_bytes(&wasm_bytes).unwrap();
 
         let assert_outcome = |module: &wasabi_wasm::Module, assertions| {
@@ -334,7 +334,7 @@ mod tests {
               (then (i32.const 1))
               (else (i32.const 2)))))"#;
 
-        let wasm_bytes = wasmer::wat2wasm(MINI_PROGRAM.as_bytes()).unwrap();
+        let wasm_bytes = wat::parse_str(MINI_PROGRAM).unwrap();
         let (mut wasm_module, _, _) = wasabi_wasm::Module::from_bytes(&wasm_bytes).unwrap();
 
         // this 'mimics' that instrumentation before has happened
@@ -361,7 +361,7 @@ mod tests {
         (module
           (func $foo (import "bar" "foo")))"#;
 
-        let wasm_bytes = wasmer::wat2wasm(MINI_PROGRAM.as_bytes()).unwrap();
+        let wasm_bytes = wat::parse_str(MINI_PROGRAM).unwrap();
         let (mut wasm_module, _, _) = wasabi_wasm::Module::from_bytes(&wasm_bytes).unwrap();
 
         // Instrument
@@ -392,7 +392,7 @@ mod tests {
                 (i32.const 5))))
           (export "nestedIfs" (func $main)))"#;
 
-        let wasm_bytes = wasmer::wat2wasm(NESTED_PROGRAM.as_bytes()).unwrap();
+        let wasm_bytes = wat::parse_str(NESTED_PROGRAM).unwrap();
         let (wasm_module, _, _) = wasabi_wasm::Module::from_bytes(&wasm_bytes).unwrap();
 
         let body = wasm_module
