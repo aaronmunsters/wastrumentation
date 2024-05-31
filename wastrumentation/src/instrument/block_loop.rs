@@ -24,36 +24,36 @@ fn transform(body: &Vec<Instr>, target: Target) -> Vec<Instr> {
 
     for instr in body {
         match (target, instr) {
-            (Target::BlockPre(block_trap_idx), Instr::Block(type_, body)) => {
+            (Target::BlockPre(trap_idx), Instr::Block(type_, body)) => {
                 result.extend_from_slice(&[
                     // STACK: [type_in]
-                    Instr::Call(block_trap_idx),
+                    Instr::Call(trap_idx),
                     // STACK: [type_in]
                     Instr::Block(*type_, transform(body, target)),
                 ]);
             }
-            (Target::BlockPost(block_trap_idx), Instr::Block(type_, body)) => {
+            (Target::BlockPost(trap_idx), Instr::Block(type_, body)) => {
                 result.extend_from_slice(&[
                     // STACK: [type_in]
                     Instr::Block(*type_, transform(body, target)),
                     // STACK: [type_in]
-                    Instr::Call(block_trap_idx),
+                    Instr::Call(trap_idx),
                 ]);
             }
-            (Target::LoopPre(block_trap_idx), Instr::Loop(type_, body)) => {
+            (Target::LoopPre(trap_idx), Instr::Loop(type_, body)) => {
                 result.extend_from_slice(&[
                     // STACK: [type_in]
-                    Instr::Call(block_trap_idx),
+                    Instr::Call(trap_idx),
                     // STACK: [type_in]
                     Instr::Loop(*type_, transform(body, target)),
                 ]);
             }
-            (Target::LoopPost(block_trap_idx), Instr::Loop(type_, body)) => {
+            (Target::LoopPost(trap_idx), Instr::Loop(type_, body)) => {
                 result.extend_from_slice(&[
                     // STACK: [type_in]
                     Instr::Loop(*type_, transform(body, target)),
                     // STACK: [type_in]
-                    Instr::Call(block_trap_idx),
+                    Instr::Call(trap_idx),
                 ]);
             }
 
