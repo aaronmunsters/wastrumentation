@@ -36,6 +36,7 @@ pub enum TrapSignature {
     TrapBlockAfter(TrapBlockAfter),
     TrapLoopBefore(TrapLoopBefore),
     TrapLoopAfter(TrapLoopAfter),
+    TrapSelect(TrapSelect),
     TrapCallIndirectBefore(TrapCallIndirectBefore),
     TrapCallIndirectAfter(TrapCallIndirectAfter),
     TrapIfThen(TrapIfThen),
@@ -108,6 +109,15 @@ pub struct TrapLoopBefore {
 pub struct TrapLoopAfter {
     pub body: String,
 }
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct TrapSelect {
+    pub select_formal_condition: SelectFormalCondition,
+    pub body: String,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct SelectFormalCondition(pub String);
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct TrapCallIndirectBefore {
@@ -222,6 +232,9 @@ impl Root {
                 ) || matches!(
                     advice_definition,
                     AdviceDefinition::AdviceTrap(TrapSignature::TrapBrTable { .. })
+                ) || matches!(
+                    advice_definition,
+                    AdviceDefinition::AdviceTrap(TrapSignature::TrapSelect { .. })
                 )
             })
     }
@@ -364,6 +377,13 @@ impl TryFrom<pest_ast::TrapSignature> for TrapSignature {
             pest_ast::TrapSignature::TrapLoopAfter(pest_ast::TrapLoopAfter { body }) => {
                 Ok(TrapSignature::TrapLoopAfter(TrapLoopAfter { body }))
             }
+            pest_ast::TrapSignature::TrapSelect(pest_ast::TrapSelect {
+                body,
+                select_formal_condition,
+            }) => Ok(TrapSignature::TrapSelect(TrapSelect {
+                body,
+                select_formal_condition: select_formal_condition.into(),
+            })),
         }
     }
 }
@@ -413,6 +433,13 @@ impl From<pest_ast::BranchFormalTarget> for BranchFormalTarget {
 impl From<pest_ast::BranchFormalDefault> for BranchFormalDefault {
     fn from(pest: pest_ast::BranchFormalDefault) -> Self {
         let pest_ast::BranchFormalDefault(parameter) = pest;
+        Self(parameter)
+    }
+}
+
+impl From<pest_ast::SelectFormalCondition> for SelectFormalCondition {
+    fn from(pest: pest_ast::SelectFormalCondition) -> Self {
+        let pest_ast::SelectFormalCondition(parameter) = pest;
         Self(parameter)
     }
 }
@@ -659,6 +686,8 @@ mod tests {
             (advice br_table (target  Target)
                              (default Default)
                 >>>GUEST>>>🏓<<<GUEST<<<)
+            (advice select (cond Condition)
+                >>>GUEST>>>🦂<<<GUEST<<<)
             (advice call before
                     (f FunctionIndex)
                 >>>GUEST>>>🧐🏃<<<GUEST<<<)
@@ -785,6 +814,10 @@ mod tests {
                     branch_formal_default: BranchFormalDefault("default".into()),
                     body: "🏓".into(),
                 })),
+                AdviceDefinition::AdviceTrap(TrapSignature::TrapSelect(TrapSelect {
+                    select_formal_condition: SelectFormalCondition("cond".into()),
+                    body: "🦂".into(),
+                })),
                 AdviceDefinition::AdviceTrap(TrapSignature::TrapCall(TrapCall {
                     call_qualifier: CallQualifier::Before,
                     formal_target: FormalTarget("f".into()),
@@ -816,7 +849,10 @@ mod tests {
     fn test_debug() {
         let wasp_root = program_to_wasp_root(CORRECT_PROGRAM).unwrap();
         let formatted = format!("{wasp_root:?}");
-        for guest_code in ["🔴", "🟠", "🟡", "🟢", "🔵", "🟣", "🧂"] {
+        for guest_code in [
+            "🔴", "🟠", "🟡", "🟢", "🔵", "🟣", "🌶", "🧂", "🌿", "🏓", "🦂", "🧐🏃", "👀🏃",
+            "🧐🏄", "👀🏄",
+        ] {
             assert!(formatted.contains(guest_code));
         }
     }

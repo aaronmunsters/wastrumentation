@@ -70,6 +70,7 @@ pub enum TrapSignature {
     TrapBlockAfter(TrapBlockAfter),
     TrapLoopBefore(TrapLoopBefore),
     TrapLoopAfter(TrapLoopAfter),
+    TrapSelect(TrapSelect),
     TrapCallIndirectBefore(TrapCallIndirectBefore),
     TrapCallIndirectAfter(TrapCallIndirectAfter),
     TrapIfThen(TrapIfThen),
@@ -127,6 +128,20 @@ pub struct TrapLoopAfter {
     #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter), with(String::from)))]
     pub body: String,
 }
+
+#[derive(Debug, FromPest)]
+#[pest_ast(rule(Rule::trap_select))]
+pub struct TrapSelect {
+    pub select_formal_condition: SelectFormalCondition,
+    #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter), with(String::from)))]
+    pub body: String,
+}
+
+#[derive(Debug, FromPest)]
+#[pest_ast(rule(Rule::select_formal_condition))]
+pub struct SelectFormalCondition(
+    #[pest_ast(inner(with(span_into_string), with(String::from)))] pub String,
+);
 
 #[derive(Debug, FromPest)]
 #[pest_ast(rule(Rule::trap_call_indirect_before))]
@@ -344,6 +359,8 @@ mod tests {
       (advice br_table (target  Target)
                        (default Default)
           >>>GUEST>>>🏓<<<GUEST<<<)
+      (advice select (cond Condition)
+          >>>GUEST>>>🦂<<<GUEST<<<)
       (advice call before
               (f FunctionIndex)
           >>>GUEST>>>🧐🏃<<<GUEST<<<)
@@ -361,8 +378,8 @@ mod tests {
         let wasp_input = WaspInput::from_pest(&mut parse_tree).unwrap();
         let formatted = format!("{wasp_input:?}");
         for guest_code in [
-            "🔴", "🟠", "🟡", "🟢", "🔵", "🟣", "🌶", "🧂", "🌿", "🏓", "🧐🏃", "👀🏃", "🧐🏄",
-            "👀🏄",
+            "🔴", "🟠", "🟡", "🟢", "🔵", "🟣", "🌶", "🧂", "🌿", "🏓", "🦂", "🧐🏃", "👀🏃",
+            "🧐🏄", "👀🏄",
         ] {
             assert!(formatted.contains(guest_code))
         }

@@ -181,6 +181,7 @@ mod tests {
                     block_post: false,
                     loop_pre: false,
                     loop_post: false,
+                    select: false,
                 },
                 wasp_interface: WaspInterface {
                     inputs: [],
@@ -198,6 +199,7 @@ mod tests {
                     post_block: None,
                     pre_loop: None,
                     post_loop: None,
+                    select: None,
                 },
             }"#
             }

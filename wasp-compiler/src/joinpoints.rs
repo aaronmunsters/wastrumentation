@@ -22,6 +22,7 @@ pub struct JoinPoints {
     pub block_post: bool,
     pub loop_pre: bool,
     pub loop_post: bool,
+    pub select: bool,
 }
 
 #[derive(Debug, Eq, PartialEq, Hash, Clone)]
@@ -49,6 +50,7 @@ impl JoinPoints {
             JoinPoint::BlockAfter => self.block_post = true,
             JoinPoint::LoopBefore => self.loop_pre = true,
             JoinPoint::LoopAfter => self.loop_post = true,
+            JoinPoint::Select => self.select = true,
         };
     }
 }
@@ -60,6 +62,7 @@ enum JoinPoint {
     BlockAfter,
     LoopBefore,
     LoopAfter,
+    Select,
     CallPre,
     CallPost,
     CallIndirectPre,
@@ -109,6 +112,7 @@ impl TrapSignature {
             TrapSignature::TrapBlockAfter(_) => JoinPoint::BlockAfter,
             TrapSignature::TrapLoopBefore(_) => JoinPoint::LoopBefore,
             TrapSignature::TrapLoopAfter(_) => JoinPoint::LoopAfter,
+            TrapSignature::TrapSelect(_) => JoinPoint::Select,
         }
     }
 }
@@ -202,6 +206,7 @@ mod tests {
                 block_post: false,
                 loop_pre: false,
                 loop_post: false,
+                select: false,
             }"#}
         )
     }
@@ -408,6 +413,8 @@ mod tests {
                             >>>GUEST>>>🧐➰<<<GUEST<<<)
                         (advice loop after
                             >>>GUEST>>>👀➰<<<GUEST<<<)
+                        (advice select (cond Condition)
+                            >>>GUEST>>>🦂<<<GUEST<<<)
                     (advice call before (f FunctionIndex)
                         >>>GUEST>>>🧐🏃<<<GUEST<<<)
                     (advice call after (f FunctionIndex)
@@ -447,6 +454,7 @@ mod tests {
                 block_pre: true,
                 loop_post: true,
                 loop_pre: true,
+                select: true,
             }
         )
     }

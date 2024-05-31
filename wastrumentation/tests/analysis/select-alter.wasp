@@ -1,0 +1,11 @@
+(aspect
+    (advice select (condition Condition) >>>GUEST>>>
+        // THEN => SKIP
+        if (condition.is_then) {
+            return condition.continue_else;
+        };
+        // SKIP => THEN
+        if (condition.is_else) {
+            return condition.continue_then;
+        };
+        <<<GUEST<<<))

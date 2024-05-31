@@ -9,6 +9,7 @@ pub enum Target {
     BlockPost(Idx<Function>),
     LoopPre(Idx<Function>),
     LoopPost(Idx<Function>),
+    Select(Idx<Function>),
 }
 
 impl TransformationStrategy for Target {
@@ -54,6 +55,22 @@ fn transform(body: &Vec<Instr>, target: Target) -> Vec<Instr> {
                     Instr::Loop(*type_, transform(body, target)),
                     // STACK: [type_in]
                     Instr::Call(trap_idx),
+                ]);
+            }
+            (Target::Select(trap_idx), Instr::Select) => {
+                result.extend_from_slice(&[
+                    // STACK: [then_type_in, else_type_in, condition_i32]
+                    Instr::Call(trap_idx),
+                    // STACK: [then_type_in, else_type_in, kontinuation]
+                    Instr::Select,
+                ]);
+            }
+            (Target::Select(trap_idx), Instr::TypedSelect(type_)) => {
+                result.extend_from_slice(&[
+                    // STACK: [then_type_in, else_type_in, condition_i32]
+                    Instr::Call(trap_idx),
+                    // STACK: [then_type_in, else_type_in, kontinuation]
+                    Instr::TypedSelect(*type_),
                 ]);
             }
 

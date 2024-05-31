@@ -89,3 +89,5 @@ class ParameterBrTableDefault {
         this.deflt = deflt;
     }
 }
+
+class ParameterSelectCondition extends ParameterIfThenElseCondition {}

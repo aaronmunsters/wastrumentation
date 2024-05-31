@@ -28,6 +28,7 @@ trap_signature = {
   | trap_block_after
   | trap_loop_before
   | trap_loop_after
+  | trap_select
   | trap_call_indirect_before
   | trap_call_indirect_after
   | trap_if_then
@@ -68,6 +69,10 @@ trap_block_after  = { "block" ~ "after" ~ GUEST_BLOCK }
 // TRAP LOOP
 trap_loop_before = { "loop" ~ "before" ~ GUEST_BLOCK }
 trap_loop_after  = { "loop" ~ "after" ~ GUEST_BLOCK }
+
+// TRAP SELECT
+trap_select             = { "select" ~ select_formal_condition ~ GUEST_BLOCK }
+select_formal_condition = { "(" ~ identifier ~ "Condition" ~ ")" }
 
 // TRAP CALL_INDIRECT
 trap_call_indirect_before = { "call_indirect" ~ "before" ~ formal_table ~ formal_index ~ GUEST_BLOCK }

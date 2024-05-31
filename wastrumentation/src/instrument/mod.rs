@@ -17,7 +17,7 @@ use wasabi_wasm::Idx;
 use crate::parse_nesting::HighLevelBody;
 use crate::parse_nesting::LowLevelBody;
 
-use self::block_loop::Target::{BlockPost, BlockPre, LoopPost, LoopPre};
+use self::block_loop::Target::{BlockPost, BlockPre, LoopPost, LoopPre, Select};
 use self::branch_if::Target::{BrIf, BrTable, IfThen, IfThenElse};
 use self::function_application::INSTRUMENTATION_ANALYSIS_MODULE;
 use self::function_call::TargetCall;
@@ -49,6 +49,7 @@ pub fn instrument(module: &[u8], wasp_interface: WaspInterface) -> Instrumentati
         post_block,
         pre_loop,
         post_loop,
+        select,
         inputs: _,
         outputs: _,
     } = wasp_interface;
@@ -90,6 +91,10 @@ pub fn instrument(module: &[u8], wasp_interface: WaspInterface) -> Instrumentati
     post_loop
         .map(|export| module.install(export))
         .map(|index| module.instrument_function_bodies(&target_indices, &LoopPost(index)));
+
+    select
+        .map(|export| module.install(export))
+        .map(|index| module.instrument_function_bodies(&target_indices, &Select(index)));
 
     pre_trap_call_indirect
         .map(|export| module.install(export))

@@ -1,0 +1,19 @@
+Aspect Select
+
+=======
+
+(aspect
+  (advice select (cond Condition) >>>GUEST>>>it  [🦂]<<<GUEST<<<))
+
+=======
+
+(wasp_input
+  (wasp
+    (advice_definition
+      (advice_trap
+        (trap_signature
+          (trap_select
+            (select_formal_condition
+              (identifier: "cond"))
+            (GUEST_BLOCK: ">>>GUEST>>>it  [🦂]<<<GUEST<<<"))))))
+  (EOI: ""))

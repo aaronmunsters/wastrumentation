@@ -11,7 +11,7 @@ use crate::{
     wasp_interface::{
         WasmExport, WasmImport, FUNCTION_NAME_BLOCK_POST, FUNCTION_NAME_BLOCK_PRE,
         FUNCTION_NAME_GENERIC_APPLY, FUNCTION_NAME_LOOP_POST, FUNCTION_NAME_LOOP_PRE,
-        FUNCTION_NAME_SPECIALIZED_BR_IF, FUNCTION_NAME_SPECIALIZED_BR_TABLE,
+        FUNCTION_NAME_SELECT, FUNCTION_NAME_SPECIALIZED_BR_IF, FUNCTION_NAME_SPECIALIZED_BR_TABLE,
         FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_POST, FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_PRE,
         FUNCTION_NAME_SPECIALIZED_CALL_POST, FUNCTION_NAME_SPECIALIZED_CALL_PRE,
         FUNCTION_NAME_SPECIALIZED_IF_THEN, FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE,
@@ -23,7 +23,8 @@ use crate::util::Alphabetical;
 
 use super::wasp::{
     BranchFormalDefault, BranchFormalTarget, FormalIndex, FormalTable, FormalTarget,
-    TrapBlockAfter, TrapBlockBefore, TrapCallIndirectAfter, TrapLoopAfter, TrapLoopBefore,
+    SelectFormalCondition, TrapBlockAfter, TrapBlockBefore, TrapCallIndirectAfter, TrapLoopAfter,
+    TrapLoopBefore, TrapSelect,
 };
 use super::wasp::{TrapBrTable, TrapCallIndirectBefore};
 
@@ -101,6 +102,7 @@ impl TrapSignature {
             TrapSignature::TrapBlockAfter(trap_block_after) => trap_block_after.to_assemblyscript(),
             TrapSignature::TrapLoopBefore(trap_loop_before) => trap_loop_before.to_assemblyscript(),
             TrapSignature::TrapLoopAfter(trap_loop_after) => trap_loop_after.to_assemblyscript(),
+            TrapSignature::TrapSelect(trap_select) => trap_select.to_assemblyscript(),
         }
     }
 }
@@ -600,6 +602,30 @@ impl TrapLoopAfter {
             "# },
             FUNCTION_NAME_LOOP_POST = FUNCTION_NAME_LOOP_POST,
             body = body,
+        )
+        .to_string()
+    }
+}
+
+impl TrapSelect {
+    fn to_assemblyscript(&self) -> String {
+        let Self {
+            body,
+            select_formal_condition: SelectFormalCondition(select_formal_condition),
+        } = &self;
+
+        format!(
+            indoc! { r#"
+            export function {FUNCTION_NAME_SELECT}(path_kontinuation: i32): i32 {{
+                let {select_formal_condition} = new ParameterSelectCondition(path_kontinuation);
+                {body}
+                // Fallback, if no return value
+                return path_kontinuation;
+            }}
+            "# },
+            FUNCTION_NAME_SELECT = FUNCTION_NAME_SELECT,
+            body = body,
+            select_formal_condition = select_formal_condition,
         )
         .to_string()
     }

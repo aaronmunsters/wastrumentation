@@ -1067,5 +1067,97 @@
         }
       ]
     }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/wat/select.wat",
+      "type": "Wat"
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/forward.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      },
+      {
+        "analysis": "./analysis/select-alter.wasp",
+        "input_program_assertion": {
+          "DifferentReturnValue": [
+            {
+              "I32": 111
+            }
+          ]
+        },
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [
+        {
+          "I32": 111
+        },
+        {
+          "I32": 999
+        },
+        {
+          "I32": 0
+        }
+      ],
+      "input_entry_point": "select",
+      "post_execution_assertions": [],
+      "results": [
+        {
+          "I32": 999
+        }
+      ]
+    }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/wat/select.wat",
+      "type": "Wat"
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/forward.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      },
+      {
+        "analysis": "./analysis/select-alter.wasp",
+        "input_program_assertion": {
+          "DifferentReturnValue": [
+            {
+              "I32": 999
+            }
+          ]
+        },
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [
+        {
+          "I32": 111
+        },
+        {
+          "I32": 999
+        },
+        {
+          "I32": 1
+        }
+      ],
+      "input_entry_point": "select",
+      "post_execution_assertions": [],
+      "results": [
+        {
+          "I32": 111
+        }
+      ]
+    }
   }
 ]

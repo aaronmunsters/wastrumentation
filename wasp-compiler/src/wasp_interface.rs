@@ -3,7 +3,7 @@ use crate::ast::{
     wasp::{
         AdviceDefinition, ApplyHookSignature, ApplySpe, Root, TrapApply, TrapBlockAfter,
         TrapBlockBefore, TrapCall, TrapCallIndirectAfter, TrapCallIndirectBefore, TrapLoopAfter,
-        TrapLoopBefore, TrapSignature,
+        TrapLoopBefore, TrapSelect, TrapSignature,
         WasmType::{self, I32},
     },
 };
@@ -14,6 +14,7 @@ pub const FUNCTION_NAME_CALL_BASE: &str = "call_base";
 pub const FUNCTION_NAME_GENERIC_APPLY: &str = "generic_apply";
 pub const FUNCTION_NAME_LOOP_PRE: &str = "loop_pre";
 pub const FUNCTION_NAME_LOOP_POST: &str = "loop_post";
+pub const FUNCTION_NAME_SELECT: &str = "specialized_select";
 pub const FUNCTION_NAME_SPECIALIZED_BR_IF: &str = "specialized_br_if";
 pub const FUNCTION_NAME_SPECIALIZED_BR_TABLE: &str = "specialized_br_table";
 pub const FUNCTION_NAME_SPECIALIZED_CALL_POST: &str = "specialized_call_post";
@@ -42,6 +43,7 @@ pub struct WaspInterface {
     pub post_block: Option<WasmExport>,
     pub pre_loop: Option<WasmExport>,
     pub post_loop: Option<WasmExport>,
+    pub select: Option<WasmExport>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -189,6 +191,15 @@ impl WaspInterface {
             results: vec![],
         }
     }
+    fn interface_select() -> WasmExport {
+        WasmExport {
+            name: FUNCTION_NAME_SELECT.into(),
+            // condition
+            args: vec![I32],
+            // kontinuation
+            results: vec![I32],
+        }
+    }
 }
 
 impl From<&Root> for WaspInterface {
@@ -270,6 +281,9 @@ impl From<&Root> for WaspInterface {
                     }
                     TrapSignature::TrapLoopAfter(TrapLoopAfter { .. }) => {
                         wasp_interface.post_loop = Some(WaspInterface::interface_loop_post());
+                    }
+                    TrapSignature::TrapSelect(TrapSelect { .. }) => {
+                        wasp_interface.select = Some(WaspInterface::interface_select());
                     }
                 }
             };
