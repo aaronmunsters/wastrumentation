@@ -99,7 +99,6 @@ mod tests {
     };
 
     use super::*;
-    use wasmtime::Val::I32;
     use wasmtime::*;
 
     const SOURCE_CODE_WASP: &str = r#"
@@ -153,28 +152,9 @@ mod tests {
         let instrumented_input = wastrument(&input_program, SOURCE_CODE_WASP).unwrap();
 
         // Execute & check instrumentation
-        #[derive(Default)]
-        struct AbortStore {
-            abort_count: i32,
-        }
-
-        let mut store = Store::<AbortStore>::default();
+        let mut store = Store::<()>::default();
         let module = Module::from_binary(store.engine(), &instrumented_input).unwrap();
-
-        let env_abort = Func::wrap(
-            &mut store,
-            |mut caller: Caller<'_, AbortStore>, _: i32, _: i32, _: i32, _: i32| {
-                caller.data_mut().abort_count += 1;
-            },
-        );
-
-        let instance = Instance::new(&mut store, &module, &[env_abort.into()]).unwrap();
-
-        assert_eq!(store.data().abort_count, 0);
-        env_abort
-            .call(&mut store, &[I32(0), I32(0), I32(0), I32(0)], &mut [])
-            .unwrap();
-        assert_eq!(store.data().abort_count, 1);
+        let instance = Instance::new(&mut store, &module, &[]).unwrap();
 
         // Fetch `fib` export
         let fib = instance
@@ -191,7 +171,5 @@ mod tests {
             let actual_value = global.get(&mut store).i32().unwrap();
             assert_eq!(expected_value, actual_value);
         }
-
-        assert_eq!(store.data().abort_count, 1);
     }
 }

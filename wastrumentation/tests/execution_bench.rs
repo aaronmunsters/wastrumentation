@@ -13,6 +13,7 @@ use wastrumentation_instr_lib::std_lib_compile::{
 
 use crate::test_conf::{CallYields, GlobalValueEquals, InputProgramAssertion, TestConfiguration};
 use std::{
+    collections::HashMap,
     fs::{read, read_to_string},
     path::PathBuf,
 };
@@ -165,15 +166,7 @@ impl TestConfiguration {
             } = instrumented_assertion;
             // 4. execute instrumented input program
             let module = Module::from_binary(&engine, &instrumented_input).unwrap();
-
-            let env_abort = Func::wrap(
-                &mut store,
-                |_: Caller<'_, ()>, _: i32, _: i32, _: i32, _: i32| {
-                    panic!("Wasm program pannicked!");
-                },
-            );
-
-            let instance = Instance::new(&mut store, &module, &[env_abort.into()]).unwrap();
+            let instance = Instance::new(&mut store, &module, &[]).unwrap();
 
             // Check instrumentation result
             let params = self.wasmtime_args();
@@ -217,6 +210,10 @@ impl TestConfiguration {
             enable_nontrapping_f2i: false,
             enable_export_memory: wasi_enabled,
             enable_wasi_shim: wasi_enabled,
+            flag_use: Some(HashMap::from_iter(vec![(
+                "abort".into(),
+                "custom_abort".into(),
+            )])),
             runtime: RuntimeStrategy::Minimal,
         };
         let content = compiler_options.compile().module().unwrap();

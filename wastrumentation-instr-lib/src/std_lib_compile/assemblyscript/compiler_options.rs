@@ -4,6 +4,7 @@ use crate::std_lib_compile::{
 };
 
 use std::{
+    collections::HashMap,
     fs::File,
     io::{Read, Write},
     process::Command,
@@ -19,6 +20,7 @@ pub struct CompilerOptions {
     pub enable_nontrapping_f2i: bool,
     pub enable_export_memory: bool,
     pub enable_wasi_shim: bool,
+    pub flag_use: Option<HashMap<String, String>>,
     pub runtime: RuntimeStrategy,
 }
 
@@ -53,6 +55,10 @@ impl CompilerOptions {
             enable_nontrapping_f2i: false,
             enable_export_memory: false,
             enable_wasi_shim: false,
+            flag_use: Some(HashMap::from_iter(vec![(
+                "abort".into(),
+                "custom_abort".into(),
+            )])),
             runtime: RuntimeStrategy::Minimal,
         }
     }
@@ -98,6 +104,17 @@ impl CompilerOptions {
             ""
         };
 
+        let flag_use = if let Some(uses) = &self.flag_use {
+            if uses.is_empty() {
+                String::new()
+            } else {
+                let ch = uses.iter().map(|(key, value)| format!("{key}={value}"));
+                format!("--lib . --use {} ", ch.collect::<Vec<String>>().join(" "))
+            }
+        } else {
+            String::new()
+        };
+
         format!(
             concat!(
                 // Pass input file & output file to command
@@ -111,6 +128,7 @@ impl CompilerOptions {
                 "{flag_non_trapping_f2i}",
                 "{flag_runtime}",
                 "{flag_export_memory}",
+                "{flag_use}",
             ),
             source_path = &source_path,
             output_path = &output_path,
@@ -121,6 +139,7 @@ impl CompilerOptions {
             flag_export_memory = flag_export_memory,
             flag_optimization = flag_optimization,
             flag_wasi = flag_wasi,
+            flag_use = flag_use,
         )
     }
 
@@ -155,6 +174,15 @@ impl CompilerOptions {
             .to_string_lossy()
             .to_string();
 
+        // TODO: this custom abort is hardcoded here, but weirdly 'provided' at call-site ... refactor!
+        let custom_abort_source_file_path = working_dir.path().join("custom_abort_source_file.ts");
+        let mut custom_abort_source_file =
+            File::create(custom_abort_source_file_path).expect("Could not create temp input file");
+        let custom_abort_lib = include_str!("./custom_abort_lib.ts");
+        custom_abort_source_file
+            .write_all(custom_abort_lib.as_bytes())
+            .expect("Could not write std_lib to temp file");
+
         let mut output_file = NamedTempFile::new().expect("Could not create temp output file");
         let output_file_path = output_file.path().to_string_lossy().to_string();
 
@@ -166,7 +194,7 @@ impl CompilerOptions {
 
         command_compile_lib.args(["-c", &npx_command]);
 
-        // Kick off command, i.e. merge
+        // Kick off command, i.e. compile
         let result = command_compile_lib
             .output()
             .expect("Could not execute compilation command");
@@ -188,6 +216,8 @@ impl CompilerOptions {
 
 #[cfg(test)]
 mod tests {
+    use wasmtime::{Engine, Instance, Module, Store};
+
     use super::*;
 
     fn simple_compiler_option_for(source_code: String) -> CompilerOptions {
@@ -198,6 +228,7 @@ mod tests {
             enable_nontrapping_f2i: false,
             enable_sign_extension: false,
             enable_wasi_shim: false,
+            flag_use: None,
             optimization_strategy: OptimizationStrategy::O3,
             runtime: RuntimeStrategy::Minimal,
         }
@@ -217,6 +248,7 @@ mod tests {
                 "--disable nontrapping-f2i ",
                 "--runtime minimal ",
                 "--noExportMemory ",
+                "--lib . --use abort=custom_abort ",
             )
         );
     }
@@ -247,6 +279,41 @@ mod tests {
     }
 
     #[test]
+    fn test_assemblyscript_compilation_working_binary() {
+        let mut compile_options = simple_compiler_option_for(
+            r#"
+        function fac(n: i32): i32 {
+            return n === 1 ? 1 : n * fac(n-1);
+        }
+
+        export function add_to_fac(a: i32, b: i32, c: i32): i32 {
+            return a + b + fac(c);
+        }
+        "#
+            .into(),
+        );
+
+        // TODO: I code-dupe this hashmap in a lot of places ... it's only purpose seems to abort?
+        compile_options.flag_use = Some(HashMap::from_iter(vec![(
+            "abort".into(),
+            "custom_abort".into(),
+        )]));
+
+        let wasm_module = compile_options.compile().module().unwrap();
+        let engine = Engine::default();
+        let module = Module::from_binary(&engine, &wasm_module).unwrap();
+        let mut store = Store::new(&engine, ());
+
+        let instance = Instance::new(&mut store, &module, &[]).unwrap();
+        let run = instance
+            .get_typed_func::<(i32, i32, i32), i32>(&mut store, "add_to_fac")
+            .unwrap();
+
+        // And last but not least we can call it!
+        assert_eq!(run.call(&mut store, (1, 2, 3)).unwrap(), 9);
+    }
+
+    #[test]
     fn test_assemblyscript_faulty_compilation() {
         let compiler_options =
             simple_compiler_option_for("this is not valid assemblyscript code".into());
@@ -265,6 +332,10 @@ mod tests {
             enable_nontrapping_f2i: true,
             enable_export_memory: true,
             enable_wasi_shim: true,
+            flag_use: Some(HashMap::from_iter(vec![(
+                "abort".into(),
+                "custom_abort".into(),
+            )])),
             runtime: super::RuntimeStrategy::Minimal,
         };
 
@@ -275,6 +346,7 @@ mod tests {
                 "-o path/to/output ",
                 "--config ./node_modules/@assemblyscript/wasi-shim/asconfig.json ",
                 "-O1 --runtime minimal ",
+                "--lib . --use abort=custom_abort ",
             )
         );
 
@@ -286,6 +358,7 @@ mod tests {
             enable_nontrapping_f2i: false,
             enable_export_memory: false,
             enable_wasi_shim: false,
+            flag_use: None,
             runtime: super::RuntimeStrategy::Minimal,
         };
 

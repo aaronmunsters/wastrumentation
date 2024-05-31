@@ -7,3 +7,6 @@ edition = "2021"
 tempfile = "3.10"
 bitmask = "0.5.0"
 indoc = "2"
+
+[dev-dependencies]
+wasmtime = "21.0.0"
