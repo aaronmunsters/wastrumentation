@@ -1020,5 +1020,52 @@
         }
       ]
     }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/wat/nested-loops.wat",
+      "type": "Wat"
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/forward.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      },
+      {
+        "analysis": "./analysis/loop.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [
+          {
+            "GlobalValueEquals": {
+              "identifier": "number_of_loops_before",
+              "result": {
+                "I32": 14
+              }
+            }
+          },
+          {
+            "GlobalValueEquals": {
+              "identifier": "number_of_loop_after",
+              "result": {
+                "I32": 14
+              }
+            }
+          }
+        ],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [],
+      "input_entry_point": "nested-loops",
+      "post_execution_assertions": [],
+      "results": [
+        {
+          "I32": 1
+        }
+      ]
+    }
   }
 ]
