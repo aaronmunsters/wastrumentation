@@ -1,10 +1,10 @@
 (aspect
     (global >>>GUEST>>>
-        export let amount_of_applys: i32 = 0;
+        export let number_of_applys: i32 = 0;
         export let max_apply_depth: i32 = 0;
         let apply_stack: i32 = 0;
 
-        export let amount_of_calls: i32 = 0;
+        export let number_of_calls: i32 = 0;
         export let max_call_depth: i32 = 0;
         let call_stack: i32 = 0;
 
@@ -19,7 +19,7 @@
         /* [2] */
         max_call_depth = max(max_call_depth, call_stack);
         /* [3] */
-        amount_of_calls += 1;
+        number_of_calls += 1;
     <<<GUEST<<<)
 
     (advice call after (f FunctionIndex) >>>GUEST>>>
@@ -43,7 +43,7 @@
         /* [2] */
         max_apply_depth = max(max_apply_depth, apply_stack);
         /* [3] */
-        amount_of_applys += 1;
+        number_of_applys += 1;
         func.apply();
         /* [4] */
         apply_stack -= 1;

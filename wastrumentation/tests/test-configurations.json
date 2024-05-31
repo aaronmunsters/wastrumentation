@@ -17,7 +17,7 @@
         "post_execution_assertions": [
           {
             "GlobalValueEquals": {
-              "identifier": "amount_of_calls",
+              "identifier": "number_of_calls",
               "result": {
                 "I32": 0
               }
@@ -33,7 +33,7 @@
           },
           {
             "GlobalValueEquals": {
-              "identifier": "amount_of_applys",
+              "identifier": "number_of_applys",
               "result": {
                 "I32": 1
               }
@@ -90,7 +90,7 @@
         "post_execution_assertions": [
           {
             "GlobalValueEquals": {
-              "identifier": "amount_of_calls",
+              "identifier": "number_of_calls",
               "result": {
                 "I32": 176
               }
@@ -106,7 +106,7 @@
           },
           {
             "GlobalValueEquals": {
-              "identifier": "amount_of_applys",
+              "identifier": "number_of_applys",
               "result": {
                 "I32": 177
               }
@@ -196,7 +196,7 @@
         "post_execution_assertions": [
           {
             "GlobalValueEquals": {
-              "identifier": "amount_of_calls",
+              "identifier": "number_of_calls",
               "result": {
                 "I32": 981956
               }
@@ -212,7 +212,7 @@
           },
           {
             "GlobalValueEquals": {
-              "identifier": "amount_of_applys",
+              "identifier": "number_of_applys",
               "result": {
                 "I32": 981957
               }
@@ -701,7 +701,7 @@
         "post_execution_assertions": [
           {
             "GlobalValueEquals": {
-              "identifier": "amount_of_calls_before",
+              "identifier": "number_of_calls_before",
               "result": {
                 "I32": 5
               }
@@ -709,7 +709,7 @@
           },
           {
             "GlobalValueEquals": {
-              "identifier": "amount_of_calls_after",
+              "identifier": "number_of_calls_after",
               "result": {
                 "I32": 5
               }
@@ -717,7 +717,7 @@
           },
           {
             "GlobalValueEquals": {
-              "identifier": "amount_of_apply_before",
+              "identifier": "number_of_apply_before",
               "result": {
                 "I32": 6
               }
@@ -725,7 +725,7 @@
           },
           {
             "GlobalValueEquals": {
-              "identifier": "amount_of_apply_after",
+              "identifier": "number_of_apply_after",
               "result": {
                 "I32": 6
               }
@@ -740,7 +740,7 @@
         "post_execution_assertions": [
           {
             "GlobalValueEquals": {
-              "identifier": "amount_of_calls_before",
+              "identifier": "number_of_calls_before",
               "result": {
                 "I32": 5
               }
@@ -748,7 +748,7 @@
           },
           {
             "GlobalValueEquals": {
-              "identifier": "amount_of_calls_after",
+              "identifier": "number_of_calls_after",
               "result": {
                 "I32": 0
               }
@@ -756,7 +756,7 @@
           },
           {
             "GlobalValueEquals": {
-              "identifier": "amount_of_apply_before",
+              "identifier": "number_of_apply_before",
               "result": {
                 "I32": 6
               }
@@ -764,7 +764,7 @@
           },
           {
             "GlobalValueEquals": {
-              "identifier": "amount_of_apply_after",
+              "identifier": "number_of_apply_after",
               "result": {
                 "I32": 6
               }
@@ -779,7 +779,7 @@
         "post_execution_assertions": [
           {
             "GlobalValueEquals": {
-              "identifier": "amount_of_calls_before",
+              "identifier": "number_of_calls_before",
               "result": {
                 "I32": 0
               }
@@ -787,7 +787,7 @@
           },
           {
             "GlobalValueEquals": {
-              "identifier": "amount_of_calls_after",
+              "identifier": "number_of_calls_after",
               "result": {
                 "I32": 5
               }
@@ -795,7 +795,7 @@
           },
           {
             "GlobalValueEquals": {
-              "identifier": "amount_of_apply_before",
+              "identifier": "number_of_apply_before",
               "result": {
                 "I32": 6
               }
@@ -803,7 +803,7 @@
           },
           {
             "GlobalValueEquals": {
-              "identifier": "amount_of_apply_after",
+              "identifier": "number_of_apply_after",
               "result": {
                 "I32": 6
               }

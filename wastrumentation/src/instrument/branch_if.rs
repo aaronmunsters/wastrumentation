@@ -11,7 +11,7 @@ pub enum Target {
     BrTable(Idx<Function>),
 }
 
-// Amount of constant instructions in transformation
+// Number of constant instructions in transformation
 const TRANSFORM_COST_PER_IF_THEN_INSTR: usize = 1;
 const TRANSFORM_COST_PER_IF_THEN_ELSE_INSTR: usize = 1;
 const TRANSFORM_COST_PER_BR_IF: usize = 1;

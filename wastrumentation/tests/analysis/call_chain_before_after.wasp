@@ -1,12 +1,12 @@
 (aspect
-    (global >>>GUEST>>> export let amount_of_calls_before: i32 = 0;
-                        export let amount_of_calls_after: i32 = 0;
-                        export let amount_of_apply_before: i32 = 0;
-                        export let amount_of_apply_after: i32 = 0; <<<GUEST<<<)
+    (global >>>GUEST>>> export let number_of_calls_before: i32 = 0;
+                        export let number_of_calls_after: i32 = 0;
+                        export let number_of_apply_before: i32 = 0;
+                        export let number_of_apply_after: i32 = 0; <<<GUEST<<<)
 
-    (advice call before (f FunctionIndex) >>>GUEST>>>amount_of_calls_before++;<<<GUEST<<<)
-    (advice call after (f FunctionIndex) >>>GUEST>>>amount_of_calls_after++;<<<GUEST<<<)
+    (advice call before (f FunctionIndex) >>>GUEST>>>number_of_calls_before++;<<<GUEST<<<)
+    (advice call after (f FunctionIndex) >>>GUEST>>>number_of_calls_after++;<<<GUEST<<<)
     (advice apply (func    WasmFunction) (args    MutDynArgs) (results MutDynResults)
-        >>>GUEST>>> amount_of_apply_before++;
+        >>>GUEST>>> number_of_apply_before++;
                     func.apply();
-                    amount_of_apply_after++; <<<GUEST<<<))
+                    number_of_apply_after++; <<<GUEST<<<))
