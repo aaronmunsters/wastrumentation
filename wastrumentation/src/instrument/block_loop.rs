@@ -29,13 +29,13 @@ fn transform(body: &Vec<Instr>, target: Target) -> Vec<Instr> {
                     // STACK: [type_in]
                     Instr::Call(block_trap_idx),
                     // STACK: [type_in]
-                    Instr::Block(*type_, body.clone()),
+                    Instr::Block(*type_, transform(body, target)),
                 ]);
             }
             (Target::BlockPost(block_trap_idx), Instr::Block(type_, body)) => {
                 result.extend_from_slice(&[
                     // STACK: [type_in]
-                    Instr::Block(*type_, body.clone()),
+                    Instr::Block(*type_, transform(body, target)),
                     // STACK: [type_in]
                     Instr::Call(block_trap_idx),
                 ]);
@@ -45,13 +45,13 @@ fn transform(body: &Vec<Instr>, target: Target) -> Vec<Instr> {
                     // STACK: [type_in]
                     Instr::Call(block_trap_idx),
                     // STACK: [type_in]
-                    Instr::Loop(*type_, body.clone()),
+                    Instr::Loop(*type_, transform(body, target)),
                 ]);
             }
             (Target::LoopPost(block_trap_idx), Instr::Loop(type_, body)) => {
                 result.extend_from_slice(&[
                     // STACK: [type_in]
-                    Instr::Loop(*type_, body.clone()),
+                    Instr::Loop(*type_, transform(body, target)),
                     // STACK: [type_in]
                     Instr::Call(block_trap_idx),
                 ]);

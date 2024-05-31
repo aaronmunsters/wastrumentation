@@ -542,9 +542,7 @@ impl TrapBlockBefore {
 
         format!(
             indoc! { r#"
-            export function {FUNCTION_NAME_BLOCK_PRE}(
-                function_table: i32,
-            ): void {{
+            export function {FUNCTION_NAME_BLOCK_PRE}(): void {{
                 {body}
             }}
             "#
@@ -562,9 +560,7 @@ impl TrapBlockAfter {
 
         format!(
             indoc! { r#"
-            export function {FUNCTION_NAME_BLOCK_POST}(
-                function_table: i32,
-            ): void {{
+            export function {FUNCTION_NAME_BLOCK_POST}(): void {{
                 {body}
             }}
             "# },
@@ -581,9 +577,7 @@ impl TrapLoopBefore {
 
         format!(
             indoc! { r#"
-            export function {FUNCTION_NAME_LOOP_PRE}(
-                function_table: i32,
-            ): void {{
+            export function {FUNCTION_NAME_LOOP_PRE}(): void {{
                 {body}
             }}
             "# },
@@ -600,9 +594,7 @@ impl TrapLoopAfter {
 
         format!(
             indoc! { r#"
-            export function {FUNCTION_NAME_LOOP_POST}(
-                function_table: i32,
-            ): void {{
+            export function {FUNCTION_NAME_LOOP_POST}(): void {{
                 {body}
             }}
             "# },
