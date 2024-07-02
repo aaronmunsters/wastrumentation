@@ -96,6 +96,7 @@ impl<'a> From<WasabiFunctionType<'a>> for LibGenSignature {
     }
 }
 
+// TODO: remove the dead code, this might be related to the specialized instrumentation code
 pub struct Signature {
     #[allow(dead_code)]
     pub function_type: FunctionType,
