@@ -7,3 +7,8 @@ members = [
     "wasp-compiler",
     "wasm-merge",
 ]
+
+[workspace.dependencies]
+anyhow = "1.0"
+wasmtime = "22.0"
+indoc = "2"

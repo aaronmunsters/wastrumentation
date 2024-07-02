@@ -97,15 +97,19 @@ impl<'a> From<WasabiFunctionType<'a>> for LibGenSignature {
 }
 
 pub struct Signature {
+    #[allow(dead_code)]
     pub function_type: FunctionType,
     pub allocate_values_buffer: Idx<Function>,
     pub allocate_types_buffer: Idx<Function>,
     pub free_values_buffer: Idx<Function>,
     pub free_types_buffer: Idx<Function>,
     pub arg_load_n: Vec<Idx<Function>>,
+    #[allow(dead_code)]
     pub arg_store_n: Vec<Idx<Function>>,
+    #[allow(dead_code)]
     pub arg_store_all: Idx<Function>,
     pub ret_load_n: Vec<Idx<Function>>,
+    #[allow(dead_code)]
     pub ret_store_n: Vec<Idx<Function>>,
     pub ret_store_all: Idx<Function>,
 }

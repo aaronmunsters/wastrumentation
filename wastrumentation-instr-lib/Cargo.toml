@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 tempfile = "3.10"
 bitmask = "0.5.0"
-indoc = "2"
+indoc = { workspace = true }
 
 [dev-dependencies]
-wasmtime = "21.0.0"
+wasmtime = { workspace = true }

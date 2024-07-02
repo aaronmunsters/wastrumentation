@@ -10,15 +10,13 @@ wasabi_wasm = { git = "https://github.com/aaronmunsters/wasabi.git", branch = "c
 wasp-compiler = { path = "../wasp-compiler" }
 wastrumentation-instr-lib = { path = "../wastrumentation-instr-lib" }
 wasm-merge = { path = "../wasm-merge" }
-anyhow = "1.0"
+anyhow = { workspace = true }
 
 [dev-dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 wat = "1"
+wasmtime = { workspace = true }
 wastrumentation = { path = "../wastrumentation" }
-wasi-common = "21.0"
-wasmtime = "21.0"
-wasmtime-wasi = "21.0"
 wastrumentation-instr-lib = { path = "../wastrumentation-instr-lib" }
 rayon = "1.10"
