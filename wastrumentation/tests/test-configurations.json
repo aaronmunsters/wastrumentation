@@ -1159,5 +1159,257 @@
         }
       ]
     }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/wat/call_indirect_wast.wat",
+      "type": "Wat"
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/call_indirect.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [
+        {
+          "I32": 2
+        }
+      ],
+      "input_entry_point": "check_t0",
+      "post_execution_assertions": [],
+      "results": [
+        {
+          "I32": 3
+        }
+      ]
+    }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/wat/call_indirect_wast.wat",
+      "type": "Wat"
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/call_indirect.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [
+        {
+          "I32": 3
+        }
+      ],
+      "input_entry_point": "check_t0",
+      "post_execution_assertions": [],
+      "results": [
+        {
+          "I32": 1
+        }
+      ]
+    }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/wat/call_indirect_wast.wat",
+      "type": "Wat"
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/call_indirect.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [
+        {
+          "I32": 4
+        }
+      ],
+      "input_entry_point": "check_t0",
+      "post_execution_assertions": [],
+      "results": [
+        {
+          "I32": 4
+        }
+      ]
+    }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/wat/call_indirect_wast.wat",
+      "type": "Wat"
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/call_indirect.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [
+        {
+          "I32": 5
+        }
+      ],
+      "input_entry_point": "check_t0",
+      "post_execution_assertions": [],
+      "results": [
+        {
+          "I32": 1
+        }
+      ]
+    }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/wat/call_indirect_wast.wat",
+      "type": "Wat"
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/call_indirect.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [
+        {
+          "I32": 12
+        }
+      ],
+      "input_entry_point": "check_t0",
+      "post_execution_assertions": [],
+      "results": [
+        {
+          "I32": 7
+        }
+      ]
+    }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/wat/call_indirect_wast.wat",
+      "type": "Wat"
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/call_indirect.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [
+        {
+          "I32": 13
+        }
+      ],
+      "input_entry_point": "check_t0",
+      "post_execution_assertions": [],
+      "results": [
+        {
+          "I32": 5
+        }
+      ]
+    }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/wat/call_indirect_wast.wat",
+      "type": "Wat"
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/call_indirect.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [
+        {
+          "I32": 14
+        }
+      ],
+      "input_entry_point": "check_t0",
+      "post_execution_assertions": [],
+      "results": [
+        {
+          "I32": 2
+        }
+      ]
+    }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/wat/call_indirect_wast.wat",
+      "type": "Wat"
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/call_indirect.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [
+        {
+          "I32": 15
+        }
+      ],
+      "input_entry_point": "check_t0",
+      "post_execution_assertions": [],
+      "results": [
+        {
+          "I32": 3
+        }
+      ]
+    }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/wat/call_indirect_wast.wat",
+      "type": "Wat"
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": "./analysis/call_indirect.wasp",
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [],
+        "wasi_enabled": false
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [
+        {
+          "I32": 16
+        }
+      ],
+      "input_entry_point": "check_t0",
+      "post_execution_assertions": [],
+      "results": [
+        {
+          "I32": 6
+        }
+      ]
+    }
   }
 ]
