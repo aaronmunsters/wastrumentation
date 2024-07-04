@@ -4,11 +4,9 @@ use test_conf::{
     UninstrumentedAssertion, WasmValue,
 };
 use wasmtime::*;
-use wastrumentation_instr_lib::std_lib_compile::{
-    assemblyscript::compiler_options::{
-        CompilerOptions as AssemblScriptCompilerOptions, OptimizationStrategy, RuntimeStrategy,
-    },
-    CompilerOptions,
+use wastrumentation::Wastrumenter;
+use wastrumentation_instr_lib::std_lib_compile::assemblyscript::compiler_options::{
+    CompilerOptions as AssemblScriptCompilerOptions, OptimizationStrategy, RuntimeStrategy,
 };
 
 use crate::test_conf::{CallYields, GlobalValueEquals, InputProgramAssertion, TestConfiguration};
@@ -27,9 +25,11 @@ fn test_integration_configurations() {
     let test_configurations_json = include_str!("test-configurations.json");
     let test_configurations: Vec<TestConfiguration> =
         serde_json::from_str(test_configurations_json).unwrap();
+
+    let wastrumenter = Wastrumenter::new();
     test_configurations
         .par_iter()
-        .for_each(|test_configuration| test_configuration.assert_behavior());
+        .for_each(|test_configuration| test_configuration.assert_behavior(&wastrumenter));
 }
 
 struct WatModule(pub Vec<u8>);
@@ -80,7 +80,7 @@ impl WasiEngineSetup {
 }
 
 impl TestConfiguration {
-    fn to_wat_module(&self) -> std::io::Result<WatModule> {
+    fn to_wat_module(&self, wastrumenter: &Wastrumenter) -> std::io::Result<WatModule> {
         let mut path = PathBuf::from(TEST_RELATIVE_PATH);
         path.push(&self.input_program.path);
 
@@ -88,7 +88,7 @@ impl TestConfiguration {
         let wat_module = match &self.input_program.r#type {
             test_conf::ProgramType::Wat => self.compile_as_wat(&content),
             test_conf::ProgramType::AssemblyScript(AssemblyScript { wasi_enabled }) => {
-                self.compile_as_assemblyscript(&content, *wasi_enabled)
+                self.compile_as_assemblyscript(&content, *wasi_enabled, wastrumenter)
             }
         };
         Ok(wat_module)
@@ -106,10 +106,10 @@ impl TestConfiguration {
         Self::as_wasmtime_values(&self.uninstrumented_assertion.results)
     }
 
-    fn assert_behavior(&self) {
-        let WatModule(input_program) = self.to_wat_module().unwrap();
+    fn assert_behavior(&self, wastrumenter: &Wastrumenter) {
+        let WatModule(input_program) = self.to_wat_module(wastrumenter).unwrap();
         Self::assert_uninstrumented(self, &input_program);
-        Self::assert_instrumented(self, &input_program);
+        Self::assert_instrumented(self, &input_program, wastrumenter);
     }
 
     fn get_entry_point<T>(&self, instance: Instance, store: &mut Store<T>) -> Func {
@@ -142,7 +142,7 @@ impl TestConfiguration {
         );
     }
 
-    fn assert_instrumented(&self, input_program_wasm: &[u8]) {
+    fn assert_instrumented(&self, input_program_wasm: &[u8], wastrumenter: &Wastrumenter) {
         let input_program_wasm = Vec::from(input_program_wasm);
         for instrumented_assertion @ InstrumentedAssertion {
             analysis: analysis_path,
@@ -152,9 +152,9 @@ impl TestConfiguration {
             let full_analysis_path = PathBuf::from(TEST_RELATIVE_PATH).join(analysis_path);
             let input_analysis = read_to_string(&full_analysis_path)
                 .unwrap_or_else(|_| panic!("Could not open {analysis_path:?}"));
-            let instrumented_input =
-                wastrumentation::wastrument(&input_program_wasm, &input_analysis)
-                    .expect("Instrumentation pass failed");
+            let instrumented_input = wastrumenter
+                .wastrument(&input_program_wasm, &input_analysis)
+                .expect("Instrumentation pass failed");
 
             let WasiEngineSetup {
                 mut store, engine, ..
@@ -200,7 +200,12 @@ impl TestConfiguration {
         WatModule(content)
     }
 
-    fn compile_as_assemblyscript(&self, content: &[u8], wasi_enabled: bool) -> WatModule {
+    fn compile_as_assemblyscript(
+        &self,
+        content: &[u8],
+        wasi_enabled: bool,
+        wastrumenter: &Wastrumenter,
+    ) -> WatModule {
         let source_code = String::from_utf8(content.to_vec()).unwrap();
         let compiler_options = AssemblScriptCompilerOptions {
             source_code,
@@ -216,7 +221,10 @@ impl TestConfiguration {
             )])),
             runtime: RuntimeStrategy::Minimal,
         };
-        let content = compiler_options.compile().module().unwrap();
+        let content = wastrumenter
+            .assemblyscript_compiler()
+            .compile(&compiler_options)
+            .unwrap();
         WatModule(content)
     }
 }

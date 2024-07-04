@@ -12,6 +12,7 @@ use std::{
 use tempfile::{tempdir, NamedTempFile};
 
 #[allow(clippy::struct_excessive_bools)]
+#[derive(Default)]
 pub struct CompilerOptions {
     pub source_code: String,
     pub optimization_strategy: OptimizationStrategy,
@@ -34,13 +35,17 @@ impl CompilerOptionsTrait for CompilerOptions {
     }
 }
 
+#[derive(Default)]
 pub enum OptimizationStrategy {
     O1,
     O2,
+    #[default]
     O3,
 }
 
+#[derive(Default)]
 pub enum RuntimeStrategy {
+    #[default]
     Minimal,
 }
 
@@ -216,8 +221,6 @@ impl CompilerOptions {
 
 #[cfg(test)]
 mod tests {
-    use wasmtime::{Engine, Instance, Module, Store};
-
     use super::*;
 
     fn simple_compiler_option_for(source_code: String) -> CompilerOptions {
@@ -260,57 +263,6 @@ mod tests {
             String::from_utf8(option.source_code()).unwrap(),
             "/* source-code here */"
         )
-    }
-
-    #[test]
-    fn test_assemblyscript_compilation_binary() {
-        let compile_options = simple_compiler_option_for(
-            r#"
-        export function add_three(a: i32, b: i32, c: i32): i32 {
-            return a + b + c;
-        }
-        "#
-            .into(),
-        );
-
-        let wasm_module = compile_options.compile().module().unwrap();
-        let wasm_magic_bytes: &[u8] = &[0x00, 0x61, 0x73, 0x6D];
-        assert_eq!(&wasm_module[0..4], wasm_magic_bytes);
-    }
-
-    #[test]
-    fn test_assemblyscript_compilation_working_binary() {
-        let mut compile_options = simple_compiler_option_for(
-            r#"
-        function fac(n: i32): i32 {
-            return n === 1 ? 1 : n * fac(n-1);
-        }
-
-        export function add_to_fac(a: i32, b: i32, c: i32): i32 {
-            return a + b + fac(c);
-        }
-        "#
-            .into(),
-        );
-
-        // TODO: I code-dupe this hashmap in a lot of places ... it's only purpose seems to abort?
-        compile_options.flag_use = Some(HashMap::from_iter(vec![(
-            "abort".into(),
-            "custom_abort".into(),
-        )]));
-
-        let wasm_module = compile_options.compile().module().unwrap();
-        let engine = Engine::default();
-        let module = Module::from_binary(&engine, &wasm_module).unwrap();
-        let mut store = Store::new(&engine, ());
-
-        let instance = Instance::new(&mut store, &module, &[]).unwrap();
-        let run = instance
-            .get_typed_func::<(i32, i32, i32), i32>(&mut store, "add_to_fac")
-            .unwrap();
-
-        // And last but not least we can call it!
-        assert_eq!(run.call(&mut store, (1, 2, 3)).unwrap(), 9);
     }
 
     #[test]

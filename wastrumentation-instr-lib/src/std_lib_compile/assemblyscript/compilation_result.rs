@@ -5,6 +5,13 @@ pub type CompilationResult = Result<WasmModule, CompilationError>;
 #[derive(Debug)]
 pub struct CompilationError(pub String);
 
+impl CompilationError {
+    pub fn reason(&self) -> &str {
+        let Self(reason) = self;
+        reason.as_str()
+    }
+}
+
 impl CompilerResultTrait for CompilationResult {
     fn module(&self) -> Result<WasmModule, String> {
         match self {
