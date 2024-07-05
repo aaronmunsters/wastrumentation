@@ -35,8 +35,8 @@ impl Display for WasmType {
             WasmType::F32 => "f32",
             WasmType::I64 => "i64",
             WasmType::F64 => "f64",
-            WasmType::Ref(RefType::FuncRef) => "FuncRef",
-            WasmType::Ref(RefType::ExternRef) => "ExternRef",
+            WasmType::Ref(RefType::FuncRef) => "ref_func",
+            WasmType::Ref(RefType::ExternRef) => "ref_extern",
         };
         write!(f, "{as_string}")
     }

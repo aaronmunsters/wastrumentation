@@ -58,6 +58,7 @@ pub fn instrument(module: &[u8], wasp_interface: WaspInterface) -> Instrumentati
     let target_indices: HashSet<Idx<Function>> = module
         .functions()
         .filter(|(_index, f)| f.code().is_some())
+        .filter(|(_index, f)| !uses_reference_types(f))
         .map(|(idx, _)| idx)
         .collect();
 
@@ -137,6 +138,22 @@ pub fn instrument(module: &[u8], wasp_interface: WaspInterface) -> Instrumentati
         },
         module: module.to_bytes().unwrap(),
     }
+}
+
+fn uses_reference_types(f: &Function) -> bool {
+    for ty_ in f.type_.inputs() {
+        match ty_ {
+            ValType::I32 | ValType::I64 | ValType::F32 | ValType::F64 => continue,
+            ValType::Ref(_) => return true,
+        }
+    }
+    for ty_ in f.type_.results() {
+        match ty_ {
+            ValType::I32 | ValType::I64 | ValType::F32 | ValType::F64 => continue,
+            ValType::Ref(_) => return true,
+        }
+    }
+    false
 }
 
 trait Instrumentable {
@@ -239,5 +256,42 @@ impl HighLevelBody {
     #[must_use]
     pub fn transform_for(&self, transformation_strategy: &impl TransformationStrategy) -> Self {
         transformation_strategy.transform(self)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use wasabi_wasm::RefType::{ExternRef, FuncRef};
+    use wasabi_wasm::ValType::{self, Ref, F32, F64, I32, I64};
+    use wasabi_wasm::{Code, Function, FunctionType};
+
+    use super::uses_reference_types;
+
+    #[test]
+    fn test_uses_reference_types() {
+        let assertions: &[(&[ValType], &[ValType], bool)] = &[
+            (&[], &[], false),
+            (&[F32, F64], &[I32, I64], false),
+            (&[I32, I32], &[], false),
+            (&[], &[I32, I32], false),
+            (&[Ref(FuncRef)], &[], true),
+            (&[], &[Ref(FuncRef)], true),
+            (&[Ref(ExternRef)], &[], true),
+            (&[], &[Ref(ExternRef)], true),
+            (&[F32, F32, F32, Ref(FuncRef)], &[], true),
+            (&[], &[F64, F64, F64, Ref(FuncRef)], true),
+            (&[I32, I32, I32, Ref(FuncRef)], &[], true),
+            (&[], &[I64, I64, I64, Ref(FuncRef)], true),
+            (
+                &[I32, I32, I32, Ref(ExternRef)],
+                &[I64, I64, I64, Ref(ExternRef)],
+                true,
+            ),
+        ];
+        for (inputs, results, uses_reference) in assertions {
+            let ft = FunctionType::new(inputs, results);
+            let fc = Function::new(ft, Code::new(), vec![]);
+            assert_eq!(uses_reference_types(&fc), *uses_reference)
+        }
     }
 }

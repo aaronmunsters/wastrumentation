@@ -46,7 +46,9 @@ pub enum OptimizationStrategy {
 #[derive(Default)]
 pub enum RuntimeStrategy {
     #[default]
+    Incremental,
     Minimal,
+    Stub,
 }
 
 impl CompilerOptions {
@@ -64,7 +66,7 @@ impl CompilerOptions {
                 "abort".into(),
                 "custom_abort".into(),
             )])),
-            runtime: RuntimeStrategy::Minimal,
+            runtime: RuntimeStrategy::Incremental,
         }
     }
 
@@ -95,6 +97,8 @@ impl CompilerOptions {
 
         let flag_runtime = match self.runtime {
             RuntimeStrategy::Minimal => "--runtime minimal ",
+            RuntimeStrategy::Incremental => "--runtime incremental ",
+            RuntimeStrategy::Stub => "--runtime stub ",
         };
 
         let flag_optimization = match self.optimization_strategy {
@@ -233,7 +237,7 @@ mod tests {
             enable_wasi_shim: false,
             flag_use: None,
             optimization_strategy: OptimizationStrategy::O3,
-            runtime: RuntimeStrategy::Minimal,
+            runtime: RuntimeStrategy::Incremental,
         }
     }
 
@@ -249,7 +253,7 @@ mod tests {
                 "--disable bulk-memory ",
                 "--disable sign-extension ",
                 "--disable nontrapping-f2i ",
-                "--runtime minimal ",
+                "--runtime incremental ",
                 "--noExportMemory ",
                 "--lib . --use abort=custom_abort ",
             )
@@ -288,7 +292,7 @@ mod tests {
                 "abort".into(),
                 "custom_abort".into(),
             )])),
-            runtime: super::RuntimeStrategy::Minimal,
+            runtime: super::RuntimeStrategy::Incremental,
         };
 
         assert_eq!(
@@ -297,7 +301,7 @@ mod tests {
                 "node ./node_modules/assemblyscript/bin/asc.js path/to/source ",
                 "-o path/to/output ",
                 "--config ./node_modules/@assemblyscript/wasi-shim/asconfig.json ",
-                "-O1 --runtime minimal ",
+                "-O1 --runtime incremental ",
                 "--lib . --use abort=custom_abort ",
             )
         );
@@ -311,7 +315,7 @@ mod tests {
             enable_export_memory: false,
             enable_wasi_shim: false,
             flag_use: None,
-            runtime: super::RuntimeStrategy::Minimal,
+            runtime: super::RuntimeStrategy::Incremental,
         };
 
         assert_eq!(
@@ -323,7 +327,7 @@ mod tests {
                 "--disable bulk-memory ",
                 "--disable sign-extension ",
                 "--disable nontrapping-f2i ",
-                "--runtime minimal ",
+                "--runtime incremental ",
                 "--noExportMemory ",
             )
         );

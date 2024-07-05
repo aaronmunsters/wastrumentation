@@ -1137,7 +1137,7 @@ export function allocate_types_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(): usize 
         assert_eq!(
             generate_allocate_types_buffer_specialized(&signature_2),
             "
-export function allocate_types_ret_FuncRef_FuncRef_arg_ExternRef_ExternRef(): usize {
+export function allocate_types_ret_ref_func_ref_func_arg_ref_extern_ref_extern(): usize {
     const types_buffer = allocate_signature_types_buffer_ret_2_arg_2();
     wastrumentation_memory_store<i32>(types_buffer, 4, (sizeof<i32>()*0));
     wastrumentation_memory_store<i32>(types_buffer, 4, (sizeof<i32>()*1));

@@ -219,7 +219,7 @@ impl TestConfiguration {
                 "abort".into(),
                 "custom_abort".into(),
             )])),
-            runtime: RuntimeStrategy::Minimal,
+            runtime: RuntimeStrategy::Incremental,
         };
         let content = wastrumenter
             .assemblyscript_compiler()
