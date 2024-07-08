@@ -20,7 +20,6 @@ pub struct CompilerOptions {
     pub enable_sign_extension: bool,
     pub enable_nontrapping_f2i: bool,
     pub enable_export_memory: bool,
-    pub enable_wasi_shim: bool,
     pub flag_use: Option<HashMap<String, String>>,
     pub runtime: RuntimeStrategy,
 }
@@ -53,7 +52,7 @@ pub enum RuntimeStrategy {
 
 impl CompilerOptions {
     #[must_use]
-    pub fn no_wasi(source_code: String) -> Self {
+    pub fn new(source_code: String) -> Self {
         Self {
             source_code,
             optimization_strategy: OptimizationStrategy::O3,
@@ -61,7 +60,6 @@ impl CompilerOptions {
             enable_sign_extension: false,
             enable_nontrapping_f2i: false,
             enable_export_memory: false,
-            enable_wasi_shim: false,
             flag_use: Some(HashMap::from_iter(vec![(
                 "abort".into(),
                 "custom_abort".into(),
@@ -107,12 +105,6 @@ impl CompilerOptions {
             OptimizationStrategy::O3 => "-O3 ",
         };
 
-        let flag_wasi = if self.enable_wasi_shim {
-            "--config ./node_modules/@assemblyscript/wasi-shim/asconfig.json "
-        } else {
-            ""
-        };
-
         let flag_use = if let Some(uses) = &self.flag_use {
             if uses.is_empty() {
                 String::new()
@@ -128,8 +120,6 @@ impl CompilerOptions {
             concat!(
                 // Pass input file & output file to command
                 "node ./node_modules/assemblyscript/bin/asc.js {source_path} -o {output_path} ",
-                // Pass wasi shim configuration to command
-                "{flag_wasi}",
                 // Pas additional options to command
                 "{flag_optimization}",
                 "{flag_bulk_memory}",
@@ -147,7 +137,6 @@ impl CompilerOptions {
             flag_runtime = flag_runtime,
             flag_export_memory = flag_export_memory,
             flag_optimization = flag_optimization,
-            flag_wasi = flag_wasi,
             flag_use = flag_use,
         )
     }
@@ -167,7 +156,7 @@ impl CompilerOptions {
             .output()
             .expect("Npm init failed");
         Command::new("npm")
-            .args(["install", "assemblyscript", "@assemblyscript/wasi-shim"])
+            .args(["install", "assemblyscript"])
             .current_dir(&working_dir_path)
             .output()
             .expect("Npm install failed");
@@ -234,7 +223,6 @@ mod tests {
             enable_export_memory: false,
             enable_nontrapping_f2i: false,
             enable_sign_extension: false,
-            enable_wasi_shim: false,
             flag_use: None,
             optimization_strategy: OptimizationStrategy::O3,
             runtime: RuntimeStrategy::Incremental,
@@ -242,8 +230,8 @@ mod tests {
     }
 
     #[test]
-    fn test_no_wasi() {
-        let conf = CompilerOptions::no_wasi("/* source code here */".into());
+    fn test_creation() {
+        let conf = CompilerOptions::new("/* source code here */".into());
         assert_eq!(
             conf.to_npx_command("source_path", "output_path"),
             concat!(
@@ -287,7 +275,6 @@ mod tests {
             enable_sign_extension: true,
             enable_nontrapping_f2i: true,
             enable_export_memory: true,
-            enable_wasi_shim: true,
             flag_use: Some(HashMap::from_iter(vec![(
                 "abort".into(),
                 "custom_abort".into(),
@@ -300,7 +287,6 @@ mod tests {
             concat!(
                 "node ./node_modules/assemblyscript/bin/asc.js path/to/source ",
                 "-o path/to/output ",
-                "--config ./node_modules/@assemblyscript/wasi-shim/asconfig.json ",
                 "-O1 --runtime incremental ",
                 "--lib . --use abort=custom_abort ",
             )
@@ -313,7 +299,6 @@ mod tests {
             enable_sign_extension: false,
             enable_nontrapping_f2i: false,
             enable_export_memory: false,
-            enable_wasi_shim: false,
             flag_use: None,
             runtime: super::RuntimeStrategy::Incremental,
         };

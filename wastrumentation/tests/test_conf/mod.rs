@@ -20,13 +20,7 @@ pub struct InputProgram {
 #[serde(deny_unknown_fields)]
 pub enum ProgramType {
     Wat,
-    AssemblyScript(AssemblyScript),
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
-pub struct AssemblyScript {
-    pub wasi_enabled: bool,
+    AssemblyScript,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -49,7 +43,6 @@ pub enum InputProgramType {
 #[serde(deny_unknown_fields)]
 pub struct InstrumentedAssertion {
     pub analysis: PathBuf,
-    pub wasi_enabled: bool,
     pub input_program_assertion: InputProgramAssertion,
     pub post_execution_assertions: Vec<PostExecutionAssertion>,
 }

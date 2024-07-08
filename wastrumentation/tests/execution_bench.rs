@@ -1,7 +1,6 @@
 use rayon::prelude::*;
 use test_conf::{
-    AssemblyScript, InputProgram, InstrumentedAssertion, PostExecutionAssertion,
-    UninstrumentedAssertion, WasmValue,
+    InputProgram, InstrumentedAssertion, PostExecutionAssertion, UninstrumentedAssertion, WasmValue,
 };
 use wasmtime::*;
 use wastrumentation::Wastrumenter;
@@ -62,17 +61,14 @@ impl WasmValue {
     }
 }
 
-struct WasiEngineSetup {
+struct EngineSetup {
     store: Store<()>,
     engine: Engine,
 }
 
-impl WasiEngineSetup {
+impl EngineSetup {
     fn new() -> Self {
         let engine: Engine = Engine::new(Config::default().wasm_multi_memory(true)).unwrap();
-        let mut linker: Linker<()> = Linker::new(&engine);
-        linker.allow_unknown_exports(true);
-
         let store = Store::new(&engine, ());
 
         Self { store, engine }
@@ -87,8 +83,8 @@ impl TestConfiguration {
         let content = read(&path)?;
         let wat_module = match &self.input_program.r#type {
             test_conf::ProgramType::Wat => self.compile_as_wat(&content),
-            test_conf::ProgramType::AssemblyScript(AssemblyScript { wasi_enabled }) => {
-                self.compile_as_assemblyscript(&content, *wasi_enabled, wastrumenter)
+            test_conf::ProgramType::AssemblyScript => {
+                self.compile_as_assemblyscript(&content, wastrumenter)
             }
         };
         Ok(wat_module)
@@ -125,7 +121,7 @@ impl TestConfiguration {
     }
 
     fn assert_uninstrumented(&self, input_program_wasm: &[u8]) {
-        let WasiEngineSetup { mut store, engine } = WasiEngineSetup::new();
+        let EngineSetup { mut store, engine } = EngineSetup::new();
         let module = Module::from_binary(&engine, input_program_wasm).unwrap();
         let instance = Instance::new(&mut store, &module, &[]).unwrap();
 
@@ -156,9 +152,9 @@ impl TestConfiguration {
                 .wastrument(&input_program_wasm, &input_analysis)
                 .expect("Instrumentation pass failed");
 
-            let WasiEngineSetup {
+            let EngineSetup {
                 mut store, engine, ..
-            } = WasiEngineSetup::new();
+            } = EngineSetup::new();
             let InstrumentedAssertion {
                 post_execution_assertions,
                 input_program_assertion,
@@ -200,12 +196,7 @@ impl TestConfiguration {
         WatModule(content)
     }
 
-    fn compile_as_assemblyscript(
-        &self,
-        content: &[u8],
-        wasi_enabled: bool,
-        wastrumenter: &Wastrumenter,
-    ) -> WatModule {
+    fn compile_as_assemblyscript(&self, content: &[u8], wastrumenter: &Wastrumenter) -> WatModule {
         let source_code = String::from_utf8(content.to_vec()).unwrap();
         let compiler_options = AssemblScriptCompilerOptions {
             source_code,
@@ -213,8 +204,7 @@ impl TestConfiguration {
             enable_bulk_memory: false,
             enable_sign_extension: false,
             enable_nontrapping_f2i: false,
-            enable_export_memory: wasi_enabled,
-            enable_wasi_shim: wasi_enabled,
+            enable_export_memory: false,
             flag_use: Some(HashMap::from_iter(vec![(
                 "abort".into(),
                 "custom_abort".into(),

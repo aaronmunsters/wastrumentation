@@ -8,8 +8,7 @@
       {
         "analysis": "./analysis/forward.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       },
       {
         "analysis": "./analysis/call_stack.wasp",
@@ -47,8 +46,7 @@
               }
             }
           }
-        ],
-        "wasi_enabled": false
+        ]
       }
     ],
     "uninstrumented_assertion": {
@@ -81,8 +79,7 @@
       {
         "analysis": "./analysis/forward.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       },
       {
         "analysis": "./analysis/call_stack.wasp",
@@ -120,8 +117,7 @@
               }
             }
           }
-        ],
-        "wasi_enabled": false
+        ]
       }
     ],
     "uninstrumented_assertion": {
@@ -148,8 +144,7 @@
       {
         "analysis": "./analysis/forward.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       },
       {
         "analysis": "./analysis/signatures_check.wasp",
@@ -163,8 +158,7 @@
               }
             }
           }
-        ],
-        "wasi_enabled": false
+        ]
       }
     ],
     "uninstrumented_assertion": {
@@ -177,18 +171,13 @@
   {
     "input_program": {
       "path": "./input-programs/assemblyscript/controlflow-recursive.ts",
-      "type": {
-        "AssemblyScript": {
-          "wasi_enabled": false
-        }
-      }
+      "type": "AssemblyScript"
     },
     "instrumented_assertions": [
       {
         "analysis": "./analysis/forward.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       },
       {
         "analysis": "./analysis/call_stack.wasp",
@@ -226,8 +215,7 @@
               }
             }
           }
-        ],
-        "wasi_enabled": false
+        ]
       }
     ],
     "uninstrumented_assertion": {
@@ -240,18 +228,13 @@
   {
     "input_program": {
       "path": "./input-programs/assemblyscript/simply_return.ts",
-      "type": {
-        "AssemblyScript": {
-          "wasi_enabled": false
-        }
-      }
+      "type": "AssemblyScript"
     },
     "instrumented_assertions": [
       {
         "analysis": "./analysis/forward.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       },
       {
         "analysis": "./analysis/set_arg_ret_to_zero.wasp",
@@ -262,8 +245,7 @@
             }
           ]
         },
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       }
     ],
     "uninstrumented_assertion": {
@@ -286,8 +268,7 @@
       {
         "analysis": "./analysis/forward.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       },
       {
         "analysis": "./analysis/if-then-else-alter.wasp",
@@ -298,8 +279,7 @@
             }
           ]
         },
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       }
     ],
     "uninstrumented_assertion": {
@@ -332,8 +312,7 @@
             }
           ]
         },
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       }
     ],
     "uninstrumented_assertion": {
@@ -360,8 +339,7 @@
       {
         "analysis": "./analysis/forward.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       },
       {
         "analysis": "./analysis/if-then-else-alter.wasp",
@@ -372,8 +350,7 @@
             }
           ]
         },
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       }
     ],
     "uninstrumented_assertion": {
@@ -396,8 +373,7 @@
       {
         "analysis": "./analysis/forward.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       },
       {
         "analysis": "./analysis/if-then-alter.wasp",
@@ -408,8 +384,7 @@
             }
           ]
         },
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       }
     ],
     "uninstrumented_assertion": {
@@ -442,8 +417,7 @@
             }
           ]
         },
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       }
     ],
     "uninstrumented_assertion": {
@@ -470,8 +444,7 @@
       {
         "analysis": "./analysis/forward.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       },
       {
         "analysis": "./analysis/branch-if-alter.wasp",
@@ -482,8 +455,7 @@
             }
           ]
         },
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       }
     ],
     "uninstrumented_assertion": {
@@ -510,8 +482,7 @@
       {
         "analysis": "./analysis/forward.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       },
       {
         "analysis": "./analysis/branch-if-alter.wasp",
@@ -522,8 +493,7 @@
             }
           ]
         },
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       }
     ],
     "uninstrumented_assertion": {
@@ -550,8 +520,7 @@
       {
         "analysis": "./analysis/forward.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       },
       {
         "analysis": "./analysis/branch-if-alter.wasp",
@@ -562,8 +531,7 @@
             }
           ]
         },
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       }
     ],
     "uninstrumented_assertion": {
@@ -590,8 +558,7 @@
       {
         "analysis": "./analysis/forward.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       }
     ],
     "uninstrumented_assertion": {
@@ -624,8 +591,7 @@
       {
         "analysis": "./analysis/forward.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       }
     ],
     "uninstrumented_assertion": {
@@ -658,8 +624,7 @@
       {
         "analysis": "./analysis/forward.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       }
     ],
     "uninstrumented_assertion": {
@@ -692,8 +657,7 @@
       {
         "analysis": "./analysis/forward.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       },
       {
         "analysis": "./analysis/call_chain_before_after.wasp",
@@ -731,8 +695,7 @@
               }
             }
           }
-        ],
-        "wasi_enabled": false
+        ]
       },
       {
         "analysis": "./analysis/call_chain_before.wasp",
@@ -770,8 +733,7 @@
               }
             }
           }
-        ],
-        "wasi_enabled": false
+        ]
       },
       {
         "analysis": "./analysis/call_chain_after.wasp",
@@ -809,8 +771,7 @@
               }
             }
           }
-        ],
-        "wasi_enabled": false
+        ]
       }
     ],
     "uninstrumented_assertion": {
@@ -829,8 +790,7 @@
       {
         "analysis": "./analysis/forward.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       },
       {
         "analysis": "./analysis/br-table-alter.wasp",
@@ -841,8 +801,7 @@
             }
           ]
         },
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       }
     ],
     "uninstrumented_assertion": {
@@ -869,8 +828,7 @@
       {
         "analysis": "./analysis/forward.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       },
       {
         "analysis": "./analysis/br-table-alter.wasp",
@@ -881,8 +839,7 @@
             }
           ]
         },
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       }
     ],
     "uninstrumented_assertion": {
@@ -909,8 +866,7 @@
       {
         "analysis": "./analysis/forward.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       },
       {
         "analysis": "./analysis/br-table-alter.wasp",
@@ -921,8 +877,7 @@
             }
           ]
         },
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       }
     ],
     "uninstrumented_assertion": {
@@ -949,14 +904,12 @@
       {
         "analysis": "./analysis/forward.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       },
       {
         "analysis": "./analysis/br-table-alter.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       }
     ],
     "uninstrumented_assertion": {
@@ -983,8 +936,7 @@
       {
         "analysis": "./analysis/forward.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       },
       {
         "analysis": "./analysis/block.wasp",
@@ -1006,8 +958,7 @@
               }
             }
           }
-        ],
-        "wasi_enabled": false
+        ]
       }
     ],
     "uninstrumented_assertion": {
@@ -1030,8 +981,7 @@
       {
         "analysis": "./analysis/forward.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       },
       {
         "analysis": "./analysis/loop.wasp",
@@ -1053,8 +1003,7 @@
               }
             }
           }
-        ],
-        "wasi_enabled": false
+        ]
       }
     ],
     "uninstrumented_assertion": {
@@ -1077,8 +1026,7 @@
       {
         "analysis": "./analysis/forward.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       },
       {
         "analysis": "./analysis/select-alter.wasp",
@@ -1089,8 +1037,7 @@
             }
           ]
         },
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       }
     ],
     "uninstrumented_assertion": {
@@ -1123,8 +1070,7 @@
       {
         "analysis": "./analysis/forward.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       },
       {
         "analysis": "./analysis/select-alter.wasp",
@@ -1135,8 +1081,7 @@
             }
           ]
         },
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       }
     ],
     "uninstrumented_assertion": {
@@ -1169,8 +1114,7 @@
       {
         "analysis": "./analysis/call_indirect.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       }
     ],
     "uninstrumented_assertion": {
@@ -1197,8 +1141,7 @@
       {
         "analysis": "./analysis/call_indirect.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       }
     ],
     "uninstrumented_assertion": {
@@ -1225,8 +1168,7 @@
       {
         "analysis": "./analysis/call_indirect.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       }
     ],
     "uninstrumented_assertion": {
@@ -1253,8 +1195,7 @@
       {
         "analysis": "./analysis/call_indirect.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       }
     ],
     "uninstrumented_assertion": {
@@ -1281,8 +1222,7 @@
       {
         "analysis": "./analysis/call_indirect.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       }
     ],
     "uninstrumented_assertion": {
@@ -1309,8 +1249,7 @@
       {
         "analysis": "./analysis/call_indirect.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       }
     ],
     "uninstrumented_assertion": {
@@ -1337,8 +1276,7 @@
       {
         "analysis": "./analysis/call_indirect.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       }
     ],
     "uninstrumented_assertion": {
@@ -1365,8 +1303,7 @@
       {
         "analysis": "./analysis/call_indirect.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       }
     ],
     "uninstrumented_assertion": {
@@ -1393,8 +1330,7 @@
       {
         "analysis": "./analysis/call_indirect.wasp",
         "input_program_assertion": "EqualToUninstrumented",
-        "post_execution_assertions": [],
-        "wasi_enabled": false
+        "post_execution_assertions": []
       }
     ],
     "uninstrumented_assertion": {

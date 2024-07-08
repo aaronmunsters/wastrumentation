@@ -35,7 +35,7 @@ impl Compiler {
             .expect("Npm init failed");
 
         Command::new("npm")
-            .args(["install", "assemblyscript", "@assemblyscript/wasi-shim"])
+            .args(["install", "assemblyscript"])
             .current_dir(&working_dir)
             .output()
             .expect("Npm install failed");

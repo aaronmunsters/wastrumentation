@@ -83,7 +83,6 @@ impl Wastrumenter {
         compiled_analysis: WasmModule,
         compiled_instrumentation_lib: WasmModule,
     ) -> Result<WasmModule> {
-        // FIXME: if wasi, add patch: instrumented_input.uses_wasi() || compiled_analysis.uses_wasi()
         let merge_options = MergeOptions {
             no_validate: true,
             rename_export_conflicts: true,
@@ -110,7 +109,7 @@ impl Wastrumenter {
     fn compile(&self, assemblyscript_program: AssemblyScriptProgram) -> Result<WasmModule> {
         let compiler = &self.assemblyscript_compiler;
         let AssemblyScriptProgram { content } = assemblyscript_program;
-        let compiler_options = AssemblyscriptCompilerOptions::no_wasi(content);
+        let compiler_options = AssemblyscriptCompilerOptions::new(content);
         compiler
             .compile(&compiler_options)
             .map_err(|e| anyhow!(e.reason().to_string()))
@@ -166,7 +165,7 @@ mod tests {
 
     #[test]
     fn example_instrumentation() {
-        let compiler_options = AssemblyscriptCompilerOptions::no_wasi(SOURCE_CODE_INPUT.into());
+        let compiler_options = AssemblyscriptCompilerOptions::new(SOURCE_CODE_INPUT.into());
         let input_program = AssemblyScriptCompiler::new()
             .compile(&compiler_options)
             .unwrap();
