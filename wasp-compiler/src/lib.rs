@@ -184,8 +184,6 @@ mod tests {
                     select: false,
                 },
                 wasp_interface: WaspInterface {
-                    inputs: [],
-                    outputs: [],
                     generic_interface: None,
                     if_then_trap: None,
                     if_then_else_trap: None,

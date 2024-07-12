@@ -28,8 +28,6 @@ pub const NAMESPACE_TRANSFORMED_INPUT: &str = "transformed_input";
 // TODO: are `inputs` and `outputs` used?
 #[derive(Debug, PartialEq, Eq, Default)]
 pub struct WaspInterface {
-    pub inputs: Vec<WasmImport>,
-    pub outputs: Vec<WasmExport>,
     pub generic_interface: Option<(WasmExport, WasmImport)>,
     pub if_then_trap: Option<WasmExport>,
     pub if_then_else_trap: Option<WasmExport>,
@@ -219,26 +217,13 @@ impl From<&Root> for WaspInterface {
                     TrapSignature::TrapApply(TrapApply {
                         apply_hook_signature:
                             ApplyHookSignature::Spe(ApplySpe {
-                                mutable_signature,
-                                parameters_arguments,
-                                parameters_results,
+                                mutable_signature: _,
+                                parameters_arguments: _,
+                                parameters_results: _,
                                 ..
                             }),
                         ..
-                    }) => {
-                        wasp_interface.inputs.push(WasmImport::for_extern_call_base(
-                            *mutable_signature,
-                            parameters_arguments,
-                            parameters_results,
-                        ));
-                        wasp_interface
-                            .outputs
-                            .push(WasmExport::for_exported_apply_trap(
-                                *mutable_signature,
-                                parameters_arguments,
-                                parameters_results,
-                            ));
-                    }
+                    }) => todo!(),
                     TrapSignature::TrapIfThen(_) => {
                         wasp_interface.if_then_trap = Some(WaspInterface::interface_if_then());
                     }
@@ -295,8 +280,7 @@ impl From<&Root> for WaspInterface {
 #[cfg(test)]
 mod tests {
     use crate::ast::wasp::{
-        ApplyGen, BranchFormalCondition, GenericTarget, TrapIfThen, TrapIfThenElse, WasmParameter,
-        WasmType::F32,
+        ApplyGen, BranchFormalCondition, GenericTarget, TrapIfThen, TrapIfThenElse,
     };
 
     use super::*;
@@ -361,46 +345,6 @@ mod tests {
             wasp_interface,
             WaspInterface {
                 generic_interface: Some(WaspInterface::interface_generic_apply()),
-                ..Default::default()
-            }
-        );
-    }
-
-    #[test]
-    fn test_generation_specialized() {
-        let wasp_root = Root(vec![AdviceDefinition::AdviceTrap(
-            TrapSignature::TrapApply(TrapApply {
-                apply_hook_signature: ApplyHookSignature::Spe(ApplySpe {
-                    mutable_signature: true,
-                    apply_parameter: "WasmFunc".into(),
-                    parameters_arguments: vec![WasmParameter {
-                        identifier: "a".into(),
-                        identifier_type: WasmType::I32,
-                    }],
-                    parameters_results: vec![WasmParameter {
-                        identifier: "b".into(),
-                        identifier_type: WasmType::F32,
-                    }],
-                }),
-                body: "trap body".into(),
-            }),
-        )]);
-        let wasp_interface = WaspInterface::from(&wasp_root);
-
-        assert_eq!(
-            wasp_interface,
-            WaspInterface {
-                inputs: vec![WasmImport {
-                    namespace: "transformed_input".into(),
-                    name: "call_base_mut_args_i32_ress_f32".into(),
-                    args: vec![I32],
-                    results: vec![F32]
-                }],
-                outputs: vec![WasmExport {
-                    name: "apply_func_mut_args_i32_ress_f32".into(),
-                    args: vec![I32],
-                    results: vec![F32]
-                }],
                 ..Default::default()
             }
         );

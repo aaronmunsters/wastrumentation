@@ -16,8 +16,8 @@ use wasabi_wasm::Table;
 use wasabi_wasm::Val;
 use wasabi_wasm::ValType;
 
+use crate::analysis::{WasmExport, WasmImport};
 use wasp_compiler::ast::assemblyscript::AssemblyScriptProgram;
-use wasp_compiler::wasp_interface::{WasmExport, WasmImport};
 
 use super::FunctionTypeConvertible;
 
@@ -29,14 +29,14 @@ pub const INSTRUMENTATION_INSTRUMENTED_MODULE: &str = "instrumented_input";
 pub fn instrument(
     module: &mut Module,
     pre_instrumentation_function_indices: &HashSet<Idx<Function>>,
-    wasp_exported_generic_apply_trap: WasmExport,
-    wasp_imported_generic_apply_base: WasmImport,
+    wasp_exported_generic_apply_trap: &WasmExport,
+    wasp_imported_generic_apply_base: &WasmImport,
 ) -> AssemblyScriptProgram {
     // 0. GENERATE GENERIC APPLY
     let generic_apply_index = module.add_function_import(
         wasp_exported_generic_apply_trap.as_function_type(),
         INSTRUMENTATION_ANALYSIS_MODULE.into(),
-        wasp_exported_generic_apply_trap.name,
+        wasp_exported_generic_apply_trap.name.to_string(),
     );
 
     // 1. GENERATE IMPORTS FOR INSTRUMENTATION STACK LIBRARY
@@ -201,7 +201,7 @@ pub fn instrument(
     module
         .function_mut(call_base_idx)
         .export
-        .push(wasp_imported_generic_apply_base.name);
+        .push(wasp_imported_generic_apply_base.name.to_string());
 
     AssemblyScriptProgram {
         content: assemblyscript_code,

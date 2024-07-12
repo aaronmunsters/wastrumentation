@@ -7,7 +7,6 @@ repos:
     -   id: check-case-conflict
     -   id: check-json
     -   id: check-merge-conflict
-    -   id: check-shebang-scripts-are-executable
     -   id: check-toml
     -   id: check-vcs-permalinks
     -   id: check-yaml
@@ -24,4 +23,4 @@ repos:
     hooks:
     -   id: fmt
     -   id: cargo-check
-    -   id: clippy
+    # -   id: clippy

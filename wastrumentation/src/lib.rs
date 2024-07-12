@@ -4,20 +4,22 @@ use instrument::function_application::{
     INSTRUMENTATION_STACK_MODULE,
 };
 use wasm_merge::{InputModule, MergeError, MergeOptions};
-use wasp_compiler::{
-    ast::assemblyscript::AssemblyScriptProgram, compile as wasp_compile,
-    wasp_interface::WaspInterface, CompilationResult as WaspCompilationResult,
+use wasp_compiler::ast::assemblyscript::AssemblyScriptProgram;
+use wastrumentation_instr_lib::std_lib_compile::{
+    assemblyscript::compiler_options::CompilerOptions as AssemblyScriptCompilerOptions, WasmModule,
 };
-use wastrumentation_instr_lib::std_lib_compile::assemblyscript::compiler_options::CompilerOptions as AssemblyscriptCompilerOptions;
-use wastrumentation_instr_lib::std_lib_compile::WasmModule;
 
 use anyhow::{anyhow, Result};
 
 use wastrumentation_instr_lib::std_lib_compile::assemblyscript::compiler::Compiler as AssemblyScriptCompiler;
 
+pub mod analysis;
 mod instrument;
 pub mod parse_nesting;
 mod stack_library;
+
+pub use analysis::Analysis;
+use analysis::{AnalysisCompilationResult, AnalysisInterface};
 
 pub struct Wastrumenter {
     assemblyscript_compiler: AssemblyScriptCompiler,
@@ -43,39 +45,33 @@ impl Wastrumenter {
 
     /// # Errors
     /// Errors upon failing to compile, instrument or merge.
-    pub fn wastrument(&self, input_program: &WasmModule, wasp_source: &str) -> Result<WasmModule> {
+    pub fn wastrument(
+        &self,
+        input_program: &WasmModule,
+        analysis: &Analysis,
+    ) -> Result<WasmModule> {
         // 1. Compile wasp_source
-        let WaspCompilationResult {
-            analysis_source_code,
-            wasp_interface,
-            ..
-        } = wasp_compile(wasp_source)?;
+        let AnalysisCompilationResult {
+            analysis_wasm,
+            analysis_interface,
+        } = analysis.compile()?;
         // 2. Instrument the input program
-        let (instrumented_input, instrumentation_lib) =
-            Self::instrument(input_program, wasp_interface);
+        let InstrumentationResult {
+            module: instrumented_input,
+            instrumentation_lib,
+        } = instrument::instrument(input_program, &analysis_interface);
         // 3. Compile the analysis & instrumentation lib
-        let compiled_analysis = self.compile(analysis_source_code)?;
         let compiled_instrumentation_lib = self.compile(instrumentation_lib)?;
 
         // 4. Merge them all together
         let instrumented_input = Self::merge(
             instrumented_input,
-            compiled_analysis,
+            analysis_wasm,
             compiled_instrumentation_lib,
         )?;
 
         // 5. Yield expected result
         Ok(instrumented_input)
-    }
-    fn instrument(
-        input_program: &WasmModule,
-        wasp_interface: WaspInterface,
-    ) -> (WasmModule, AssemblyScriptProgram) {
-        let InstrumentationResult {
-            module,
-            instrumentation_lib,
-        } = instrument::instrument(input_program, wasp_interface);
-        (module, instrumentation_lib)
     }
 
     fn merge(
@@ -109,7 +105,7 @@ impl Wastrumenter {
     fn compile(&self, assemblyscript_program: AssemblyScriptProgram) -> Result<WasmModule> {
         let compiler = &self.assemblyscript_compiler;
         let AssemblyScriptProgram { content } = assemblyscript_program;
-        let compiler_options = AssemblyscriptCompilerOptions::new(content);
+        let compiler_options = AssemblyScriptCompilerOptions::new(content);
         compiler
             .compile(&compiler_options)
             .map_err(|e| anyhow!(e.reason().to_string()))
@@ -173,8 +169,13 @@ mod tests {
         let wastrumenter = Wastrumenter::new();
 
         // Instrument the application
-        let instrumented_input = wastrumenter
-            .wastrument(&input_program, SOURCE_CODE_WASP)
+        let instrumented_input: Vec<u8> = wastrumenter
+            .wastrument(
+                &input_program,
+                &Analysis::AssemblyScript {
+                    wasp_source: SOURCE_CODE_WASP.into(),
+                },
+            )
             .unwrap();
 
         // Execute & check instrumentation

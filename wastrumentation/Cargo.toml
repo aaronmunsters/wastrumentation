@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+rust-analyses = { path = "../rust-analyses" }
 wasabi_wasm = { git = "https://github.com/aaronmunsters/wasabi.git", branch = "candidate" }
 wasp-compiler = { path = "../wasp-compiler" }
 wastrumentation-instr-lib = { path = "../wastrumentation-instr-lib" }

@@ -6,14 +6,11 @@ use wasabi_wasm::ImportOrPresent;
 use wasabi_wasm::Module;
 use wasabi_wasm::ValType;
 use wasp_compiler::ast::assemblyscript::AssemblyScriptProgram;
-use wasp_compiler::ast::wasp::WasmType;
-use wasp_compiler::wasp_interface::WasmExport;
-use wasp_compiler::wasp_interface::WasmImport;
-use wasp_compiler::wasp_interface::WaspInterface;
 
 use wasabi_wasm::Function;
 use wasabi_wasm::Idx;
 
+use crate::analysis::{AnalysisInterface, WasmExport, WasmImport, WasmType};
 use crate::parse_nesting::HighLevelBody;
 use crate::parse_nesting::LowLevelBody;
 
@@ -34,15 +31,15 @@ pub struct InstrumentationResult {
     pub instrumentation_lib: AssemblyScriptProgram,
 }
 
-pub fn instrument(module: &[u8], wasp_interface: WaspInterface) -> InstrumentationResult {
-    let WaspInterface {
+pub fn instrument(module: &[u8], analysis_interface: &AnalysisInterface) -> InstrumentationResult {
+    let AnalysisInterface {
         generic_interface,
         if_then_else_trap,
         if_then_trap,
         br_if_trap,
         pre_trap_call,
-        pre_trap_call_indirect,
         post_trap_call,
+        pre_trap_call_indirect,
         post_trap_call_indirect,
         br_table_trap,
         pre_block,
@@ -50,11 +47,12 @@ pub fn instrument(module: &[u8], wasp_interface: WaspInterface) -> Instrumentati
         pre_loop,
         post_loop,
         select,
-        inputs: _,
-        outputs: _,
-    } = wasp_interface;
+    } = analysis_interface;
+
     let mut instrumentation_lib = String::new();
+
     let (mut module, _offsets, _issue) = Module::from_bytes(module).unwrap();
+
     let target_indices: HashSet<Idx<Function>> = module
         .functions()
         .filter(|(_index, f)| f.code().is_some())
@@ -78,46 +76,57 @@ pub fn instrument(module: &[u8], wasp_interface: WaspInterface) -> Instrumentati
         .unwrap();
 
     pre_block
+        .as_ref()
         .map(|export| module.install(export))
         .map(|index| module.instrument_function_bodies(&target_indices, &BlockPre(index)));
 
     post_block
+        .as_ref()
         .map(|export| module.install(export))
         .map(|index| module.instrument_function_bodies(&target_indices, &BlockPost(index)));
 
     pre_loop
+        .as_ref()
         .map(|export| module.install(export))
         .map(|index| module.instrument_function_bodies(&target_indices, &LoopPre(index)));
 
     post_loop
+        .as_ref()
         .map(|export| module.install(export))
         .map(|index| module.instrument_function_bodies(&target_indices, &LoopPost(index)));
 
     select
+        .as_ref()
         .map(|export| module.install(export))
         .map(|index| module.instrument_function_bodies(&target_indices, &Select(index)));
 
     pre_trap_call_indirect
+        .as_ref()
         .map(|export| module.install(export))
         .map(|index| module.instrument_function_bodies(&target_indices, &CallIndirectPre(index)));
 
     post_trap_call_indirect
+        .as_ref()
         .map(|export| module.install(export))
         .map(|index| module.instrument_function_bodies(&target_indices, &CallIndirectPost(index)));
 
     if_then_trap
+        .as_ref()
         .map(|export| module.install(export))
         .map(|index| module.instrument_function_bodies(&target_indices, &IfThen(index)));
 
     if_then_else_trap
+        .as_ref()
         .map(|export| module.install(export))
         .map(|index| module.instrument_function_bodies(&target_indices, &IfThenElse(index)));
 
     br_if_trap
+        .as_ref()
         .map(|export| module.install(export))
         .map(|index| module.instrument_function_bodies(&target_indices, &BrIf(index)));
 
     br_table_trap
+        .as_ref()
         .map(|export| module.install(export))
         .map(|index| module.instrument_function_bodies(&target_indices, &BrTable(index)));
 
@@ -133,10 +142,10 @@ pub fn instrument(module: &[u8], wasp_interface: WaspInterface) -> Instrumentati
     };
 
     InstrumentationResult {
+        module: module.to_bytes().unwrap(),
         instrumentation_lib: AssemblyScriptProgram {
             content: instrumentation_lib,
         },
-        module: module.to_bytes().unwrap(),
     }
 }
 
@@ -157,7 +166,7 @@ fn uses_reference_types(f: &Function) -> bool {
 }
 
 trait Instrumentable {
-    fn install(&mut self, export: WasmExport) -> Idx<Function>;
+    fn install(&mut self, export: &WasmExport) -> Idx<Function>;
     fn instrument_function_bodies(
         &mut self,
         target_functions: &HashSet<Idx<Function>>,
@@ -165,11 +174,11 @@ trait Instrumentable {
     ) -> Result<(), &'static str>;
 }
 impl Instrumentable for Module {
-    fn install(&mut self, export: WasmExport) -> Idx<Function> {
+    fn install(&mut self, export: &WasmExport) -> Idx<Function> {
         self.add_function_import(
             export.as_function_type(),
             INSTRUMENTATION_ANALYSIS_MODULE.to_string(),
-            export.name,
+            export.name.to_string(),
         )
     }
 

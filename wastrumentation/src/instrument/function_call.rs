@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 
+use crate::analysis::WasmExport;
 use crate::parse_nesting::{HighLevelBody, Instr, LowLevelBody};
 use wasabi_wasm::{Code, Function, Idx, ImportOrPresent, Module, Val};
-use wasp_compiler::wasp_interface::WasmExport;
 
 use super::{function_application::INSTRUMENTATION_ANALYSIS_MODULE, FunctionTypeConvertible};
 
@@ -16,7 +16,7 @@ pub enum TargetCall<T> {
     Both { pre_call_trap: T, post_call_trap: T },
 }
 
-impl TargetCall<WasmExport> {
+impl TargetCall<&WasmExport> {
     pub fn instrument(
         &self,
         module: &mut Module,
