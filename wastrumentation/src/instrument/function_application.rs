@@ -17,7 +17,7 @@ use wasabi_wasm::Val;
 use wasabi_wasm::ValType;
 
 use crate::analysis::{WasmExport, WasmImport};
-use wasp_compiler::ast::assemblyscript::AssemblyScriptProgram;
+use crate::AssemblyScriptProgram;
 
 use super::FunctionTypeConvertible;
 

@@ -3,7 +3,7 @@ use crate::ast::pest::{
     ApplySpeIntro,
 };
 use anyhow::anyhow;
-use std::collections::HashSet;
+use std::{collections::HashSet, fmt::Display};
 
 use super::pest::CallQualifier;
 
@@ -182,6 +182,17 @@ pub enum WasmType {
     F32,
     I64,
     F64,
+}
+
+impl Display for WasmType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            WasmType::I32 => write!(f, "i32"),
+            WasmType::F32 => write!(f, "f32"),
+            WasmType::I64 => write!(f, "i64"),
+            WasmType::F64 => write!(f, "f64"),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]

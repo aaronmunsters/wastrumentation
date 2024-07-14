@@ -1,20 +1,13 @@
-use wasp_compiler::{
-    ast::{
-        assemblyscript::AssemblyScriptProgram,
-        pest::CallQualifier,
-        wasp::{
-            AdviceDefinition, ApplyHookSignature, ApplySpe, Root, TrapApply, TrapBlockAfter,
-            TrapBlockBefore, TrapCall, TrapCallIndirectAfter, TrapCallIndirectBefore,
-            TrapLoopAfter, TrapLoopBefore, TrapSelect, TrapSignature,
-        },
+use wasp_compiler::ast::{
+    pest::CallQualifier,
+    wasp::{
+        AdviceDefinition, ApplyHookSignature, ApplySpe, Root, TrapApply, TrapBlockAfter,
+        TrapBlockBefore, TrapCall, TrapCallIndirectAfter, TrapCallIndirectBefore, TrapLoopAfter,
+        TrapLoopBefore, TrapSelect, TrapSignature,
     },
-    compile as wasp_compile,
-    wasp_interface::WaspInterface,
-    CompilationResult as WaspCompilationResult,
 };
-use wastrumentation_instr_lib::std_lib_compile::assemblyscript::compiler_options::CompilerOptions as AssemblyscriptCompilerOptions;
 
-use super::AnalysisInterface;
+use super::super::AnalysisInterface;
 
 impl From<&Root> for AnalysisInterface {
     fn from(wasp_root: &Root) -> Self {
@@ -94,5 +87,119 @@ impl From<&Root> for AnalysisInterface {
             };
         }
         wasp_interface
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use wasp_compiler::ast::wasp::{
+        ApplyGen, BranchFormalCondition, GenericTarget, TrapIfThen, TrapIfThenElse,
+    };
+
+    use crate::analysis::{WasmExport, WasmImport, WasmType};
+
+    use super::*;
+
+    #[test]
+    fn test_debug() {
+        let wasm_import = WasmImport {
+            namespace: "namespace".into(),
+            name: "name".into(),
+            args: vec![WasmType::I32],
+            results: vec![WasmType::F32],
+        };
+        assert_eq!(
+            format!("{wasm_import:?}"),
+            r#"WasmImport { namespace: "namespace", name: "name", args: [I32], results: [F32] }"#
+        );
+
+        let wasm_import = WasmExport {
+            name: "name".into(),
+            args: vec![WasmType::I32],
+            results: vec![WasmType::F32],
+        };
+        assert_eq!(
+            format!("{wasm_import:?}"),
+            r#"WasmExport { name: "name", args: [I32], results: [F32] }"#
+        );
+    }
+
+    #[test]
+    fn test_generation_empty() {
+        // empty wasp root generates empty interface
+        let wasp_root: Root = Root(vec![]);
+        let wasp_interface = AnalysisInterface::from(&wasp_root);
+        assert_eq!(wasp_interface, AnalysisInterface::default());
+    }
+
+    #[test]
+    fn test_generation_global_only() {
+        let wasp_root: Root = Root(vec![AdviceDefinition::AdviceGlobal(
+            "global functionality".into(),
+        )]);
+        let wasp_interface = AnalysisInterface::from(&wasp_root);
+        assert_eq!(wasp_interface, AnalysisInterface::default());
+    }
+
+    #[test]
+    fn test_generation_generic() {
+        let wasp_root = Root(vec![AdviceDefinition::AdviceTrap(
+            TrapSignature::TrapApply(TrapApply {
+                apply_hook_signature: ApplyHookSignature::Gen(ApplyGen {
+                    generic_means: GenericTarget::Dynamic,
+                    parameter_function: "WasmFunc".into(),
+                    parameter_arguments: "WasmArgs".into(),
+                    parameter_results: "WasmResults".into(),
+                }),
+                body: "trap body".into(),
+            }),
+        )]);
+        let wasp_interface = AnalysisInterface::from(&wasp_root);
+
+        assert_eq!(
+            wasp_interface,
+            AnalysisInterface {
+                generic_interface: Some(AnalysisInterface::interface_generic_apply()),
+                ..Default::default()
+            }
+        );
+    }
+
+    #[test]
+    fn test_generation_if_then() {
+        let wasp_root = Root(vec![AdviceDefinition::AdviceTrap(
+            TrapSignature::TrapIfThen(TrapIfThen {
+                branch_formal_condition: BranchFormalCondition("condition".into()),
+                body: "trap body".into(),
+            }),
+        )]);
+        let wasp_interface = AnalysisInterface::from(&wasp_root);
+
+        assert_eq!(
+            wasp_interface,
+            AnalysisInterface {
+                if_then_trap: Some(AnalysisInterface::interface_if_then()),
+                ..Default::default()
+            }
+        );
+    }
+
+    #[test]
+    fn test_generation_if_then_else() {
+        let wasp_root = Root(vec![AdviceDefinition::AdviceTrap(
+            TrapSignature::TrapIfThenElse(TrapIfThenElse {
+                branch_formal_condition: BranchFormalCondition("condition".into()),
+                body: "trap body".into(),
+            }),
+        )]);
+        let wasp_interface = AnalysisInterface::from(&wasp_root);
+
+        assert_eq!(
+            wasp_interface,
+            AnalysisInterface {
+                if_then_else_trap: Some(AnalysisInterface::interface_if_then_else()),
+                ..Default::default()
+            }
+        );
     }
 }

@@ -1,11 +1,11 @@
 use std::collections::HashSet;
 
+use crate::AssemblyScriptProgram;
 use wasabi_wasm::Code;
 use wasabi_wasm::FunctionType;
 use wasabi_wasm::ImportOrPresent;
 use wasabi_wasm::Module;
 use wasabi_wasm::ValType;
-use wasp_compiler::ast::assemblyscript::AssemblyScriptProgram;
 
 use wasabi_wasm::Function;
 use wasabi_wasm::Idx;

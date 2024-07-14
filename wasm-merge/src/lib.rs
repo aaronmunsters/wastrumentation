@@ -218,18 +218,18 @@ mod tests {
             rename_export_conflicts: false,
             input_modules: vec![
                 InputModule {
-                    module: vec![],
+                    module: vec![99, 88, 77, 66],
                     namespace: String::from("foo"),
                 },
                 InputModule {
-                    module: vec![],
+                    module: vec![99, 88, 77, 66],
                     namespace: String::from("bar"),
                 },
             ],
         };
 
         let MergeError(reason) = merge(&merge_options).unwrap_err();
-        assert!(reason.contains("parse exception"));
+        assert!(reason.contains("Fatal"));
     }
 
     #[test]

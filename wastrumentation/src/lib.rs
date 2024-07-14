@@ -1,10 +1,15 @@
+pub mod analysis;
+mod instrument;
+pub mod parse_nesting;
+mod stack_library;
+
 use crate::instrument::InstrumentationResult;
+use analysis::assemblyscript::AssemblyScriptProgram;
 use instrument::function_application::{
     INSTRUMENTATION_ANALYSIS_MODULE, INSTRUMENTATION_INSTRUMENTED_MODULE,
     INSTRUMENTATION_STACK_MODULE,
 };
 use wasm_merge::{InputModule, MergeError, MergeOptions};
-use wasp_compiler::ast::assemblyscript::AssemblyScriptProgram;
 use wastrumentation_instr_lib::std_lib_compile::{
     assemblyscript::compiler_options::CompilerOptions as AssemblyScriptCompilerOptions, WasmModule,
 };
@@ -13,13 +18,8 @@ use anyhow::{anyhow, Result};
 
 use wastrumentation_instr_lib::std_lib_compile::assemblyscript::compiler::Compiler as AssemblyScriptCompiler;
 
-pub mod analysis;
-mod instrument;
-pub mod parse_nesting;
-mod stack_library;
-
 pub use analysis::Analysis;
-use analysis::{AnalysisCompilationResult, AnalysisInterface};
+use analysis::AnalysisCompilationResult;
 
 pub struct Wastrumenter {
     assemblyscript_compiler: AssemblyScriptCompiler,
@@ -54,7 +54,7 @@ impl Wastrumenter {
         let AnalysisCompilationResult {
             analysis_wasm,
             analysis_interface,
-        } = analysis.compile()?;
+        } = analysis.compile(self)?;
         // 2. Instrument the input program
         let InstrumentationResult {
             module: instrumented_input,

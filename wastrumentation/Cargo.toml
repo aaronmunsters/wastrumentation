@@ -6,12 +6,14 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rust-analyses = { path = "../rust-analyses" }
+rust-to-wasm-compiler = { path = "../rust-to-wasm-compiler" }
 wasabi_wasm = { git = "https://github.com/aaronmunsters/wasabi.git", branch = "candidate" }
 wasp-compiler = { path = "../wasp-compiler" }
 wastrumentation-instr-lib = { path = "../wastrumentation-instr-lib" }
 wasm-merge = { path = "../wasm-merge" }
 anyhow = { workspace = true }
+indoc = { workspace = true }
+num-integer = "0.1"
 
 [dev-dependencies]
 serde = { version = "1.0", features = ["derive"] }

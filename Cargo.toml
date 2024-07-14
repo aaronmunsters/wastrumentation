@@ -6,7 +6,7 @@ members = [
     "wastrumentation-instr-lib",
     "wasp-compiler",
     "wasm-merge",
-    "rust-analyses",
+    "rust-to-wasm-compiler",
 ]
 
 [workspace.dependencies]

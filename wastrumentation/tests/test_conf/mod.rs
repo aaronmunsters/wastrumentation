@@ -42,9 +42,23 @@ pub enum InputProgramType {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct InstrumentedAssertion {
-    pub analysis: PathBuf,
+    pub analysis: Analysis,
     pub input_program_assertion: InputProgramAssertion,
     pub post_execution_assertions: Vec<PostExecutionAssertion>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub enum Analysis {
+    Wasp(PathBuf),
+    Rust(AnalysisRust),
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct AnalysisRust {
+    pub manifest: PathBuf,
+    pub hooks: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

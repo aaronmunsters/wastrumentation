@@ -1,4 +1,3 @@
-use core::panic;
 use std::path::PathBuf;
 
 pub const FUNCTION_NAME_BLOCK_PRE: &str = "block_pre";
@@ -19,9 +18,10 @@ pub const FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE: &str = "specialized_if_then_el
 pub const NAMESPACE_TRANSFORMED_INPUT: &str = "transformed_input";
 
 use anyhow::{bail, Result};
+use assemblyscript::ASRoot;
 use wasp_compiler::CompilationResult;
 
-mod assemblyscript;
+pub mod assemblyscript;
 mod rust;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -70,6 +70,7 @@ pub struct AnalysisCompilationResult {
     pub analysis_interface: AnalysisInterface,
 }
 
+#[derive(Clone)]
 pub enum Analysis {
     Rust {
         manifest: PathBuf,
@@ -81,10 +82,11 @@ pub enum Analysis {
 }
 
 impl Analysis {
-    pub fn compile(&self) -> Result<AnalysisCompilationResult> {
+    pub fn compile(&self, wastrumenter: &Wastrumenter) -> Result<AnalysisCompilationResult> {
         match self {
             Analysis::Rust { manifest, hooks } => {
-                let analysis_wasm = rust_analyses::RustToWasmCompiler::new()?.compile(manifest)?;
+                let analysis_wasm =
+                    rust_to_wasm_compiler::RustToWasmCompiler::new()?.compile(manifest)?;
                 let analysis_interface = rust::interface_from(hooks)?;
                 Ok(AnalysisCompilationResult {
                     analysis_wasm,
@@ -93,13 +95,15 @@ impl Analysis {
             }
             Analysis::AssemblyScript { wasp_source } => {
                 let CompilationResult {
-                    analysis_source_code,
-                    join_points,
-                    wasp_interface,
-                } = wasp_compiler::compile(&wasp_source)?;
+                    wasp_root,
+                    join_points: _,
+                } = wasp_compiler::compile(wasp_source)?;
 
-                let analysis_wasm = todo!();
-                let analysis_interface = todo!();
+                let analysis_interface = AnalysisInterface::from(&wasp_root);
+                let as_root = ASRoot(wasp_root);
+                let wasp_assemblyscript = as_root.into();
+                let analysis_wasm = wastrumenter.compile(wasp_assemblyscript)?;
+
                 Ok(AnalysisCompilationResult {
                     analysis_wasm,
                     analysis_interface,
@@ -111,7 +115,7 @@ impl Analysis {
 
 type ApplyInterface = (WasmExport, WasmImport);
 
-use crate::analysis::{self, WasmType::I32};
+use crate::{analysis::WasmType::I32, Wastrumenter};
 
 impl AnalysisInterface {
     fn interface_generic_apply() -> ApplyInterface {

@@ -36,6 +36,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Update rustup
         run: rustup update $toolchain && rustup default $toolchain
+      - name: Install wasm as a rust target
+        run: rustup target add wasm32-unknown-unknown
         shell: bash
       - name: Install Binaryen
         run: |
@@ -60,6 +62,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Update rustup
         run: rustup update $toolchain && rustup default $toolchain
+      - name: Install wasm as a rust target
+        run: rustup target add wasm32-unknown-unknown
         shell: bash
       - name: Lint (clippy)
         run: cargo clippy --all-features --all-targets

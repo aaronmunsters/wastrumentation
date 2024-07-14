@@ -50,24 +50,3 @@ impl RustToWasmCompiler {
         fs::read(compiled_wasm.path.clone()).map_err(|err| anyhow!(err))
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use std::path::{absolute, Path};
-
-    use crate::RustToWasmCompiler;
-
-    #[test]
-    fn compiles_example() {
-        let example_path = absolute(Path::new("./tests/analysis/call-stack/Cargo.toml")).unwrap();
-
-        let rust_to_wasm_compiler = RustToWasmCompiler::new();
-        let wasm_module = rust_to_wasm_compiler
-            .unwrap()
-            .compile(&example_path)
-            .unwrap();
-
-        let wasm_magic_bytes: &[u8] = &[0x00, 0x61, 0x73, 0x6D];
-        assert_eq!(&wasm_module[0..4], wasm_magic_bytes);
-    }
-}
