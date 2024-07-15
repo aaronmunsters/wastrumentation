@@ -1,9 +1,7 @@
 #![no_std]
 
-extern crate wee_alloc;
-
-pub mod std_wastrumentation_lib;
-use std_wastrumentation_lib::*;
+extern crate wastrumentation_rs_stdlib;
+use wastrumentation_rs_stdlib::{advice, FunctionIndex, MutDynArgs, MutDynResults, WasmFunction};
 
 // TODO: can I make use of global variables?
 // Unsure whether this works:
@@ -29,10 +27,10 @@ pub extern "C" fn get_max_call_depth() -> i32 {
     unsafe { MAX_CALL_DEPTH }
 }
 
-pub static mut NUMBER_OF_APPLIES: i32 = 0;
-pub static mut MAX_APPLY_DEPTH: i32 = 0;
-pub static mut NUMBER_OF_CALLS: i32 = 0;
-pub static mut MAX_CALL_DEPTH: i32 = 0;
+static mut NUMBER_OF_APPLIES: i32 = 0;
+static mut MAX_APPLY_DEPTH: i32 = 0;
+static mut NUMBER_OF_CALLS: i32 = 0;
+static mut MAX_CALL_DEPTH: i32 = 0;
 static mut APPLY_STACK: i32 = 0;
 static mut CALL_STACK: i32 = 0;
 

@@ -1,3 +1,7 @@
+#![no_std]
+
+extern crate wee_alloc;
+
 #[global_allocator]
 pub static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
@@ -222,6 +226,7 @@ impl RuntimeValues {
     }
 }
 
+#[macro_export]
 macro_rules! advice {
     (advice call before
         ($func_ident: ident : FunctionIndex) $body:block
@@ -250,13 +255,11 @@ macro_rules! advice {
         pub extern "C"
         fn generic_apply (f_apply: i32, argc: i32, resc: i32, sigv: i32, sigtypv: i32) -> () {
             let $func_ident = WasmFunction::new(f_apply, sigv);
-            let $args_ident = RuntimeValues::new(argc, resc, sigv, sigtypv);
-            let $ress_ident = RuntimeValues::new(argc, resc, sigv, sigtypv);
+            let $args_ident = MutDynResults::new(argc, resc, sigv, sigtypv);
+            let $ress_ident = MutDynArgs::new(argc, resc, sigv, sigtypv);
             $body
         }
     };
 }
 
 use core::{mem::size_of, slice::from_raw_parts};
-
-pub(crate) use advice;
