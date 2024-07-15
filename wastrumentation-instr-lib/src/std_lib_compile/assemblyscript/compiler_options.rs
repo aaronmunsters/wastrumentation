@@ -1,15 +1,4 @@
-use super::compilation_result::{CompilationError, CompilationResult};
-use crate::std_lib_compile::{
-    CompilerOptions as CompilerOptionsTrait, CompilerResult as CompilerResultTrait,
-};
-
-use std::{
-    collections::HashMap,
-    fs::File,
-    io::{Read, Write},
-    process::Command,
-};
-use tempfile::{tempdir, NamedTempFile};
+use std::collections::HashMap;
 
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Default)]
@@ -22,16 +11,6 @@ pub struct CompilerOptions {
     pub enable_export_memory: bool,
     pub flag_use: Option<HashMap<String, String>>,
     pub runtime: RuntimeStrategy,
-}
-
-impl CompilerOptionsTrait for CompilerOptions {
-    fn source_code(&self) -> Vec<u8> {
-        Vec::from(self.source_code.as_bytes())
-    }
-
-    fn compile(&self) -> Box<dyn CompilerResultTrait> {
-        Box::new(Self::compile(self))
-    }
 }
 
 #[derive(Default)]
@@ -140,80 +119,14 @@ impl CompilerOptions {
             flag_use = flag_use,
         )
     }
-
-    /// # Errors
-    /// When the compilation failes.
-    ///
-    /// # Panics
-    /// When system resources such as files cannot be acquired.
-    pub fn compile(compile_options: &CompilerOptions) -> CompilationResult {
-        let working_dir = tempdir().expect("Could not create temp dir");
-        let working_dir_path = working_dir.path().to_string_lossy().to_string();
-
-        Command::new("npm")
-            .args(["init", "-y"])
-            .current_dir(&working_dir_path)
-            .output()
-            .expect("Npm init failed");
-        Command::new("npm")
-            .args(["install", "assemblyscript"])
-            .current_dir(&working_dir_path)
-            .output()
-            .expect("Npm install failed");
-
-        let assemblyscript_source_file_path =
-            working_dir.path().join("assemblyscript_source_file.ts");
-        let mut assemblyscript_source_file = File::create(&assemblyscript_source_file_path)
-            .expect("Could not create temp input file");
-        assemblyscript_source_file
-            .write_all(compile_options.source_code.as_bytes())
-            .expect("Could not write std_lib to temp file");
-        let assemblyscript_source_file_path = assemblyscript_source_file_path
-            .to_string_lossy()
-            .to_string();
-
-        // TODO: this custom abort is hardcoded here, but weirdly 'provided' at call-site ... refactor!
-        let custom_abort_source_file_path = working_dir.path().join("custom_abort_source_file.ts");
-        let mut custom_abort_source_file =
-            File::create(custom_abort_source_file_path).expect("Could not create temp input file");
-        let custom_abort_lib = include_str!("./custom_abort_lib.ts");
-        custom_abort_source_file
-            .write_all(custom_abort_lib.as_bytes())
-            .expect("Could not write std_lib to temp file");
-
-        let mut output_file = NamedTempFile::new().expect("Could not create temp output file");
-        let output_file_path = output_file.path().to_string_lossy().to_string();
-
-        let mut command_compile_lib = Command::new("bash");
-        command_compile_lib.current_dir(&working_dir_path);
-
-        let npx_command =
-            compile_options.to_npx_command(&assemblyscript_source_file_path, &output_file_path);
-
-        command_compile_lib.args(["-c", &npx_command]);
-
-        // Kick off command, i.e. compile
-        let result = command_compile_lib
-            .output()
-            .expect("Could not execute compilation command");
-
-        if !(result.stderr.is_empty() && result.stdout.is_empty()) {
-            return Err(CompilationError(
-                String::from_utf8_lossy(&result.stderr).to_string(),
-            ));
-        };
-
-        let mut result = Vec::new();
-        output_file
-            .read_to_end(&mut result)
-            .expect("Could not read result from written output");
-
-        Ok(result) // FIXME: do not unwrap, make known what went wrong
-    }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::std_lib_compile::assemblyscript::{
+        compilation_result::CompilationError, compiler::Compiler,
+    };
+
     use super::*;
 
     fn simple_compiler_option_for(source_code: String) -> CompilerOptions {
@@ -249,20 +162,11 @@ mod tests {
     }
 
     #[test]
-    fn test_source_code_retrieval() {
-        let option = simple_compiler_option_for("/* source-code here */".into());
-        assert_eq!(
-            String::from_utf8(option.source_code()).unwrap(),
-            "/* source-code here */"
-        )
-    }
-
-    #[test]
     fn test_assemblyscript_faulty_compilation() {
+        let compiler = Compiler::new();
         let compiler_options =
             simple_compiler_option_for("this is not valid assemblyscript code".into());
-
-        let reason = compiler_options.compile().module().unwrap_err();
+        let CompilationError(reason) = compiler.compile(&compiler_options).unwrap_err();
         assert!(reason.contains("ERROR"));
     }
 

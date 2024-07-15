@@ -1,4 +1,4 @@
-use super::super::{CompilerResult as CompilerResultTrait, WasmModule};
+use super::super::WasmModule;
 
 pub type CompilationResult = Result<WasmModule, CompilationError>;
 
@@ -9,15 +9,6 @@ impl CompilationError {
     pub fn reason(&self) -> &str {
         let Self(reason) = self;
         reason.as_str()
-    }
-}
-
-impl CompilerResultTrait for CompilationResult {
-    fn module(&self) -> Result<WasmModule, String> {
-        match self {
-            Ok(module) => Ok(module.clone()),
-            Err(CompilationError(reason)) => Err(reason.to_string()),
-        }
     }
 }
 

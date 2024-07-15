@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-tempfile = "3.10.1"
+tempfile = { workspace = true }
 
 [dev-dependencies]
 wabt = "0.10.0"

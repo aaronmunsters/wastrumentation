@@ -5,13 +5,13 @@ edition = "2021"
 
 [dependencies]
 cargo = "0.80.0"
-anyhow = "1.0"
+anyhow = { workspace = true }
 
 [dev-dependencies]
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-wat = "1"
+serde = { workspace = true }
+serde_json = { workspace = true }
+wat = { workspace = true }
 wasmtime = { workspace = true }
 wastrumentation = { path = "../wastrumentation" }
 wastrumentation-instr-lib = { path = "../wastrumentation-instr-lib" }
-rayon = "1.10"
+rayon = { workspace = true }
