@@ -202,7 +202,7 @@ impl AnalysisInterface {
             name: FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_PRE.into(),
             // function_table_index, function_table
             args: vec![I32, I32],
-            // void
+            // function_table_index
             results: vec![I32],
         }
     }

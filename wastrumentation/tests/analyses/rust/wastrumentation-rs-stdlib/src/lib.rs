@@ -116,11 +116,14 @@ impl WasmValue {
     }
 }
 
-pub type FunctionIndex = i32;
+pub type FunctionIndex = i32; // TODO: turn into wrapper type?
 pub struct WasmFunction {
     f_apply: i32,
     sigv: i32,
 }
+
+pub struct FunctionTableIndex(pub i32);
+pub struct FunctionTable(pub i32);
 
 pub struct RuntimeValues {
     argc: i32,
@@ -243,6 +246,33 @@ macro_rules! advice {
         pub extern "C"
         fn specialized_call_post ($func_ident:FunctionIndex) -> ()
         $body
+    };
+    (advice call-indirect before
+        ($func_table_index_ident: ident : FunctionTableIndex, $func_table_ident: ident : FunctionTable) $body:block
+    ) => {
+        #[no_mangle]
+        pub extern "C"
+        fn specialized_call_indirect_pre (
+            function_table_index: i32,
+            function_table: i32,
+        ) -> i32 {
+            let $func_table_index_ident = FunctionTableIndex(function_table_index);
+            let $func_table_ident = FunctionTable(function_table);
+            let FunctionTableIndex(final_index) = $body;
+            final_index
+        }
+    };
+    (advice call-indirect after
+        ($func_table_ident: ident : FunctionTable) $body:block
+    ) => {
+        #[no_mangle]
+        pub extern "C"
+        fn specialized_call_indirect_post (
+            function_table: i32,
+        ) -> () {
+            let $func_table_ident = FunctionTable(function_table);
+            $body
+        }
     };
     (advice apply
         (
