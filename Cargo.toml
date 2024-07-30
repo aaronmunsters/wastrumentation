@@ -12,7 +12,7 @@ members = [
 
 [workspace.dependencies]
 anyhow = "1.0"
-wasmtime = "22.0"
+wasmtime = "23.0"
 indoc = "2"
 tempfile = "3.10"
 serde = { version = "1.0", features = ["derive"] }
