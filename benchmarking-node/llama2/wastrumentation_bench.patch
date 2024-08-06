@@ -1,0 +1,36 @@
+In the file execute.js, at the end
+of the program run, include the
+following lines to retrieve the
+instrumentation results:
+
+
+console.log(`Tiny LLama2 could process ${reported_value} tokens/second.`);
+console.log(`Instrumentation results:
+  number_of_calls: ${llama.wasmExports.get_number_of_calls()}
+  max_call_depth: ${llama.wasmExports.get_max_call_depth()}
+  call_stack: ${llama.wasmExports.get_call_stack()}
+`);
+
+
+62c62,80
+< node execute.js ${llama_js_bin_name} ${model_bin_path} # <-- optionally include `verbose` argument
+---
+> #     #############################
+> echo "##### W.1 Instrument! #####"
+> #     #############################
+> input_program_path=$(realpath ./${llama_bin_name}.wasm)
+> rust_path=$(realpath ../../../input-analyses/rust/call-stack-eq-wasabi/Cargo.toml)
+> output_path="./${llama_bin_name}_instrumented.wasm"
+>
+> cargo run -- \
+>     --input-program-path ${input_program_path} \
+>     --rust-analysis-toml-path ${rust_path} \
+>     --hooks call-before          \
+>             call-after           \
+>             call-indirect-before \
+>             call-indirect-after  \
+>     --output-path ${output_path}
+>
+> mv ${output_path} ${input_program_path}
+>
+> node --experimental-wasm-multi-memory execute.js ${llama_js_bin_name} ${model_bin_path} # <-- optionally include `verbose` argument
