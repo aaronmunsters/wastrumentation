@@ -30,6 +30,7 @@ struct Args {
 #[derive(clap::ValueEnum, Debug, Clone, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 enum Hook {
+    Apply,
     CallBefore,
     CallAfter,
     CallIndirectBefore,
@@ -41,6 +42,7 @@ enum Hook {
 impl Hook {
     fn to_interface_string(&self) -> String {
         match self {
+            Hook::Apply => "advice-apply".into(),
             Hook::CallBefore => "advice-call-before".into(),
             Hook::CallAfter => "advice-call-after".into(),
             Hook::CallIndirectBefore => "advice-call-indirect-before".into(),

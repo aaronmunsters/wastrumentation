@@ -15,43 +15,15 @@ firefoxlink_linux="https://download-origin.cdn.mozilla.net/pub/firefox/nightly/2
 firefoxarchive="firefox.tar.bz2"
 firefoxpath="firefox"
 
-mkdir -p ${workingdir}
-cd ${workingdir}
-
-function download-unarchive () {
-    local archive_path="$1"
-    local archive_file="$2"
-    local archive_link="$3"
-    if [[ -d ${archive_path} ]]; then
-        echo "${archive_path} found, using this as reference"
-    else
-        echo "${archive_path} not found, looking for archive file"
-        if [[ ! -f ${archive_file} ]]; then
-            echo "${archive_file} not found, looking to download it"
-            wget                            \
-                -O ${archive_file}      \
-                --no-clobber                \
-                --no-verbose                \
-                --quiet                     \
-                ${archive_link}
-        fi
-        if [[ ! -f ${archive_file} ]]; then
-            echo "Could not download the ${archive_file} from ${archive_link}, aborting..."
-            exit 0
-        fi
-
-        echo "Extracting ${archive_file} to ${archive_path}"
-        mkdir -p ${archive_path}
-        tar --extract --file ${archive_file} --directory ${archive_path}
-    fi
+function abort() {
+    reason=$1
+    echo "${reason}"
+    echo "Was 'bench.sh' ran before? Aborting due to suspission this is not the case..."
+    exit 0
 }
 
-### Fetch polybench benchmark suite
-download-unarchive ${polybenchpath} ${polybencharchive} ${polybenchlink}
-(
-    cd ${polybenchpath}/${polybenchidentifier}
-    rm -f AUTHORS CHANGELOG LICENSE.txt THANKS polybench.pdf
-)
+if [[ ! -d ${workingdir} ]]; then abort "The folder ${workingdir} is not created yet."; fi
+cd ${workingdir}
 
 #################################################
 ### FETCH WEB BROWSER (locally, not globally) ###
@@ -61,36 +33,22 @@ download-unarchive ${polybenchpath} ${polybencharchive} ${polybenchlink}
 # Line below is more Unix-based
 # download-unarchive ${firefoxpath} ${firefoxarchive} ${firefoxlink_linux}
 
-if [[ -d "`realpath /Volumes/Firefox*`" ]]; then
-    echo "Assuming Firefox it already mounted, under \"`realpath /Volumes/Firefox*`\""
-else
-    echo "(temporary MacOS Firefox installation) Fetching"
-    wget                    \
-        -O firefox.dmg  \
-        --no-clobber        \
-        --no-verbose        \
-        --quiet             \
-        ${firefoxlink_macos}
-
-    echo "(temporary MacOS Firefox installation) Mounting"
-    hdiutil attach firefox.dmg -quiet
-fi
-
+if [[ ! -d "`realpath /Volumes/Firefox*`" ]]; then abort "A benchmark instance of Firefox is not mounted?"; fi
 firefox_binary=`realpath /Volumes/Firefox*/Firefox*.app/Contents/MacOS/firefox`
 
-if [[ "${firefox_binary} --version" == "" ]]; then
-    echo "Is the following a binary to a web browser?"
-    echo ${firefox_binary}
-    echo "Because I could not tell. Aborting."
-fi
+if [[ "${firefox_binary} --version" == "" ]]; then abort "Is ${firefox_binary} a binary to a web browser? Because I could not tell."; fi
 firefox_version=`"${firefox_binary}" --version`
 
 ###############################
 ### COMPILE BENCHMARK SUITE ###
 ###############################
 
+benchmark_list_path="${polybenchpath}/${polybenchidentifier}/utilities/benchmark_list"
+if [[ ! -f ${benchmark_list_path} ]]; then abort "Could not find ${benchmark_list_path}"; fi
+
 cd ${polybenchpath}/${polybenchidentifier}
 mkdir -p build/
+mkdir -p build-instrumented-wastrumentation/
 while read sourcefile
 do
 	sourcedir=$(dirname $sourcefile)
@@ -100,22 +58,24 @@ do
 	dataset_size=$(sed -n -e "s/$name;//p" $dataset_size_list_path)
 
     # For documentation of Polybench/C, see README of downloaded ${polybencharchive}
-    if [[ -f build/${name}.wasm && -f build/${name}.js && -f build/${name}.html ]]; then
-        echo "[already compiled] skipping compilation $name ; ${dataset_size}"
-    else
-	    echo "Compiling $name (for ${dataset_size})"
-        emcc                            \
-            -O3                         \
-            -I utilities                \
-            -I $sourcedir               \
-            utilities/polybench.c       \
-            $sourcefile                 \
-            -s ALLOW_MEMORY_GROWTH=1    \
-            --emrun                     \
-            -DPOLYBENCH_TIME            \
-            -D$dataset_size             \
-            -o build/$name.html
+    if [[ ! (-f build/${name}.wasm && -f build/${name}.js && -f build/${name}.html) ]]; then
+        abort "Compilation for $name (for ${dataset_size}) did not happen..."
     fi
+
+    cp build/${name}.js   build-instrumented-wastrumentation/${name}.js
+    cp build/${name}.html build-instrumented-wastrumentation/${name}.html
+    rm -f                 build-instrumented-wastrumentation/${name}.wasm
+
+    echo "Instrumenting `realpath ./build/${name}.wasm`"
+    cargo run -- \
+        --input-program-path `realpath ./build/${name}.wasm`                                                        \
+        --rust-analysis-toml-path `realpath ../../../../input-analyses/rust/call-stack-wastrumentation/Cargo.toml`  \
+        --hooks call-before                                                                                         \
+                call-after                                                                                          \
+                call-indirect-before                                                                                \
+                call-indirect-after                                                                                 \
+                apply                                                                                               \
+        --output-path "./build-instrumented-wastrumentation/${name}.wasm"
 
 done < utilities/benchmark_list # <-- This file will dictate the input source files
 
@@ -128,7 +88,7 @@ rm -rf firefox-profile && mkdir -p firefox-profile
 firefox_args="--headless -no-remote -profile $(readlink -f firefox-profile)"
 
 # create (new!) results file
-results_file="runtime-analysis.csv"
+results_file="runtime-analysis-wastrumentation.csv"
 echo > ${results_file} # create / clear ${results_file}
 echo "runtime_environment,benchmark,performance" >> ${results_file}
 results_file_path=`readlink -f ${results_file}`
@@ -138,16 +98,16 @@ EXIT_STATUS_TIMEOUT=124
 
 trap exit SIGINT SIGTERM # allow to break out of loop on Ctrl+C
 
-total_input_programs=`ls -1 build/*.html | wc -l`
+total_input_programs=`ls -1 build-instrumented-wastrumentation/*.html | wc -l`
 total_runs=$((${benchmark_runs}*${total_input_programs}))
 iteration=0
 
 for benchmark_run in `seq ${benchmark_runs}`; do
-for file in build/*.html; do
+for file in build-instrumented-wastrumentation/*.html; do
     echo "[BENCHMARK PROGRESS]: ${iteration}/${total_runs}"; iteration=$((${iteration}+1))
 
     # append findings to results file
-	echo -n "\"${firefox_version}\", `basename ${file} .html`, " >> $results_file_path
+	echo -n "\"${firefox_version} (wastrumentation)\", `basename ${file} .html`, " >> $results_file_path
 	timeout ${timeout} `# execute command of line below, wrapped in timeout shield of ${timeout} seconds` \
     emrun \
         --log_stdout "${results_file_path}" `# Write findings to file             ` \
@@ -157,7 +117,7 @@ for file in build/*.html; do
         "${file}"                           `# Target benchmark                   `
 
     # If benchmark ran out of time, report this too
-	if [ $? -eq ${EXIT_STATUS_TIMEOUT} ]; then
+    if [ $? -eq ${EXIT_STATUS_TIMEOUT} ]; then
         echo "timeout ${timeout}" >> $results_file_path
     fi
 done
