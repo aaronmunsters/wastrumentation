@@ -3,9 +3,14 @@
 extern crate wastrumentation_rs_stdlib;
 use wastrumentation_rs_stdlib::{advice, FunctionIndex, MutDynArgs, MutDynResults, WasmFunction};
 
-// TODO: can I make use of global variables?
-// Unsure whether this works:
-// https://users.rust-lang.org/t/exposing-globals-to-host-application-in-wasm/57562/2
+// There is no option to make use of WASM Globals here.
+// E.g. `pub static mut NUMBER_OF_APPLIES: i32 = 0;`
+// As per requested here: https://users.rust-lang.org/t/exposing-globals-to-host-application-in-wasm/57562/2
+// The reason being that the Rust compiler intentionally
+// outputs the global as a pointer in the module memory,
+// as such it would require the host to access memory
+// anyway and a function call then facilitates it anyway
+// Reference: https://github.com/rust-lang/rust/issues/65987
 
 #[no_mangle]
 pub extern "C" fn get_number_of_applies() -> i32 {
