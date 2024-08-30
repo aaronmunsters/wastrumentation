@@ -87,7 +87,7 @@ impl Analysis {
             Analysis::Rust { manifest, hooks } => {
                 let analysis_wasm =
                     rust_to_wasm_compiler::RustToWasmCompiler::new()?.compile(manifest)?;
-                let analysis_interface = rust::interface_from(hooks)?;
+                let analysis_interface: AnalysisInterface = rust::interface_from(hooks)?;
                 Ok(AnalysisCompilationResult {
                     analysis_wasm,
                     analysis_interface,
@@ -119,6 +119,9 @@ use crate::{analysis::WasmType::I32, Wastrumenter};
 
 impl AnalysisInterface {
     fn interface_generic_apply() -> ApplyInterface {
+        // The analysis its interface
+        // -> EXPORTS a `generic apply`, implemented by the analysis developer
+        // -> IMPORTS a `call base`, which the analysis may call into to 'resume' case computation
         (
             WasmExport {
                 name: FUNCTION_NAME_GENERIC_APPLY.into(),
