@@ -145,7 +145,11 @@ impl TestConfiguration {
             &self.instrumented_assertions
         {
             let instrumented_input = wastrumenter
-                .wastrument(&input_program_wasm, &analysis.to_wastrument_analysis())
+                .wastrument(
+                    &input_program_wasm,
+                    &analysis.to_wastrument_analysis(),
+                    &None,
+                )
                 .expect("Instrumentation pass failed");
 
             let EngineSetup {
@@ -268,7 +272,7 @@ impl Analysis {
             Analysis::Rust(AnalysisRust { manifest, hooks }) => wastrumentation::Analysis::Rust {
                 manifest: absolute(manifest)
                     .unwrap_or_else(|_| panic!("Could not absolutify {manifest:?}")),
-                hooks: hooks.to_vec(),
+                hooks: hooks.clone().into_iter().collect(),
             },
         }
     }

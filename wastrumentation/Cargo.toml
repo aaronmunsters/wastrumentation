@@ -13,10 +13,10 @@ wastrumentation-instr-lib = { path = "../wastrumentation-instr-lib" }
 wasm-merge = { path = "../wasm-merge" }
 anyhow = { workspace = true }
 indoc = { workspace = true }
+serde = { workspace = true }
 num-integer = "0.1"
 
 [dev-dependencies]
-serde = { workspace = true }
 serde_json = { workspace = true }
 wat = { workspace = true }
 wasmtime = { workspace = true }

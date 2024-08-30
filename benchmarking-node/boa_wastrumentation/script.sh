@@ -18,10 +18,10 @@ output_path="./working-directory/rust_boa_recursion_bg_instrumented.wasm"
 cargo run -- \
     --input-program-path ${input_program_path} \
     --rust-analysis-toml-path ${rust_path} \
-    --hooks call-before          \
-            call-after           \
-            call-indirect-before \
-            call-indirect-after  \
+    --hooks call-before             \
+            call-after              \
+            call-indirect-before    \
+            call-indirect-after     \
     --output-path ${output_path}
 
 mv ${output_path} ${input_program_path}

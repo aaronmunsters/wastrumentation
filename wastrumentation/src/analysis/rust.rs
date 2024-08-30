@@ -1,29 +1,40 @@
-use super::bail;
+use std::collections::HashSet;
+
+use serde::Deserialize;
+
 use super::AnalysisInterface;
 use super::Result;
 
-pub fn interface_from(hooks: &[String]) -> Result<AnalysisInterface> {
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash, Deserialize)]
+pub enum Hook {
+    GenericApply,
+    CallBefore,
+    CallAfter,
+    CallIndirectBefore,
+    CallIndirectAfter,
+}
+
+pub fn interface_from(hooks: &HashSet<Hook>) -> Result<AnalysisInterface> {
     let mut interface = AnalysisInterface::default();
     for hook in hooks {
-        match hook.as_str() {
-            "advice-call-before" => {
+        match hook {
+            Hook::GenericApply => {
+                interface.generic_interface = Some(AnalysisInterface::interface_generic_apply())
+            }
+            Hook::CallBefore => {
                 interface.pre_trap_call = Some(AnalysisInterface::interface_call_pre())
             }
-            "advice-call-after" => {
+            Hook::CallAfter => {
                 interface.post_trap_call = Some(AnalysisInterface::interface_call_post())
             }
-            "advice-call-indirect-before" => {
+            Hook::CallIndirectBefore => {
                 interface.pre_trap_call_indirect =
                     Some(AnalysisInterface::interface_call_indirect_pre())
             }
-            "advice-call-indirect-after" => {
+            Hook::CallIndirectAfter => {
                 interface.post_trap_call_indirect =
                     Some(AnalysisInterface::interface_call_indirect_post())
             }
-            "advice-apply" => {
-                interface.generic_interface = Some(AnalysisInterface::interface_generic_apply())
-            }
-            unknown_hook => bail!("Unknown hook target: {unknown_hook}"),
         }
     }
     Ok(interface)

@@ -1,7 +1,8 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::path::PathBuf;
+use wastrumentation::analysis::Hook;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct TestConfiguration {
     pub input_program: InputProgram,
@@ -9,37 +10,36 @@ pub struct TestConfiguration {
     pub instrumented_assertions: Vec<InstrumentedAssertion>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct InputProgram {
     pub path: PathBuf,
     pub r#type: ProgramType,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub enum ProgramType {
     Wat,
     AssemblyScript,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct UninstrumentedAssertion {
     pub input_entry_point: String,
     pub arguments: Vec<WasmValue>,
     pub results: Vec<WasmValue>,
-    pub post_execution_assertions: Vec<InstrumentedAssertion>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub enum InputProgramType {
     Wat,
     AssemblyScript,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct InstrumentedAssertion {
     pub analysis: Analysis,
@@ -47,28 +47,28 @@ pub struct InstrumentedAssertion {
     pub post_execution_assertions: Vec<PostExecutionAssertion>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub enum Analysis {
     Wasp(PathBuf),
     Rust(AnalysisRust),
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct AnalysisRust {
     pub manifest: PathBuf,
-    pub hooks: Vec<String>,
+    pub hooks: Vec<Hook>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub enum InputProgramAssertion {
     EqualToUninstrumented,
     DifferentReturnValue(Vec<WasmValue>),
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[derive(Deserialize, Debug, Clone, Copy)]
 #[serde(deny_unknown_fields)]
 pub enum WasmValue {
     I32(i32),
@@ -77,14 +77,14 @@ pub enum WasmValue {
     F64(u64),
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub enum PostExecutionAssertion {
     CallYields(CallYields),
     GlobalValueEquals(GlobalValueEquals),
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct CallYields {
     pub call: String,
@@ -92,7 +92,7 @@ pub struct CallYields {
     pub results: Vec<WasmValue>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct GlobalValueEquals {
     pub identifier: String,

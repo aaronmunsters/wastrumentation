@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{collections::HashSet, path::PathBuf};
 
 pub const FUNCTION_NAME_BLOCK_PRE: &str = "block_pre";
 pub const FUNCTION_NAME_BLOCK_POST: &str = "block_post";
@@ -17,8 +17,9 @@ pub const FUNCTION_NAME_SPECIALIZED_IF_THEN: &str = "specialized_if_then_k";
 pub const FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE: &str = "specialized_if_then_else_k";
 pub const NAMESPACE_TRANSFORMED_INPUT: &str = "transformed_input";
 
-use anyhow::{bail, Result};
+use anyhow::Result;
 use assemblyscript::ASRoot;
+pub use rust::Hook;
 use wasp_compiler::CompilationResult;
 
 pub mod assemblyscript;
@@ -74,7 +75,7 @@ pub struct AnalysisCompilationResult {
 pub enum Analysis {
     Rust {
         manifest: PathBuf,
-        hooks: Vec<String>,
+        hooks: HashSet<Hook>,
     },
     AssemblyScript {
         wasp_source: String,

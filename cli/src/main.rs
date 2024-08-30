@@ -4,7 +4,7 @@ use std::path::absolute;
 use clap::Parser;
 use clio::*;
 use serde::Deserialize;
-use wastrumentation::{analysis, Wastrumenter};
+use wastrumentation::{analysis, analysis::Hook as AnalysisHook, Wastrumenter};
 
 /// Command-line interface to the wastrumentation utility
 #[derive(Parser, Debug)]
@@ -22,32 +22,32 @@ struct Args {
     #[arg(long, required = true, num_args = 1..)]
     hooks: Vec<Hook>,
 
+    // Target functions of interest
+    #[arg(long, required = false, num_args = 1..)]
+    targets: Option<Vec<u32>>,
+
     /// Output path for the instrumented module
     #[arg(short, long)]
     output_path: Output,
 }
 
-#[derive(clap::ValueEnum, Debug, Clone, Deserialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(clap::ValueEnum, Debug, Clone, Deserialize, PartialEq, Eq, Copy, Hash)]
 enum Hook {
-    Apply,
+    GenericApply,
     CallBefore,
     CallAfter,
     CallIndirectBefore,
     CallIndirectAfter,
-    IfThen,
 }
 
-// TODO: move away from strings, use enum & serde everywhere
-impl Hook {
-    fn to_interface_string(&self) -> String {
-        match self {
-            Hook::Apply => "advice-apply".into(),
-            Hook::CallBefore => "advice-call-before".into(),
-            Hook::CallAfter => "advice-call-after".into(),
-            Hook::CallIndirectBefore => "advice-call-indirect-before".into(),
-            Hook::CallIndirectAfter => "advice-call-indirect-after".into(),
-            Hook::IfThen => "advice-if-then".into(),
+impl From<&Hook> for AnalysisHook {
+    fn from(hook: &Hook) -> Self {
+        match hook {
+            Hook::GenericApply => AnalysisHook::GenericApply,
+            Hook::CallBefore => AnalysisHook::CallBefore,
+            Hook::CallAfter => AnalysisHook::CallAfter,
+            Hook::CallIndirectBefore => AnalysisHook::CallIndirectBefore,
+            Hook::CallIndirectAfter => AnalysisHook::CallIndirectAfter,
         }
     }
 }
@@ -58,16 +58,17 @@ fn main() -> std::io::Result<()> {
         rust_analysis_toml_path,
         mut output_path,
         hooks,
+        targets,
     } = Args::parse();
 
     let mut wasm_module = Vec::new();
     input_program_path.read_to_end(&mut wasm_module)?;
-    let hooks: Vec<String> = hooks.iter().map(Hook::to_interface_string).collect();
+    let hooks = hooks.iter().map(From::from).collect();
 
     let manifest = absolute(rust_analysis_toml_path.path().path())?;
     let analysis = analysis::Analysis::Rust { manifest, hooks };
     let instrumented_wasm_module = Wastrumenter::new()
-        .wastrument(&wasm_module, &analysis)
+        .wastrument(&wasm_module, &analysis, &targets)
         .expect("Instrumenting failed");
 
     output_path.write_all(&instrumented_wasm_module)?;

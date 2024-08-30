@@ -49,6 +49,7 @@ impl Wastrumenter {
         &self,
         input_program: &WasmModule,
         analysis: &Analysis,
+        target_indices: &Option<Vec<u32>>,
     ) -> Result<WasmModule> {
         // 1. Compile wasp_source
         let AnalysisCompilationResult {
@@ -59,7 +60,7 @@ impl Wastrumenter {
         let InstrumentationResult {
             module: instrumented_input,
             instrumentation_lib,
-        } = instrument::instrument(input_program, &analysis_interface);
+        } = instrument::instrument(input_program, &analysis_interface, target_indices);
         // 3. Compile the analysis & instrumentation lib
         let compiled_instrumentation_lib = self.compile(instrumentation_lib)?;
 
@@ -175,6 +176,7 @@ mod tests {
                 &Analysis::AssemblyScript {
                     wasp_source: SOURCE_CODE_WASP.into(),
                 },
+                &None,
             )
             .unwrap();
 

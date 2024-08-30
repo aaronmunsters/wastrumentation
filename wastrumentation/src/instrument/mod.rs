@@ -31,7 +31,11 @@ pub struct InstrumentationResult {
     pub instrumentation_lib: AssemblyScriptProgram,
 }
 
-pub fn instrument(module: &[u8], analysis_interface: &AnalysisInterface) -> InstrumentationResult {
+pub fn instrument(
+    module: &[u8],
+    analysis_interface: &AnalysisInterface,
+    target_indices: &Option<Vec<u32>>,
+) -> InstrumentationResult {
     let AnalysisInterface {
         generic_interface,
         if_then_else_trap,
@@ -58,6 +62,11 @@ pub fn instrument(module: &[u8], analysis_interface: &AnalysisInterface) -> Inst
         .filter(|(_index, f)| f.code().is_some())
         .filter(|(_index, f)| !uses_reference_types(f))
         .map(|(idx, _)| idx)
+        .filter(|index| {
+            target_indices
+                .as_ref()
+                .map_or(true, |ts| ts.contains(&index.to_u32()))
+        })
         .collect();
 
     // Instrument call / call_indirect first, to prevent new call instructions to be instrumented too.

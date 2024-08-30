@@ -66,7 +66,6 @@
         }
       ],
       "input_entry_point": "add_three",
-      "post_execution_assertions": [],
       "results": [
         {
           "I32": 6
@@ -135,7 +134,6 @@
         }
       ],
       "input_entry_point": "fib",
-      "post_execution_assertions": [],
       "results": [
         {
           "I32": 89
@@ -176,7 +174,6 @@
     "uninstrumented_assertion": {
       "arguments": [],
       "input_entry_point": "execute_tests",
-      "post_execution_assertions": [],
       "results": []
     }
   },
@@ -237,7 +234,6 @@
     "uninstrumented_assertion": {
       "arguments": [],
       "input_entry_point": "execute_tests",
-      "post_execution_assertions": [],
       "results": []
     }
   },
@@ -271,7 +267,6 @@
     "uninstrumented_assertion": {
       "arguments": [],
       "input_entry_point": "main",
-      "post_execution_assertions": [],
       "results": [
         {
           "I32": 10
@@ -313,7 +308,6 @@
         }
       ],
       "input_entry_point": "main",
-      "post_execution_assertions": [],
       "results": [
         {
           "I32": 1
@@ -348,7 +342,6 @@
         }
       ],
       "input_entry_point": "main",
-      "post_execution_assertions": [],
       "results": [
         {
           "I32": 2
@@ -386,7 +379,6 @@
     "uninstrumented_assertion": {
       "arguments": [],
       "input_entry_point": "main",
-      "post_execution_assertions": [],
       "results": [
         {
           "I32": 4401001
@@ -428,7 +420,6 @@
         }
       ],
       "input_entry_point": "main",
-      "post_execution_assertions": [],
       "results": [
         {
           "I32": 1
@@ -463,7 +454,6 @@
         }
       ],
       "input_entry_point": "main",
-      "post_execution_assertions": [],
       "results": [
         {
           "I32": 2
@@ -505,7 +495,6 @@
         }
       ],
       "input_entry_point": "if-label",
-      "post_execution_assertions": [],
       "results": [
         {
           "I32": 100
@@ -547,7 +536,6 @@
         }
       ],
       "input_entry_point": "if-label",
-      "post_execution_assertions": [],
       "results": [
         {
           "I32": 101
@@ -589,7 +577,6 @@
         }
       ],
       "input_entry_point": "if-label",
-      "post_execution_assertions": [],
       "results": [
         {
           "I32": 111
@@ -624,7 +611,6 @@
         }
       ],
       "input_entry_point": "main",
-      "post_execution_assertions": [],
       "results": [
         {
           "I32": 15
@@ -659,7 +645,6 @@
         }
       ],
       "input_entry_point": "main",
-      "post_execution_assertions": [],
       "results": [
         {
           "I32": 5
@@ -694,7 +679,6 @@
         }
       ],
       "input_entry_point": "main",
-      "post_execution_assertions": [],
       "results": [
         {
           "I32": 50
@@ -839,7 +823,6 @@
     "uninstrumented_assertion": {
       "arguments": [],
       "input_entry_point": "main",
-      "post_execution_assertions": [],
       "results": []
     }
   },
@@ -877,7 +860,6 @@
         }
       ],
       "input_entry_point": "main",
-      "post_execution_assertions": [],
       "results": [
         {
           "I32": 0
@@ -919,7 +901,6 @@
         }
       ],
       "input_entry_point": "main",
-      "post_execution_assertions": [],
       "results": [
         {
           "I32": 1
@@ -961,7 +942,6 @@
         }
       ],
       "input_entry_point": "main",
-      "post_execution_assertions": [],
       "results": [
         {
           "I32": 2
@@ -997,7 +977,6 @@
         }
       ],
       "input_entry_point": "main",
-      "post_execution_assertions": [],
       "results": [
         {
           "I32": -1
@@ -1046,7 +1025,6 @@
     "uninstrumented_assertion": {
       "arguments": [],
       "input_entry_point": "nested-blocks",
-      "post_execution_assertions": [],
       "results": [
         {
           "I32": 1
@@ -1095,7 +1073,6 @@
     "uninstrumented_assertion": {
       "arguments": [],
       "input_entry_point": "nested-loops",
-      "post_execution_assertions": [],
       "results": [
         {
           "I32": 1
@@ -1143,7 +1120,6 @@
         }
       ],
       "input_entry_point": "select",
-      "post_execution_assertions": [],
       "results": [
         {
           "I32": 999
@@ -1191,7 +1167,6 @@
         }
       ],
       "input_entry_point": "select",
-      "post_execution_assertions": [],
       "results": [
         {
           "I32": 111
@@ -1220,7 +1195,6 @@
         }
       ],
       "input_entry_point": "check_t0",
-      "post_execution_assertions": [],
       "results": [
         {
           "I32": 3
@@ -1249,7 +1223,6 @@
         }
       ],
       "input_entry_point": "check_t0",
-      "post_execution_assertions": [],
       "results": [
         {
           "I32": 1
@@ -1278,7 +1251,6 @@
         }
       ],
       "input_entry_point": "check_t0",
-      "post_execution_assertions": [],
       "results": [
         {
           "I32": 4
@@ -1307,7 +1279,6 @@
         }
       ],
       "input_entry_point": "check_t0",
-      "post_execution_assertions": [],
       "results": [
         {
           "I32": 1
@@ -1336,7 +1307,6 @@
         }
       ],
       "input_entry_point": "check_t0",
-      "post_execution_assertions": [],
       "results": [
         {
           "I32": 7
@@ -1365,7 +1335,6 @@
         }
       ],
       "input_entry_point": "check_t0",
-      "post_execution_assertions": [],
       "results": [
         {
           "I32": 5
@@ -1394,7 +1363,6 @@
         }
       ],
       "input_entry_point": "check_t0",
-      "post_execution_assertions": [],
       "results": [
         {
           "I32": 2
@@ -1423,7 +1391,6 @@
         }
       ],
       "input_entry_point": "check_t0",
-      "post_execution_assertions": [],
       "results": [
         {
           "I32": 3
@@ -1452,7 +1419,6 @@
         }
       ],
       "input_entry_point": "check_t0",
-      "post_execution_assertions": [],
       "results": [
         {
           "I32": 6
@@ -1470,9 +1436,9 @@
         "analysis": {
           "Rust": {
             "hooks": [
-              "advice-call-before",
-              "advice-call-after",
-              "advice-apply"
+              "CallBefore",
+              "CallAfter",
+              "GenericApply"
             ],
             "manifest": "./tests/analyses/rust/call-stack/Cargo.toml"
           }
@@ -1539,7 +1505,6 @@
         }
       ],
       "input_entry_point": "add_three",
-      "post_execution_assertions": [],
       "results": [
         {
           "I32": 6
