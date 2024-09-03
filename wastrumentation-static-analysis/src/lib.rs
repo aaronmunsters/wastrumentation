@@ -205,26 +205,4 @@ fn is_pure(
     PurityEstimate::Pure
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn hello_world() {
-        let path = "../benchmarking-node/boa_wastrumentation/rust-boa-recursion/target/wasm32-unknown-unknown/release/rust_boa_recursion.wasm";
-        let (module, _, _) = wasabi_wasm::Module::from_file(path).unwrap();
-        let set = immutable_functions(&module);
-
-        let mut index_length_vec: Vec<(u32, usize)> = set
-            .into_iter()
-            .map(|index| {
-                let length = module.function(Idx::from(index)).code().unwrap().body.len();
-                (index, length)
-            })
-            .collect();
-
-        index_length_vec.sort_by(|(_, l_length), (_, r_length)| l_length.cmp(r_length));
-
-        println!("{index_length_vec:#?}");
-    }
-}
+// TODO: implement tests
