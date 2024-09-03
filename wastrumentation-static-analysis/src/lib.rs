@@ -47,12 +47,12 @@ pub fn immutable_functions(module: &Module) -> HashSet<u32> {
         let reiterate: Vec<AnalysisTargetFunction> = high_level_functions
             .clone()
             .into_iter()
-            .map(|f| match &f.purity {
+            .map(|f: AnalysisTargetFunction| match &f.purity {
                 Purity::Pure => f,
                 Purity::Impure => f,
                 Purity::Unknown(body) => {
                     let HighLevelBody(body) = body;
-                    let previous_purity = is_pure(body, &high_level_functions);
+                    let previous_purity = is_pure(f.index, body, &high_level_functions);
                     let purity = match previous_purity {
                         PurityEstimate::Unknown => f.purity,
                         PurityEstimate::Pure => Purity::Pure,
@@ -111,26 +111,31 @@ pub fn immutable_functions(module: &Module) -> HashSet<u32> {
 // - Do not access tables/memory &&
 // - Does not perform call indirect (here's potential room for improvement)
 fn is_pure(
+<<<<<<< HEAD
     high_level_body: &Vec<TypedHighLevelInstr>,
+=======
+    index: Idx<Function>,
+    high_level_body: &Vec<Instr>,
+>>>>>>> 78015e7 (Add static analysis CLI support & improve static analysis)
     analysis_target_functions: &Vec<AnalysisTargetFunction>,
 ) -> PurityEstimate {
     for instr in high_level_body {
         match &instr.instr {
             // Must continue traversal
             Instr::If(_, body, None) | Instr::Block(_, body) | Instr::Loop(_, body) => {
-                match is_pure(body, analysis_target_functions) {
+                match is_pure(index, body, analysis_target_functions) {
                     PurityEstimate::Unknown => return PurityEstimate::Unknown,
                     PurityEstimate::Impure => return PurityEstimate::Impure,
                     PurityEstimate::Pure => continue,
                 }
             }
             Instr::If(_, then, Some(else_)) => {
-                match is_pure(then, analysis_target_functions) {
+                match is_pure(index, then, analysis_target_functions) {
                     PurityEstimate::Unknown => return PurityEstimate::Unknown,
                     PurityEstimate::Impure => return PurityEstimate::Impure,
                     PurityEstimate::Pure => (), // continue, does same hold for `else` ?
                 };
-                match is_pure(else_, analysis_target_functions) {
+                match is_pure(index, else_, analysis_target_functions) {
                     PurityEstimate::Unknown => return PurityEstimate::Unknown,
                     PurityEstimate::Impure => return PurityEstimate::Impure,
                     PurityEstimate::Pure => continue,
@@ -157,10 +162,16 @@ fn is_pure(
             | Instr::Local(_, _)
             | Instr::Binary(_) => continue,
             // Must check purity of other function, important: do not 'decide' purity of other, since recursive calls may introduce infinite loop
-            Instr::Call(index) => {
+            Instr::Call(target_index) => {
+                if index == *target_index {
+                    continue;
+                }
+
                 match analysis_target_functions
                     .iter()
-                    .find(|analysis_target_function| analysis_target_function.index == *index)
+                    .find(|analysis_target_function| {
+                        analysis_target_function.index == *target_index
+                    })
                     .expect("Call target must be present in binary")
                     .purity
                 {
@@ -207,7 +218,6 @@ mod tests {
         let mut index_length_vec: Vec<(u32, usize)> = set
             .into_iter()
             .map(|index| {
-                let index = index;
                 let length = module.function(Idx::from(index)).code().unwrap().body.len();
                 (index, length)
             })
