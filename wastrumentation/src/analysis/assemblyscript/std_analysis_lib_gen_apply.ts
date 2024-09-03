@@ -246,10 +246,12 @@ declare function call_base(f_apply: i32, sigv: i32): void
 
 class WasmFunction {
     f_apply: i32;
+    instr_f_idx: i32;
     sigv: i32;
 
-    constructor(f_apply: i32, sigv: i32) {
+    constructor(f_apply: i32, instr_f_idx: i32, sigv: i32) {
         this.f_apply = f_apply;
+        this.instr_f_idx = instr_f_idx;
         this.sigv = sigv;
     }
 

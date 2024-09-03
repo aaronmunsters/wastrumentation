@@ -119,6 +119,7 @@ impl WasmValue {
 pub type FunctionIndex = i32; // TODO: turn into wrapper type?
 pub struct WasmFunction {
     f_apply: i32,
+    instr_f_idx: i32,
     sigv: i32,
 }
 
@@ -134,8 +135,12 @@ pub struct RuntimeValues {
 }
 
 impl WasmFunction {
-    pub fn new(f_apply: i32, sigv: i32) -> Self {
-        WasmFunction { f_apply, sigv }
+    pub fn new(f_apply: i32, instr_f_idx: i32, sigv: i32) -> Self {
+        WasmFunction {
+            f_apply,
+            instr_f_idx,
+            sigv,
+        }
     }
 
     pub fn apply(&self) -> () {
@@ -283,8 +288,8 @@ macro_rules! advice {
     ) => {
         #[no_mangle]
         pub extern "C"
-        fn generic_apply (f_apply: i32, argc: i32, resc: i32, sigv: i32, sigtypv: i32) -> () {
-            let $func_ident = WasmFunction::new(f_apply, sigv);
+        fn generic_apply (f_apply: i32, instr_f_idx: i32, argc: i32, resc: i32, sigv: i32, sigtypv: i32) -> () {
+            let $func_ident = WasmFunction::new(f_apply, instr_f_idx, sigv);
             let $args_ident = MutDynResults::new(argc, resc, sigv, sigtypv);
             let $ress_ident = MutDynArgs::new(argc, resc, sigv, sigtypv);
             $body

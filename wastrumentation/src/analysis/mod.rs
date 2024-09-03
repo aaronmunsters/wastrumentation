@@ -126,8 +126,8 @@ impl AnalysisInterface {
         (
             WasmExport {
                 name: FUNCTION_NAME_GENERIC_APPLY.into(),
-                // f_apply, argc, resc, sigv, sigtypv
-                args: vec![I32, I32, I32, I32, I32],
+                // f_apply, instr_f_idx, argc, resc, sigv, sigtypv
+                args: vec![I32, I32, I32, I32, I32, I32],
                 results: vec![],
             },
             WasmImport {

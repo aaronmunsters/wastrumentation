@@ -149,12 +149,13 @@ impl Display for ASApplyGen<'_> {
             indoc! { r#"
             export function {GENERIC_APPLY_FUNCTION_NAME}(
                 f_apply: i32,
+                instr_f_idx: i32,
                 argc: i32,
                 resc: i32,
                 sigv: i32,
                 sigtypv: i32,
             ): void {{
-                let {parameter_function} = new WasmFunction(f_apply, sigv);
+                let {parameter_function} = new WasmFunction(f_apply, instr_f_idx, sigv);
                 let argsResults = new MutDynArgsResults(
                     argc,
                     resc,
@@ -779,12 +780,13 @@ mod tests {
         let expected = indoc! { r#"
             export function generic_apply(
                 f_apply: i32,
+                instr_f_idx: i32,
                 argc: i32,
                 resc: i32,
                 sigv: i32,
                 sigtypv: i32,
             ): void {
-                let func = new WasmFunction(f_apply, sigv);
+                let func = new WasmFunction(f_apply, instr_f_idx, sigv);
                 let argsResults = new MutDynArgsResults(
                     argc,
                     resc,
@@ -861,12 +863,13 @@ mod tests {
     //         console.log("Hello world!");
     //             export function generic_apply(
     //             f_apply: i32,
+    //             instr_f_idx: i32,
     //             argc: i32,
     //             resc: i32,
     //             sigv: i32,
     //             sigtypv: i32,
     //         ): void {
-    //             let func = new WasmFunction(f_apply, sigv);
+    //             let func = new WasmFunction(f_apply, instr_f_idx, sigv);
     //             let argsResults = new MutDynArgsResults(
     //                 argc,
     //                 resc,

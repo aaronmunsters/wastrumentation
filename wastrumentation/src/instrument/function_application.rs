@@ -124,6 +124,8 @@ pub fn instrument(
             i32::try_from(target_function_type.results().len()).unwrap(),
         ));
         let const_apply_table_index = Const(Val::I32(i32::try_from(apply_table_index).unwrap()));
+        let const_instrumented_function_index =
+            Const(Val::I32(i32::try_from(function_index.to_u32()).unwrap()));
         let local_get_stack_ptr = || Local(LocalOp::Get, stack_ptr_local);
         let local_get_stack_types_ptr = Local(LocalOp::Get, stack_ptr_types_local);
         let call_generic_apply = Call(generic_apply_index);
@@ -138,11 +140,12 @@ pub fn instrument(
         instrumented_body.push(local_set_types_buffer_ptr);
         instrumented_body.extend_from_slice(&[
             // Prep call generic apply
-            const_apply_table_index,   // f_apply : i32
-            argc,                      // argc    : i32
-            resc,                      // resc    : i32
-            local_get_stack_ptr(),     // sigv    : i32
-            local_get_stack_types_ptr, // sigtypv : i32
+            const_apply_table_index,           // f_apply : i32
+            const_instrumented_function_index, // instr_f_idx : i32
+            argc,                              // argc    : i32
+            resc,                              // resc    : i32
+            local_get_stack_ptr(),             // sigv    : i32
+            local_get_stack_types_ptr,         // sigtypv : i32
             call_generic_apply,
         ]);
 
