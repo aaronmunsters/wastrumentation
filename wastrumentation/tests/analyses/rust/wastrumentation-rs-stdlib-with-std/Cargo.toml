@@ -1,0 +1,14 @@
+[package]
+name = "wastrumentation-rs-stdlib"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+wee_alloc = "0.4.5"
+
+[profile.release]
+strip = true
+lto = true
+panic = "abort"
+
+[workspace]
