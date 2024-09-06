@@ -146,6 +146,10 @@ impl WasmFunction {
     pub fn apply(&self) -> () {
         unsafe { call_base(self.f_apply, self.sigv) };
     }
+
+    pub fn instr_f_idx(&self) -> FunctionIndex {
+        self.instr_f_idx
+    }
 }
 
 pub type MutDynResults = RuntimeValues;
