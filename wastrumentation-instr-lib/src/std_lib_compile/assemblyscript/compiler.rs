@@ -81,7 +81,7 @@ impl Compiler {
             .output()
             .expect("Could not execute compilation command");
 
-        if !(result.stderr.is_empty() && result.stdout.is_empty()) {
+        if !result.status.success() {
             return Err(CompilationError(
                 String::from_utf8_lossy(&result.stderr).to_string(),
             ));
