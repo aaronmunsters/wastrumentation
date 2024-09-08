@@ -205,10 +205,8 @@ impl TestConfiguration {
             enable_sign_extension: false,
             enable_nontrapping_f2i: false,
             enable_export_memory: false,
-            flag_use: Some(HashMap::from_iter(vec![(
-                "abort".into(),
-                "custom_abort".into(),
-            )])),
+            flag_use: HashMap::new(),
+            trap_on_abort: true,
             runtime: RuntimeStrategy::Incremental,
         };
         let content = wastrumenter

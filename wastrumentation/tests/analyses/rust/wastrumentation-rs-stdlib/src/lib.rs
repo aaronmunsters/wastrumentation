@@ -116,7 +116,7 @@ impl WasmValue {
     }
 }
 
-pub type FunctionIndex = i32; // TODO: turn into wrapper type?
+pub struct FunctionIndex(pub i32);
 pub struct WasmFunction {
     pub f_apply: i32,
     pub instr_f_idx: i32,
@@ -148,7 +148,7 @@ impl WasmFunction {
     }
 
     pub fn instr_f_idx(&self) -> FunctionIndex {
-        self.instr_f_idx
+        FunctionIndex(self.instr_f_idx)
     }
 }
 

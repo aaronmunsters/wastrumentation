@@ -101,7 +101,6 @@ impl Compiler {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
     use wasmtime::{Engine, Instance, Module, Store};
 
     #[test]
@@ -137,17 +136,12 @@ mod tests {
         "#
         .into();
 
-        let mut compile_options = CompilerOptions {
+        let compile_options = CompilerOptions {
             source_code,
             ..Default::default()
         };
 
         // TODO: I code-dupe this hashmap in a lot of places ... it's only purpose seems to abort?
-        compile_options.flag_use = Some(HashMap::from_iter(vec![(
-            "abort".into(),
-            "custom_abort".into(),
-        )]));
-
         let compiler = Compiler::new();
         let wasm_module = compiler.compile(&compile_options).unwrap();
         let engine = Engine::default();

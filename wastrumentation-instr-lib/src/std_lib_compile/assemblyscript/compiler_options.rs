@@ -9,7 +9,8 @@ pub struct CompilerOptions {
     pub enable_sign_extension: bool,
     pub enable_nontrapping_f2i: bool,
     pub enable_export_memory: bool,
-    pub flag_use: Option<HashMap<String, String>>,
+    pub flag_use: HashMap<String, String>,
+    pub trap_on_abort: bool,
     pub runtime: RuntimeStrategy,
 }
 
@@ -39,11 +40,9 @@ impl CompilerOptions {
             enable_sign_extension: false,
             enable_nontrapping_f2i: false,
             enable_export_memory: false,
-            flag_use: Some(HashMap::from_iter(vec![(
-                "abort".into(),
-                "custom_abort".into(),
-            )])),
+            flag_use: HashMap::new(),
             runtime: RuntimeStrategy::Incremental,
+            trap_on_abort: true,
         }
     }
 
@@ -84,15 +83,31 @@ impl CompilerOptions {
             OptimizationStrategy::O3 => "-O3 ",
         };
 
-        let flag_use = if let Some(uses) = &self.flag_use {
-            if uses.is_empty() {
-                String::new()
-            } else {
-                let ch = uses.iter().map(|(key, value)| format!("{key}={value}"));
-                format!("--lib . --use {} ", ch.collect::<Vec<String>>().join(" "))
+        let flag_use = match (self.flag_use.is_empty(), self.trap_on_abort) {
+            // No custom flags, no trap on abort
+            (true, false) => String::new(),
+            // Custom flags but no trap on abort
+            (false, false) => format!(
+                "--use {} ",
+                self.flag_use
+                    .iter()
+                    .map(|(key, value)| format!("{key}={value}"))
+                    .collect::<Vec<String>>()
+                    .join(" ")
+            ),
+            // Trap on abort
+            (true, true) | (false, true) => {
+                format!(
+                    "--lib . --use {} ",
+                    self.flag_use
+                        .iter()
+                        .map(|(k, v)| (k.as_str(), v.as_str()))
+                        .chain(vec![("abort", "custom_abort")]) // include trap
+                        .map(|(key, value)| format!("{key}={value}"))
+                        .collect::<Vec<String>>()
+                        .join(" ")
+                )
             }
-        } else {
-            String::new()
         };
 
         format!(
@@ -136,7 +151,8 @@ mod tests {
             enable_export_memory: false,
             enable_nontrapping_f2i: false,
             enable_sign_extension: false,
-            flag_use: None,
+            flag_use: HashMap::new(),
+            trap_on_abort: false,
             optimization_strategy: OptimizationStrategy::O3,
             runtime: RuntimeStrategy::Incremental,
         }
@@ -179,10 +195,8 @@ mod tests {
             enable_sign_extension: true,
             enable_nontrapping_f2i: true,
             enable_export_memory: true,
-            flag_use: Some(HashMap::from_iter(vec![(
-                "abort".into(),
-                "custom_abort".into(),
-            )])),
+            flag_use: HashMap::new(),
+            trap_on_abort: true,
             runtime: super::RuntimeStrategy::Incremental,
         };
 
@@ -203,7 +217,8 @@ mod tests {
             enable_sign_extension: false,
             enable_nontrapping_f2i: false,
             enable_export_memory: false,
-            flag_use: None,
+            flag_use: HashMap::new(),
+            trap_on_abort: false,
             runtime: super::RuntimeStrategy::Incremental,
         };
 
