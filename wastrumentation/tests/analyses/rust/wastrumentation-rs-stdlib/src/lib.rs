@@ -1,13 +1,13 @@
-#![no_std]
-
+#![cfg_attr(not(feature = "std"), no_std)]
+#[cfg(not(feature = "std"))]
 extern crate wee_alloc;
-
+#[cfg(not(feature = "std"))]
 #[global_allocator]
 pub static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 // Optionally use primitives from core::arch::wasm
 // https://doc.rust-lang.org/stable/core/arch/wasm/index.html
-
+#[cfg(not(feature = "std"))]
 #[cfg(not(test))]
 #[cfg(target_arch = "wasm32")]
 #[panic_handler]
@@ -118,20 +118,20 @@ impl WasmValue {
 
 pub type FunctionIndex = i32; // TODO: turn into wrapper type?
 pub struct WasmFunction {
-    f_apply: i32,
-    instr_f_idx: i32,
-    sigv: i32,
+    pub f_apply: i32,
+    pub instr_f_idx: i32,
+    pub sigv: i32,
 }
 
 pub struct FunctionTableIndex(pub i32);
 pub struct FunctionTable(pub i32);
 
 pub struct RuntimeValues {
-    argc: i32,
-    resc: i32,
-    sigv: i32,
-    signature_types: Vec<WasmType>,
-    signature_offsets: Vec<usize>,
+    pub argc: i32,
+    pub resc: i32,
+    pub sigv: i32,
+    pub signature_types: Vec<WasmType>,
+    pub signature_offsets: Vec<usize>,
 }
 
 impl WasmFunction {
@@ -294,8 +294,8 @@ macro_rules! advice {
         pub extern "C"
         fn generic_apply (f_apply: i32, instr_f_idx: i32, argc: i32, resc: i32, sigv: i32, sigtypv: i32) -> () {
             let $func_ident = WasmFunction::new(f_apply, instr_f_idx, sigv);
-            let $args_ident = MutDynResults::new(argc, resc, sigv, sigtypv);
-            let $ress_ident = MutDynArgs::new(argc, resc, sigv, sigtypv);
+            let mut $args_ident = MutDynResults::new(argc, resc, sigv, sigtypv);
+            let mut $ress_ident = MutDynArgs::new(argc, resc, sigv, sigtypv);
             $body
         }
     };
