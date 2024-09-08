@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-cp -r input-analyses/{pure-functions-memoization,wastrumentation-rs-stdlib-with-std} ./working-directory/
+cp -r input-analyses/{pure-functions-memoization,wastrumentation-rs-stdlib} ./working-directory/
 ### 2. Use results from dynamic analysis to build memoization dynamic analysis
 node    ./inject-dynamic-analysis-results-dynamic-memoization.js    \
         ./working-directory/called-pure-function-indices.json       \

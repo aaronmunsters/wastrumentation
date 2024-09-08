@@ -8,7 +8,9 @@ crate-type = ["cdylib"]
 
 [dependencies]
 wee_alloc = "0.4.5"
-wastrumentation-rs-stdlib = { path = "../wastrumentation-rs-stdlib-with-std" }
+wastrumentation-rs-stdlib = { path = "../wastrumentation-rs-stdlib", features = [
+    "std",
+] }
 lazy_static = "1.5.0"
 ordered-float = "4.2.2"
 

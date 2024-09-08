@@ -1,12 +1,24 @@
+#![cfg_attr(not(feature = "std"), no_std)]
+#[cfg(not(feature = "std"))]
+extern crate wee_alloc;
+#[cfg(not(feature = "std"))]
+#[global_allocator]
+pub static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+
 // Optionally use primitives from core::arch::wasm
 // https://doc.rust-lang.org/stable/core/arch/wasm/index.html
+#[cfg(not(feature = "std"))]
+#[cfg(not(test))]
+#[cfg(target_arch = "wasm32")]
+#[panic_handler]
+fn panic(_panic: &core::panic::PanicInfo<'_>) -> ! {
+    core::arch::wasm32::unreachable()
+}
 
 #[link(wasm_import_module = "instrumented_input")]
 extern "C" {
     fn call_base(f_apply: i32, sigv: i32) -> ();
 }
-
-// TODO: merge this with no-std lib, using compiler flags
 
 #[link(wasm_import_module = "wastrumentation_stack")]
 extern "C" {
@@ -133,6 +145,10 @@ impl WasmFunction {
 
     pub fn apply(&self) -> () {
         unsafe { call_base(self.f_apply, self.sigv) };
+    }
+
+    pub fn instr_f_idx(&self) -> FunctionIndex {
+        self.instr_f_idx
     }
 }
 
