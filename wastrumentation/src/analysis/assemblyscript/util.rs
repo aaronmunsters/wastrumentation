@@ -60,7 +60,7 @@ mod test {
             (23, "x"),
             (24, "y"),
             (25, "z"),
-            (26, "ba"), // starting at bb, not aa FIXME: low priority
+            (26, "ba"),
         ] {
             assert_eq!(input.to_alphabetic(), expectation)
         }

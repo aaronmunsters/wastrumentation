@@ -53,19 +53,23 @@ impl Compiler {
             .prefix("source_file")
             .suffix(".ts")
             .tempfile()
-            .expect("Could not create temp input file");
+            .map_err(|e| e.to_string())
+            .map_err(|e| CompilationError(format!("Could not create temp input file: {e}")))?;
         source_file
             .write_all(compile_options.source_code.as_bytes())
-            .expect("Could not write source code to temp file");
+            .map_err(|e| e.to_string())
+            .map_err(|e| CompilationError(format!("Could not source code to temp file: {e}")))?;
         source_file
             .flush()
-            .expect("Could not write source code to temp file");
+            .map_err(|e| e.to_string())
+            .map_err(|e| CompilationError(format!("Could not source code to temp file: {e}")))?;
 
         let mut output_file = tempfile::Builder::new()
             .prefix("output_file")
             .suffix(".ts")
             .tempfile()
-            .expect("Could not create temp output file");
+            .map_err(|e| e.to_string())
+            .map_err(|e| CompilationError(format!("Could not create temp output file: {e}")))?;
 
         let source_file_path = source_file.path().to_string_lossy().to_string();
         let output_file_path = output_file.path().to_string_lossy().to_string();
@@ -79,22 +83,29 @@ impl Compiler {
         // Kick off command, i.e. compile
         let result = command_compile_lib
             .output()
-            .expect("Could not execute compilation command");
+            .map_err(|e| e.to_string())
+            .map_err(|e| CompilationError(format!("Could not execute compilation command: {e}")))?;
 
-        if !result.status.success() {
-            return Err(CompilationError(
-                String::from_utf8_lossy(&result.stderr).to_string(),
-            ));
-        };
+        result
+            .status
+            .success()
+            .then_some(true)
+            .ok_or(CompilationError(format!(
+                "{:?}",
+                String::from_utf8_lossy(&result.stderr)
+            )))?;
 
         drop(source_file);
 
         let mut result = Vec::new();
         output_file
             .read_to_end(&mut result)
-            .expect("Could not read result from written output");
+            .map_err(|e| e.to_string())
+            .map_err(|e| {
+                CompilationError(format!("Could not read result from written output: {e}"))
+            })?;
 
-        Ok(result) // FIXME: do not unwrap, make known what went wrong
+        Ok(result)
     }
 }
 
@@ -141,7 +152,6 @@ mod tests {
             ..Default::default()
         };
 
-        // TODO: I code-dupe this hashmap in a lot of places ... it's only purpose seems to abort?
         let compiler = Compiler::new();
         let wasm_module = compiler.compile(&compile_options).unwrap();
         let engine = Engine::default();

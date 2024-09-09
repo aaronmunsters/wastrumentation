@@ -25,25 +25,7 @@ fn delta_to_instrument_instr(instr: &Instr) -> usize {
     }
 }
 
-#[allow(dead_code)] /* TODO: */
-fn delta_to_instrument_body(body: &[Instr]) -> usize {
-    let res = body
-        .iter()
-        .map(|instr| -> usize {
-            delta_to_instrument_instr(instr)
-                + match instr {
-                    Instr::Loop(_, body) | Instr::Block(_, body) | Instr::If(_, body, None) => {
-                        delta_to_instrument_body(body)
-                    }
-                    Instr::If(_, then, Some(els)) => {
-                        delta_to_instrument_body(then) + delta_to_instrument_body(els)
-                    }
-                    _ => 0,
-                }
-        })
-        .sum();
-    res
-}
+// TODO: room for optimization - compute delta_to_instrument_body
 
 impl TransformationStrategy for Target {
     fn transform(&self, high_level_body: &HighLevelBody) -> HighLevelBody {
@@ -133,7 +115,7 @@ mod tests {
 
     use std::collections::HashSet;
 
-    use wasabi_wasm::{FunctionType, Val, ValType};
+    use wasabi_wasm::{FunctionType, ValType};
     use wasmtime::{Engine, Instance, Module, Store};
 
     use crate::{instrument::Instrumentable, parse_nesting::LowLevelBody};
@@ -446,61 +428,6 @@ mod tests {
                 ),
             ])
         },)
-    }
-
-    #[test]
-    fn compute_cost_blocks_loops() {
-        // Include cost computation with loops
-        let instr_loop = || {
-            Instr::Loop(
-                FunctionType::empty(),
-                vec![Instr::Block(
-                    FunctionType::empty(),
-                    vec![Instr::Const(Val::I32(0))],
-                )],
-            )
-        };
-        let instrumentation_delta = delta_to_instrument_body(&[Instr::if_then_else(
-            FunctionType::empty(),
-            vec![instr_loop()],
-            vec![instr_loop()],
-        )]);
-        assert_eq!(instrumentation_delta, TRANSFORM_COST_PER_IF_THEN_ELSE_INSTR);
-    }
-
-    #[test]
-    fn compute_cost() {
-        // TODO: 1. pick a more complex wasm program
-        // TODO: 2. use property-based testing
-        // FIXME: input program is only using if-then-else, delta_to_instrument would compute for instrumenting all
-        let (mut wasm_module, body) = nested_ifs_body();
-        let HighLevelBody(high_level_body) = LowLevelBody(body.clone()).try_into().unwrap();
-        let delta_to_instrument = delta_to_instrument_body(&high_level_body);
-
-        let body_length = |wasm_module: &wasabi_wasm::Module, index: usize| {
-            wasm_module
-                .function(index.into())
-                .code()
-                .unwrap()
-                .body
-                .len()
-        };
-
-        let length_uninstrumented = body_length(&wasm_module, 0);
-
-        wasm_module
-            .instrument_function_bodies(
-                &HashSet::from_iter(vec![0_usize.into()]),
-                &Target::IfThenElse(0_usize.into()),
-            )
-            .unwrap();
-
-        let length_instrumented = body_length(&wasm_module, 0);
-        assert!(length_uninstrumented < length_instrumented);
-        assert_eq!(
-            length_instrumented,
-            length_uninstrumented + delta_to_instrument
-        );
     }
 
     #[test]

@@ -1,33 +1,10 @@
 const NO_OFFSET: i32 = 0;
 
-// ENUMS for types
-// FIXME: can this and below be merged?
-const TYPE_I32: i32 = 0;
-const TYPE_F32: i32 = 1;
-const TYPE_I64: i32 = 2;
-const TYPE_F64: i32 = 3;
-
 enum WasmType {
-    i32,
-    f32,
-    i64,
-    f64,
-}
-
-@inline()
-function deserialize_wasm_type(n: i32): WasmType {
-    switch(n) {
-        case TYPE_I32:
-            return WasmType.i32;
-        case TYPE_F32:
-            return WasmType.f32;
-        case TYPE_I64:
-            return WasmType.i64;
-        case TYPE_F64:
-            return WasmType.f64;
-        default:
-            return unreachable();
-    }
+    i32 = 0,
+    f32 = 1,
+    i64 = 2,
+    f64 = 3,
 }
 
 @external("wastrumentation_stack", "wastrumentation_stack_load_i32")
@@ -101,16 +78,16 @@ class MutDynArgsResults {
         for(let type_index = 0; type_index < resc; type_index++) {
             this.ressOffsetTo.push(offset);
             switch(wastrumentation_memory_load<i32>(sigtypv, (0 + type_index)*sizeof<i32>())) {
-                case TYPE_I32:
+                case WasmType.i32:
                     offset += sizeof<i32>();
                     break;
-                case TYPE_F32:
+                case WasmType.f32:
                     offset += sizeof<f32>();
                     break;
-                case TYPE_I64:
+                case WasmType.i64:
                     offset += sizeof<i64>();
                     break;
-                case TYPE_F64:
+                case WasmType.f64:
                     offset += sizeof<f64>();
                     break;
                 default:
@@ -122,16 +99,16 @@ class MutDynArgsResults {
         for(let type_index = 0; type_index < argc; type_index++) {
             this.argsOffsetTo.push(offsetToArgs + offset);
             switch(wastrumentation_memory_load<i32>(sigtypv, (resc + type_index)*sizeof<i32>())) {
-                case TYPE_I32:
+                case WasmType.i32:
                     offset += sizeof<i32>();
                     break;
-                case TYPE_F32:
+                case WasmType.f32:
                     offset += sizeof<f32>();
                     break;
-                case TYPE_I64:
+                case WasmType.i64:
                     offset += sizeof<i64>();
                     break;
-                case TYPE_F64:
+                case WasmType.f64:
                     offset += sizeof<f64>();
                     break;
                 default:
@@ -173,7 +150,7 @@ class MutDynArgsResults {
             this.sigtypv,
             (this.resc + index)*sizeof<i32>(),
         );
-        return deserialize_wasm_type(serialized_type);
+        return serialized_type as i32;
     }
 
     getResType(index: i32): WasmType {
@@ -182,7 +159,7 @@ class MutDynArgsResults {
             this.sigtypv,
             (0 + index)*sizeof<i32>(),
         );
-        return deserialize_wasm_type(serialized_type);
+        return serialized_type as i32;
     }
 }
 

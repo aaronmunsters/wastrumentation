@@ -53,14 +53,16 @@ pub fn merge(merge_options: &MergeOptions) -> MergeResult {
         .input_modules
         .iter()
         .map(|im @ InputModule { module, .. }| {
-            let mut input_module = NamedTempFile::new().expect("Could not create temp output file");
+            let mut input_module = NamedTempFile::new()
+                .map_err(|e| MergeError(format!("Could not create temp output file: {e}")))?;
             input_module
                 .write_all(module)
-                .expect("Could not write module to temp file");
+                .map_err(|e| MergeError(format!("Could not write module to temp file: {e}")))?;
             let input_module_path = input_module.path().to_string_lossy().to_string();
-            (im, input_module_path, input_module)
+            Ok((im, input_module_path, input_module))
         })
-        .collect();
+        .collect::<Result<Vec<(&InputModule, String, NamedTempFile)>, MergeError>>()?;
+
     let merge_name_combinations = merges
         .iter()
         .map(|(InputModule { namespace, .. }, input_module_path, ..)| {
@@ -69,7 +71,8 @@ pub fn merge(merge_options: &MergeOptions) -> MergeResult {
         .collect::<Vec<String>>()
         .join(" ");
 
-    let mut output_file = NamedTempFile::new().expect("Could not create temp output file");
+    let mut output_file = NamedTempFile::new()
+        .map_err(|e| MergeError(format!("Could not create temp output file: {e}")))?;
     let output_file_path = output_file.path().to_string_lossy().to_string();
 
     // FIXME: move this to separate file, splitting up functionality
@@ -114,18 +117,19 @@ pub fn merge(merge_options: &MergeOptions) -> MergeResult {
     // Kick off command, i.e. merge
     let result = command_merge
         .output()
-        .expect("Could not execute compilation command");
+        .map_err(|e| MergeError(format!("Could not execute compilation command: {e}")))?;
 
-    if !(result.stderr.is_empty() && result.stdout.is_empty()) {
-        return Err(MergeError(
-            String::from_utf8_lossy(&result.stderr).to_string(),
-        ));
-    };
+    (result.stderr.is_empty() && result.stdout.is_empty())
+        .then_some(true)
+        .ok_or(MergeError(format!(
+            "{:?}",
+            String::from_utf8_lossy(&result.stderr)
+        )))?;
 
     let mut result = Vec::new();
     output_file
         .read_to_end(&mut result)
-        .expect("Could not read result from written output");
+        .map_err(|e| MergeError(format!("Could not read result from written output: {e}")))?;
 
     Ok(result)
 }
