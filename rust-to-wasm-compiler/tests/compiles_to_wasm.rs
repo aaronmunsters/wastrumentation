@@ -1,7 +1,7 @@
 use rayon::prelude::*;
 use std::path::{absolute, Path};
 
-use rust_to_wasm_compiler::RustToWasmCompiler;
+use rust_to_wasm_compiler::{Profile, RustToWasmCompiler};
 use wasmtime::{Config, Engine, Instance, Module, Store, Val};
 
 #[test]
@@ -17,7 +17,7 @@ fn compiles_example() {
         // Compile
         let wasm_module = RustToWasmCompiler::new()
             .unwrap()
-            .compile(&absolute(Path::new(path)).unwrap())
+            .compile(&absolute(Path::new(path)).unwrap(), Profile::Dev)
             .unwrap();
 
         // Run compiled result

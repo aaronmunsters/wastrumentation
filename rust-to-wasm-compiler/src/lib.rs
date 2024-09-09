@@ -13,6 +13,14 @@ pub struct RustToWasmCompiler {
     gctx: GlobalContext,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum Profile {
+    Release,
+    Dev,
+    Test,
+    Bench,
+}
+
 impl RustToWasmCompiler {
     /// # Errors
     /// When creating a default global context fails
@@ -23,7 +31,7 @@ impl RustToWasmCompiler {
 
     /// # Errors
     /// Whenever compilation fails
-    pub fn compile(&self, manifest_path: &Path) -> anyhow::Result<Vec<u8>> {
+    pub fn compile(&self, manifest_path: &Path, profile: Profile) -> anyhow::Result<Vec<u8>> {
         // Create new workspace, inheriting from global context
         let workspace = Workspace::new(manifest_path, &self.gctx)?;
 
@@ -35,6 +43,13 @@ impl RustToWasmCompiler {
         let wasm32_unknown_unkown = CompileTarget::new("wasm32-unknown-unknown")?;
         let compile_kind = CompileKind::Target(wasm32_unknown_unkown);
         compile_options.build_config.requested_kinds = vec![compile_kind];
+        compile_options.build_config.requested_profile = match profile {
+            Profile::Release => "release",
+            Profile::Dev => "dev",
+            Profile::Test => "test",
+            Profile::Bench => "bench",
+        }
+        .into();
 
         // Perform the compilation
         let compilation_result = compile(&workspace, &compile_options)?;

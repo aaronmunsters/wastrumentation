@@ -20,6 +20,7 @@ pub const NAMESPACE_TRANSFORMED_INPUT: &str = "transformed_input";
 use anyhow::Result;
 use assemblyscript::ASRoot;
 pub use rust::Hook;
+use rust_to_wasm_compiler::Profile;
 use wasp_compiler::CompilationResult;
 
 pub mod assemblyscript;
@@ -86,8 +87,8 @@ impl Analysis {
     pub fn compile(&self, wastrumenter: &Wastrumenter) -> Result<AnalysisCompilationResult> {
         match self {
             Analysis::Rust { manifest, hooks } => {
-                let analysis_wasm =
-                    rust_to_wasm_compiler::RustToWasmCompiler::new()?.compile(manifest)?;
+                let analysis_wasm = rust_to_wasm_compiler::RustToWasmCompiler::new()?
+                    .compile(manifest, Profile::Dev)?;
                 let analysis_interface: AnalysisInterface = rust::interface_from(hooks)?;
                 Ok(AnalysisCompilationResult {
                     analysis_wasm,
