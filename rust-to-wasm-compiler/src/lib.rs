@@ -7,7 +7,11 @@ use cargo::{
     ops::{compile, CompileOptions},
     GlobalContext,
 };
-use std::{fs, path::Path};
+use std::{
+    fs::{self, create_dir, File},
+    io::Write,
+    path::Path,
+};
 
 pub struct RustToWasmCompiler {
     gctx: GlobalContext,
@@ -63,5 +67,30 @@ impl RustToWasmCompiler {
         };
 
         fs::read(compiled_wasm.path.clone()).map_err(|err| anyhow!(err))
+    }
+
+    /// # Errors
+    /// Whenever creation of files or compilation fails
+    pub fn compile_source(
+        &self,
+        manifest: &str,
+        lib: &str,
+        profile: Profile,
+    ) -> anyhow::Result<Vec<u8>> {
+        // -/
+        let working_dir = tempfile::TempDir::new()?;
+
+        // -/Cargo.toml
+        let manifest_path = working_dir.path().join("Cargo.toml");
+        let mut manifest_file = File::create_new(&manifest_path)?;
+        manifest_file.write_all(manifest.as_bytes())?;
+
+        // -/src/lib.rs
+        let src_path = working_dir.path().join("src");
+        create_dir(&src_path)?;
+        let mut lib_file = File::create_new(src_path.join("lib.rs"))?;
+        lib_file.write_all(lib.as_bytes())?;
+
+        self.compile(&manifest_path, profile)
     }
 }
