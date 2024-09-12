@@ -21,7 +21,7 @@ use wasabi_wasm::{Function, FunctionType, Idx, Module, RefType, ValType};
 use wastrumentation_instr_lib::{
     generate_lib,
     wasm_constructs::{RefType as LibGenRefType, Signature as LibGenSignature, WasmType},
-    Langauge,
+    Language,
 };
 
 // TODO: use some macro's here to generate most of the boilerplate -> this makes it also more maintainable
@@ -49,7 +49,7 @@ impl StackLibrary {
             .map(WasabiFunctionType)
             .map(Into::into)
             .collect();
-        let assemblyscript_code = generate_lib(Langauge::AssemblyScript, &signatures);
+        let assemblyscript_code = generate_lib(Language::AssemblyScript, &signatures);
         Self {
             signature_import_links,
             assemblyscript_code,

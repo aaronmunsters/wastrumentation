@@ -5,13 +5,13 @@ pub mod wasm_constructs;
 use wasm_constructs::Signature;
 
 #[derive(Clone, Copy)]
-pub enum Langauge {
+pub enum Language {
     AssemblyScript,
 }
 
 #[must_use]
-pub fn generate_lib(language: Langauge, signatures: &[Signature]) -> String {
+pub fn generate_lib(language: Language, signatures: &[Signature]) -> String {
     match language {
-        Langauge::AssemblyScript => std_lib_gen::assemblyscript::generate_lib(signatures),
+        Language::AssemblyScript => std_lib_gen::assemblyscript::generate_lib(signatures),
     }
 }

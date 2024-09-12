@@ -1,5 +1,5 @@
 use wastrumentation_instr_lib::wasm_constructs::{Signature, WasmType};
-use wastrumentation_instr_lib::{generate_lib, Langauge};
+use wastrumentation_instr_lib::{generate_lib, Language};
 
 // Some sample signatures for testing purposes
 fn get_ret_f64_f32_arg_i32_i64() -> Signature {
@@ -35,7 +35,7 @@ fn generating_library_for_signatures() {
         get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(), // unique
     ];
 
-    let lib = generate_lib(Langauge::AssemblyScript, &signatures);
+    let lib = generate_lib(Language::AssemblyScript, &signatures);
 
     let mut expected = String::from(include_str!(
         "../src/std_lib_gen/assemblyscript/lib_boilerplate.ts"
