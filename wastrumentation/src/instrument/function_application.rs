@@ -15,9 +15,10 @@ use wasabi_wasm::RefType;
 use wasabi_wasm::Table;
 use wasabi_wasm::Val;
 use wasabi_wasm::ValType;
+use wastrumentation_instr_lib::LibGeneratable;
+use wastrumentation_instr_lib::Library;
 
 use crate::analysis::{WasmExport, WasmImport};
-use crate::AssemblyScriptProgram;
 
 use super::FunctionTypeConvertible;
 
@@ -26,12 +27,12 @@ pub const INSTRUMENTATION_ANALYSIS_MODULE: &str = "WASP_ANALYSIS";
 pub const INSTRUMENTATION_INSTRUMENTED_MODULE: &str = "instrumented_input";
 
 #[allow(clippy::too_many_lines)]
-pub fn instrument(
+pub fn instrument<InstrumentationLanguage: LibGeneratable>(
     module: &mut Module,
     pre_instrumentation_function_indices: &HashSet<Idx<Function>>,
     wasp_exported_generic_apply_trap: &WasmExport,
     wasp_imported_generic_apply_base: &WasmImport,
-) -> AssemblyScriptProgram {
+) -> Library<InstrumentationLanguage> {
     // 0. GENERATE GENERIC APPLY
     let generic_apply_index = module.add_function_import(
         wasp_exported_generic_apply_trap.as_function_type(),
@@ -41,9 +42,12 @@ pub fn instrument(
 
     // 1. GENERATE IMPORTS FOR INSTRUMENTATION STACK LIBRARY
     let StackLibrary {
-        assemblyscript_code,
+        library,
         signature_import_links,
-    } = StackLibrary::from_module(module, pre_instrumentation_function_indices);
+    } = StackLibrary::<InstrumentationLanguage>::from_module(
+        module,
+        pre_instrumentation_function_indices,
+    );
 
     // 2. Generate function instrumentation functionality
     let apply_table_index = module.tables.len();
@@ -127,7 +131,7 @@ pub fn instrument(
         let const_instrumented_function_index =
             Const(Val::I32(i32::try_from(function_index.to_u32()).unwrap()));
         let local_get_stack_ptr = || Local(LocalOp::Get, stack_ptr_local);
-        let local_get_stack_types_ptr = Local(LocalOp::Get, stack_ptr_types_local);
+        let local_get_stack_types_ptr = || Local(LocalOp::Get, stack_ptr_types_local);
         let call_generic_apply = Call(generic_apply_index);
         let call_free_values_buffer = Call(stack_library_for_target.free_values_buffer);
         let call_free_types_buffer = Call(stack_library_for_target.free_types_buffer);
@@ -145,7 +149,7 @@ pub fn instrument(
             argc,                              // argc    : i32
             resc,                              // resc    : i32
             local_get_stack_ptr(),             // sigv    : i32
-            local_get_stack_types_ptr,         // sigtypv : i32
+            local_get_stack_types_ptr(),       // sigtypv : i32
             call_generic_apply,
         ]);
 
@@ -154,7 +158,9 @@ pub fn instrument(
             instrumented_body.push(Call(*load_call));
         }
 
+        instrumented_body.push(local_get_stack_ptr());
         instrumented_body.push(call_free_values_buffer);
+        instrumented_body.push(local_get_stack_types_ptr());
         instrumented_body.push(call_free_types_buffer);
         instrumented_body.push(End);
         original_function.code_mut().unwrap().body = instrumented_body;
@@ -206,7 +212,5 @@ pub fn instrument(
         .export
         .push(wasp_imported_generic_apply_base.name.to_string());
 
-    AssemblyScriptProgram {
-        content: assemblyscript_code,
-    }
+    library
 }

@@ -3,11 +3,7 @@ use std::{collections::HashSet, vec};
 use crate::wasm_constructs::{Signature, WasmType};
 
 impl Signature {
-    fn is_empty(&self) -> bool {
-        self.argument_types.is_empty() && self.return_types.is_empty()
-    }
-
-    fn mangled_name(&self) -> String {
+    fn mangled_assemblyscript_name(&self) -> String {
         let signature_rets = &self.return_types;
         let signature_rets_ident = signature_rets
             .iter()
@@ -23,17 +19,20 @@ impl Signature {
         format!("ret_{signature_rets_ident}_arg_{signature_args_ident}")
     }
 
-    fn mangled_name_by_count(&self) -> String {
+    fn mangled_assemblyscript_name_by_count(&self) -> String {
         let signature_rets_count = self.return_types.len();
         let signature_args_count = self.argument_types.len();
         format!("ret_{signature_rets_count}_arg_{signature_args_count}")
     }
 
-    fn generic_name(signature_rets_count: usize, signature_args_count: usize) -> String {
+    fn generic_assemblyscript_name(
+        signature_rets_count: usize,
+        signature_args_count: usize,
+    ) -> String {
         format!("ret_{signature_rets_count}_arg_{signature_args_count}")
     }
 
-    fn comma_separated_types(&self) -> String {
+    fn assemblyscript_comma_separated_types(&self) -> String {
         if self.is_empty() {
             String::new()
         } else {
@@ -48,36 +47,39 @@ impl Signature {
         }
     }
 
-    fn comma_separated_generics(rets_count: usize, args_count: usize) -> String {
+    fn assemblyscript_comma_separated_generics(rets_count: usize, args_count: usize) -> String {
         if rets_count + args_count == 0 {
             String::new()
         } else {
-            format!("<{}>", Self::generics(rets_count, args_count).join(", "))
+            format!(
+                "<{}>",
+                Self::assemblyscript_generics(rets_count, args_count).join(", ")
+            )
         }
     }
 
-    fn generics(rets_count: usize, args_count: usize) -> Vec<String> {
+    fn assemblyscript_generics(rets_count: usize, args_count: usize) -> Vec<String> {
         let arg_typs = (0..args_count).map(|n| format!("T{n}"));
         let ret_typs = (0..rets_count).map(|n| format!("R{n}"));
         ret_typs.chain(arg_typs).collect::<Vec<String>>()
     }
 
-    fn generic_typed_arguments(args_count: usize) -> Vec<String> {
+    fn assemblyscript_generic_typed_arguments(args_count: usize) -> Vec<String> {
         (0..args_count)
             .clone()
             .map(|n| format!("a{n}: T{n}"))
             .collect::<Vec<String>>()
     }
 
-    fn generic_comma_separated_typed_arguments(args_count: usize) -> String {
-        Self::generic_typed_arguments(args_count).join(", ")
+    fn assemblyscript_generic_comma_separated_typed_arguments(args_count: usize) -> String {
+        Self::assemblyscript_generic_typed_arguments(args_count).join(", ")
     }
 
-    fn compute_type_allocation(rets_count: usize, args_count: usize) -> String {
+    fn assemblyscript_compute_type_allocation(rets_count: usize, args_count: usize) -> String {
         if rets_count + args_count == 0 {
             "0".to_string()
         } else {
-            Self::generics(rets_count, args_count)
+            Self::assemblyscript_generics(rets_count, args_count)
                 .iter()
                 .map(|ty| format!("sizeof<{ty}>()"))
                 .collect::<Vec<String>>()
@@ -112,12 +114,14 @@ fn ret_offset(ret_pos: usize, rets_count: usize, args_count: usize) -> String {
 }
 
 fn generate_allocate_generic(rets_count: usize, args_count: usize) -> String {
-    let string_all_generics = Signature::comma_separated_generics(rets_count, args_count);
-    let signature = Signature::generic_comma_separated_typed_arguments(args_count);
-    let generic_name = Signature::generic_name(rets_count, args_count);
+    let string_all_generics =
+        Signature::assemblyscript_comma_separated_generics(rets_count, args_count);
+    let signature = Signature::assemblyscript_generic_comma_separated_typed_arguments(args_count);
+    let generic_name = Signature::generic_assemblyscript_name(rets_count, args_count);
 
     // eg: `sizeof<R0>() +  sizeof<R1>() +  sizeof<T0>() +  sizeof<T1>()`
-    let total_allocation = Signature::compute_type_allocation(rets_count, args_count);
+    let total_allocation =
+        Signature::assemblyscript_compute_type_allocation(rets_count, args_count);
     let all_stores_followed_by_return = (0..args_count)
         .map(|n| {
             let offset = arg_offset(n, rets_count, args_count);
@@ -161,9 +165,9 @@ fn generate_allocate_specialized(signature: &Signature) -> String {
         .collect::<Vec<String>>()
         .join(", ");
 
-    let comma_separated_types = signature.comma_separated_types();
-    let mangled_name = signature.mangled_name();
-    let mangled_by_count_name = signature.mangled_name_by_count();
+    let comma_separated_types = signature.assemblyscript_comma_separated_types();
+    let mangled_name = signature.mangled_assemblyscript_name();
+    let mangled_by_count_name = signature.mangled_assemblyscript_name_by_count();
 
     format!(
         "
@@ -176,7 +180,7 @@ export function allocate_{mangled_name}({signature_args_typs_ident}): usize {{
 
 fn generate_allocate_types_buffer_generic(rets_count: usize, args_count: usize) -> String {
     let total_allocation = format!("sizeof<i32>() * {};", rets_count + args_count);
-    let generic_name = Signature::generic_name(rets_count, args_count);
+    let generic_name = Signature::generic_assemblyscript_name(rets_count, args_count);
     format!(
         "
 @inline
@@ -206,8 +210,8 @@ fn generate_allocate_types_buffer_specialized(signature: &Signature) -> String {
         .collect::<Vec<String>>()
         .join("\n    ");
 
-    let mangled_name = signature.mangled_name();
-    let mangled_by_count_name = signature.mangled_name_by_count();
+    let mangled_name = signature.mangled_assemblyscript_name();
+    let mangled_by_count_name = signature.mangled_assemblyscript_name_by_count();
 
     format!(
         "
@@ -219,8 +223,9 @@ export function allocate_types_{mangled_name}(): usize {{
 }
 
 fn generate_load_generic(rets_count: usize, args_count: usize) -> String {
-    let string_all_generics = Signature::comma_separated_generics(rets_count, args_count);
-    let generic_name = Signature::generic_name(rets_count, args_count);
+    let string_all_generics =
+        Signature::assemblyscript_comma_separated_generics(rets_count, args_count);
+    let generic_name = Signature::generic_assemblyscript_name(rets_count, args_count);
 
     let all_arg_loads = (0..args_count).map(|n| {
         let an_offset = arg_offset(n, rets_count, args_count);
@@ -256,9 +261,9 @@ fn generate_load_specialized(signature: &Signature) -> String {
     // eg: [`f64`, `f32`]
     let signature_args = &signature.argument_types;
 
-    let comma_separated_types = signature.comma_separated_types();
-    let mangled_name = signature.mangled_name();
-    let mangled_by_count_name = signature.mangled_name_by_count();
+    let comma_separated_types = signature.assemblyscript_comma_separated_types();
+    let mangled_name = signature.mangled_assemblyscript_name();
+    let mangled_by_count_name = signature.mangled_assemblyscript_name_by_count();
 
     let all_arg_loads = signature_args
         .iter()
@@ -290,8 +295,9 @@ export function load_ret{index}_{mangled_name}(stack_ptr: usize): {ret_i_ret_typ
 }
 
 fn generate_store_generic(rets_count: usize, args_count: usize) -> String {
-    let string_all_generics = Signature::comma_separated_generics(rets_count, args_count);
-    let generic_name = Signature::generic_name(rets_count, args_count);
+    let string_all_generics =
+        Signature::assemblyscript_comma_separated_generics(rets_count, args_count);
+    let generic_name = Signature::generic_assemblyscript_name(rets_count, args_count);
 
     let all_arg_stores = (0..args_count).map(|n| {
         let an_offset = arg_offset(n, rets_count, args_count);
@@ -327,9 +333,9 @@ fn generate_store_specialized(signature: &Signature) -> String {
     // eg: [`f64`, `f32`]
     let signature_args = &signature.argument_types;
 
-    let comma_separated_types = signature.comma_separated_types();
-    let mangled_name = signature.mangled_name();
-    let mangled_by_count_name = signature.mangled_name_by_count();
+    let comma_separated_types = signature.assemblyscript_comma_separated_types();
+    let mangled_name = signature.mangled_assemblyscript_name();
+    let mangled_by_count_name = signature.mangled_assemblyscript_name_by_count();
 
     let all_arg_stores = signature_args.iter().enumerate().map(|(index, arg_i_ret_type)| format!("
 export function store_arg{index}_{mangled_name}(stack_ptr: usize, a{index}: {arg_i_ret_type}): void {{
@@ -346,18 +352,20 @@ export function store_ret{index}_{mangled_name}(stack_ptr: usize, a{index}: {ret
 }
 
 fn generate_free_values_buffer_generic(rets_count: usize, args_count: usize) -> String {
-    let string_all_generics = Signature::comma_separated_generics(rets_count, args_count);
-    let generic_name = Signature::generic_name(rets_count, args_count);
+    let string_all_generics =
+        Signature::assemblyscript_comma_separated_generics(rets_count, args_count);
+    let generic_name = Signature::generic_assemblyscript_name(rets_count, args_count);
 
     // eg: `sizeof<R0>() +  sizeof<R1>() +  sizeof<T0>() +  sizeof<T1>()`
-    let total_allocation = Signature::compute_type_allocation(rets_count, args_count);
+    let total_allocation =
+        Signature::assemblyscript_compute_type_allocation(rets_count, args_count);
 
     format!(
         "
 @inline
-function free_values_{generic_name}{string_all_generics}(): void {{
+function free_values_{generic_name}{string_all_generics}(ptr: usize): void {{
     const to_deallocate = {total_allocation}; // constant folded
-    stack_deallocate(to_deallocate); // inlined
+    stack_deallocate(ptr, to_deallocate); // inlined
     return;
 }}"
     )
@@ -366,25 +374,25 @@ function free_values_{generic_name}{string_all_generics}(): void {{
 fn generate_free_values_buffer_specialized(signature: &Signature) -> String {
     format!(
         "
-export function free_values_{}(): void {{
-    return free_values_{}{}();
+export function free_values_{}(ptr: usize): void {{
+    return free_values_{}{}(ptr);
 }};",
-        signature.mangled_name(),
-        signature.mangled_name_by_count(),
-        signature.comma_separated_types(),
+        signature.mangled_assemblyscript_name(),
+        signature.mangled_assemblyscript_name_by_count(),
+        signature.assemblyscript_comma_separated_types(),
     )
 }
 
 fn generate_free_types_buffer_generic(rets_count: usize, args_count: usize) -> String {
-    let generic_name = Signature::generic_name(rets_count, args_count);
+    let generic_name = Signature::generic_assemblyscript_name(rets_count, args_count);
     let total_allocation = format!("sizeof<i32>() * {};", rets_count + args_count);
 
     format!(
         "
 @inline
-function free_types_{generic_name}(): void {{
+function free_types_{generic_name}(ptr: usize): void {{
     const to_deallocate = {total_allocation}; // constant folded
-    stack_deallocate(to_deallocate); // inlined
+    stack_deallocate(ptr, to_deallocate); // inlined
     return;
 }}"
     )
@@ -393,17 +401,18 @@ function free_types_{generic_name}(): void {{
 fn generate_free_types_buffer_specialized(signature: &Signature) -> String {
     format!(
         "
-export function free_types_{}(): void {{
-    return free_types_{}();
+export function free_types_{}(ptr: usize): void {{
+    return free_types_{}(ptr);
 }};",
-        signature.mangled_name(),
-        signature.mangled_name_by_count(),
+        signature.mangled_assemblyscript_name(),
+        signature.mangled_assemblyscript_name_by_count(),
     )
 }
 
 fn generate_store_rets_generic(rets_count: usize, args_count: usize) -> String {
-    let string_all_generics = Signature::comma_separated_generics(rets_count, args_count);
-    let generic_name = Signature::generic_name(rets_count, args_count);
+    let string_all_generics =
+        Signature::assemblyscript_comma_separated_generics(rets_count, args_count);
+    let generic_name = Signature::generic_assemblyscript_name(rets_count, args_count);
 
     // eg: [`a0: R0`, `a1: R1`]
     let array_of_rets_signature = (0..rets_count).map(|n| format!("a{n}: R{n}"));
@@ -458,9 +467,9 @@ fn generate_store_rets_specialized(signature: &Signature) -> String {
         .collect::<Vec<String>>()
         .join(", ");
 
-    let comma_separated_types = signature.comma_separated_types();
-    let mangled_name = signature.mangled_name();
-    let mangled_by_count_name = signature.mangled_name_by_count();
+    let comma_separated_types = signature.assemblyscript_comma_separated_types();
+    let mangled_name = signature.mangled_assemblyscript_name();
+    let mangled_by_count_name = signature.mangled_assemblyscript_name_by_count();
 
     format!(
         "
@@ -929,17 +938,17 @@ export function store_ret3_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: us
             generate_free_values_buffer_generic(0, 1),
             "
 @inline
-function free_values_ret_0_arg_1<T0>(): void {
+function free_values_ret_0_arg_1<T0>(ptr: usize): void {
     const to_deallocate = sizeof<T0>(); // constant folded
-    stack_deallocate(to_deallocate); // inlined
+    stack_deallocate(ptr, to_deallocate); // inlined
     return;
 }"
         );
         assert_eq!(generate_free_values_buffer_generic(5, 5), "
 @inline
-function free_values_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(): void {
+function free_values_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(ptr: usize): void {
     const to_deallocate = sizeof<R0>() + sizeof<R1>() + sizeof<R2>() + sizeof<R3>() + sizeof<R4>() + sizeof<T0>() + sizeof<T1>() + sizeof<T2>() + sizeof<T3>() + sizeof<T4>(); // constant folded
-    stack_deallocate(to_deallocate); // inlined
+    stack_deallocate(ptr, to_deallocate); // inlined
     return;
 }");
     }
@@ -949,16 +958,16 @@ function free_values_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(): void
         assert_eq!(
             generate_free_values_buffer_specialized(&get_ret_f64_f32_arg_i32_i64()),
             "
-export function free_values_ret_f64_f32_arg_i32_i64(): void {
-    return free_values_ret_2_arg_2<f64, f32, i32, i64>();
+export function free_values_ret_f64_f32_arg_i32_i64(ptr: usize): void {
+    return free_values_ret_2_arg_2<f64, f32, i32, i64>(ptr);
 };",
         );
 
         assert_eq!(
             generate_free_values_buffer_specialized(&get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64()),
             "
-export function free_values_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(): void {
-    return free_values_ret_4_arg_4<f64, f32, i32, i64, i64, i32, f32, f64>();
+export function free_values_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(ptr: usize): void {
+    return free_values_ret_4_arg_4<f64, f32, i32, i64, i64, i32, f32, f64>(ptr);
 };",
         );
     }
@@ -969,9 +978,9 @@ export function free_values_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(): void {
             generate_free_types_buffer_generic(0, 1),
             "
 @inline
-function free_types_ret_0_arg_1(): void {
+function free_types_ret_0_arg_1(ptr: usize): void {
     const to_deallocate = sizeof<i32>() * 1;; // constant folded
-    stack_deallocate(to_deallocate); // inlined
+    stack_deallocate(ptr, to_deallocate); // inlined
     return;
 }"
         );
@@ -979,9 +988,9 @@ function free_types_ret_0_arg_1(): void {
             generate_free_types_buffer_generic(5, 5),
             "
 @inline
-function free_types_ret_5_arg_5(): void {
+function free_types_ret_5_arg_5(ptr: usize): void {
     const to_deallocate = sizeof<i32>() * 10;; // constant folded
-    stack_deallocate(to_deallocate); // inlined
+    stack_deallocate(ptr, to_deallocate); // inlined
     return;
 }"
         );
@@ -992,15 +1001,15 @@ function free_types_ret_5_arg_5(): void {
         assert_eq!(
             generate_free_types_buffer_specialized(&get_ret_f64_f32_arg_i32_i64()),
             "
-export function free_types_ret_f64_f32_arg_i32_i64(): void {
-    return free_types_ret_2_arg_2();
+export function free_types_ret_f64_f32_arg_i32_i64(ptr: usize): void {
+    return free_types_ret_2_arg_2(ptr);
 };"
         );
         assert_eq!(
             generate_free_types_buffer_specialized(&get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64()),
             "
-export function free_types_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(): void {
-    return free_types_ret_4_arg_4();
+export function free_types_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(ptr: usize): void {
+    return free_types_ret_4_arg_4(ptr);
 };"
         );
     }

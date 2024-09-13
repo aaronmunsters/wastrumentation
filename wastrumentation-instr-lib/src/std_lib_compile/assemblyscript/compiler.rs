@@ -1,46 +1,44 @@
-use super::compilation_result::{CompilationError, CompilationResult};
 use super::compiler_options::CompilerOptions;
+use crate::std_lib_compile::{CompilationError, CompilationResult, Compiles};
+use crate::AssemblyScript;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::process::Command;
 
+use anyhow::anyhow;
 use tempfile::{tempdir, TempDir};
 
 pub struct Compiler {
     working_dir: TempDir,
 }
 
-impl Default for Compiler {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+impl Compiles<AssemblyScript> for Compiler {
+    type CompilerOptions = CompilerOptions;
 
-impl Compiler {
-    pub fn new() -> Self {
+    fn setup_compiler() -> anyhow::Result<Self> {
         let working_dir = tempdir().expect("Could not create temp dir");
 
         let custom_abort_source_file_path = working_dir.path().join("custom_abort_source_file.ts");
-        let mut custom_abort_source_file =
-            File::create(custom_abort_source_file_path).expect("Could not create temp input file");
+        let mut custom_abort_source_file = File::create(custom_abort_source_file_path)
+            .map_err(|e| anyhow!("Could not create temp input file: {e:?}"))?;
         let custom_abort_lib = include_str!("./custom_abort_lib.ts");
         custom_abort_source_file
             .write_all(custom_abort_lib.as_bytes())
-            .expect("Could not write std_lib to temp file");
+            .map_err(|e| anyhow!("Could not write std_lib to temp file: {e:?}"))?;
 
         Command::new("npm")
             .args(["init", "-y"])
             .current_dir(&working_dir)
             .output()
-            .expect("Npm init failed");
+            .map_err(|e| anyhow!("Npm init failed: {e:?}"))?;
 
         Command::new("npm")
             .args(["install", "assemblyscript"])
             .current_dir(&working_dir)
             .output()
-            .expect("Npm install failed");
+            .map_err(|e| anyhow!("Npm install failed: {e:?}"))?;
 
-        Compiler { working_dir }
+        Ok(Self { working_dir })
     }
 
     /// # Errors
@@ -48,32 +46,44 @@ impl Compiler {
     ///
     /// # Panics
     /// When system resources such as files cannot be acquired.
-    pub fn compile(&self, compile_options: &CompilerOptions) -> CompilationResult {
+    fn compile(
+        &self,
+        compiler_options: &Self::CompilerOptions,
+    ) -> CompilationResult<AssemblyScript> {
         let mut source_file = tempfile::Builder::new()
             .prefix("source_file")
             .suffix(".ts")
             .tempfile()
             .map_err(|e| e.to_string())
-            .map_err(|e| CompilationError(format!("Could not create temp input file: {e}")))?;
+            .map_err(|e| {
+                CompilationError::because(format!("Could not create temp input file: {e}"))
+            })?;
+
         source_file
-            .write_all(compile_options.source_code.as_bytes())
+            .write_all(compiler_options.source.as_bytes())
             .map_err(|e| e.to_string())
-            .map_err(|e| CompilationError(format!("Could not source code to temp file: {e}")))?;
+            .map_err(|e| {
+                CompilationError::because(format!("Could not source code to temp file: {e}"))
+            })?;
         source_file
             .flush()
             .map_err(|e| e.to_string())
-            .map_err(|e| CompilationError(format!("Could not source code to temp file: {e}")))?;
+            .map_err(|e| {
+                CompilationError::because(format!("Could not source code to temp file: {e}"))
+            })?;
 
         let mut output_file = tempfile::Builder::new()
             .prefix("output_file")
             .suffix(".ts")
             .tempfile()
             .map_err(|e| e.to_string())
-            .map_err(|e| CompilationError(format!("Could not create temp output file: {e}")))?;
+            .map_err(|e| {
+                CompilationError::because(format!("Could not create temp output file: {e}"))
+            })?;
 
         let source_file_path = source_file.path().to_string_lossy().to_string();
         let output_file_path = output_file.path().to_string_lossy().to_string();
-        let npx_command = compile_options.to_npx_command(&source_file_path, &output_file_path);
+        let npx_command = compiler_options.to_npx_command(&source_file_path, &output_file_path);
 
         let mut command_compile_lib = Command::new("bash");
         command_compile_lib
@@ -84,13 +94,15 @@ impl Compiler {
         let result = command_compile_lib
             .output()
             .map_err(|e| e.to_string())
-            .map_err(|e| CompilationError(format!("Could not execute compilation command: {e}")))?;
+            .map_err(|e| {
+                CompilationError::because(format!("Could not execute compilation command: {e}"))
+            })?;
 
         result
             .status
             .success()
             .then_some(true)
-            .ok_or(CompilationError(format!(
+            .ok_or(CompilationError::because(format!(
                 "{:?}",
                 String::from_utf8_lossy(&result.stderr)
             )))?;
@@ -102,7 +114,7 @@ impl Compiler {
             .read_to_end(&mut result)
             .map_err(|e| e.to_string())
             .map_err(|e| {
-                CompilationError(format!("Could not read result from written output: {e}"))
+                CompilationError::because(format!("Could not read result from written output: {e}"))
             })?;
 
         Ok(result)
@@ -111,6 +123,9 @@ impl Compiler {
 
 #[cfg(test)]
 mod tests {
+    use crate::std_lib_compile::assemblyscript::compiler_options::CompilerOptions;
+    use crate::std_lib_compile::{assemblyscript::compiler::Compiler, DefaultCompilerOptions};
+
     use super::*;
     use wasmtime::{Engine, Instance, Module, Store};
 
@@ -121,15 +136,12 @@ mod tests {
             return a + b + c;
         }
         "#
-        .into();
+        .to_string();
 
-        let compile_options = CompilerOptions {
-            source_code,
-            ..Default::default()
-        };
-
-        let compiler = Compiler::new();
+        let compiler = Compiler::setup_compiler().unwrap();
+        let compile_options = CompilerOptions::default_for(source_code);
         let wasm_module = compiler.compile(&compile_options).unwrap();
+
         let wasm_magic_bytes: &[u8] = &[0x00, 0x61, 0x73, 0x6D];
         assert_eq!(&wasm_module[0..4], wasm_magic_bytes);
     }
@@ -145,15 +157,12 @@ mod tests {
             return a + b + fac(c);
         }
         "#
-        .into();
+        .to_string();
 
-        let compile_options = CompilerOptions {
-            source_code,
-            ..Default::default()
-        };
-
-        let compiler = Compiler::new();
+        let compiler = Compiler::setup_compiler().unwrap();
+        let compile_options = CompilerOptions::default_for(source_code);
         let wasm_module = compiler.compile(&compile_options).unwrap();
+
         let engine = Engine::default();
         let module = Module::from_binary(&engine, &wasm_module).unwrap();
         let mut store = Store::new(&engine, ());
@@ -169,13 +178,17 @@ mod tests {
 
     #[test]
     fn test_assemblyscript_faulty_compilation() {
-        let compiler_options = CompilerOptions {
-            source_code: "this is not valid assemblyscript code".into(),
-            ..Default::default()
-        };
+        let source_code = "this is not valid assemblyscript code".to_string();
 
-        let compiler = Compiler::new();
-        let outcome = compiler.compile(&compiler_options);
-        assert!(outcome.is_err_and(|CompilationError(reason)| reason.contains("ERROR")));
+        let compiler = Compiler::setup_compiler().unwrap();
+        let compile_options = CompilerOptions::default_for(source_code);
+        let outcome = compiler.compile(&compile_options);
+
+        assert!(outcome.is_err_and(
+            |CompilationError {
+                 reason,
+                 language: _,
+             }| reason.contains("ERROR")
+        ));
     }
 }

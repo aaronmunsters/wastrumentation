@@ -47,3 +47,9 @@ pub struct Signature {
     pub return_types: Vec<WasmType>,
     pub argument_types: Vec<WasmType>,
 }
+
+impl Signature {
+    pub(crate) fn is_empty(&self) -> bool {
+        self.argument_types.is_empty() && self.return_types.is_empty()
+    }
+}

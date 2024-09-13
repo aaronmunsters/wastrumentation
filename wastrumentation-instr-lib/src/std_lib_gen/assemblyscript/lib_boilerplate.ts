@@ -30,7 +30,7 @@ function stack_allocate(bytes: usize): usize {
 }
 
 @inline
-function stack_deallocate(bytes: usize): void {
+function stack_deallocate(_ptr: usize, bytes: usize): void {
     $STACK_FREE_PTR -= bytes;
 }
 

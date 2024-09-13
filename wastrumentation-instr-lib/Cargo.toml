@@ -4,9 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+walrus = "0.21.1"
 tempfile = { workspace = true }
 bitmask = "0.5.0"
 indoc = { workspace = true }
+rust-to-wasm-compiler = { path = "../rust-to-wasm-compiler" }
+anyhow = { workspace = true }
 
 [dev-dependencies]
 wasmtime = { workspace = true }

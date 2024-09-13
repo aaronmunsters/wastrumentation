@@ -19,20 +19,19 @@ use std::{
 use wasabi_wasm::{Function, FunctionType, Idx, Module, RefType, ValType};
 
 use wastrumentation_instr_lib::{
-    generate_lib,
     wasm_constructs::{RefType as LibGenRefType, Signature as LibGenSignature, WasmType},
-    Language,
+    LibGeneratable, Library,
 };
 
 // TODO: use some macro's here to generate most of the boilerplate -> this makes it also more maintainable
 // TODO: tie this together with the generation library, ie. get names from there!
 
-pub struct StackLibrary {
+pub struct StackLibrary<Language: LibGeneratable> {
     pub signature_import_links: HashMap<FunctionType, Signature>,
-    pub assemblyscript_code: String,
+    pub library: Library<Language>,
 }
 
-impl StackLibrary {
+impl<Language: LibGeneratable> StackLibrary<Language> {
     pub fn from_module(module: &mut Module, functions: &HashSet<Idx<Function>>) -> Self {
         let signature_import_links: HashMap<FunctionType, Signature> =
             functions.iter().fold(HashMap::new(), |mut acc, index| {
@@ -49,10 +48,11 @@ impl StackLibrary {
             .map(WasabiFunctionType)
             .map(Into::into)
             .collect();
-        let assemblyscript_code = generate_lib(Language::AssemblyScript, &signatures);
+
+        let library = Language::generate_lib(&signatures);
         Self {
             signature_import_links,
-            assemblyscript_code,
+            library,
         }
     }
 }
@@ -223,7 +223,7 @@ impl From<(FunctionType, &mut Module)> for Signature {
             generate_allocate_values_buffer_name(function_type),
         );
 
-        let free_values_buffer_type = FunctionType::new(&[], &[]);
+        let free_values_buffer_type = FunctionType::new(&[ValType::I32], &[]);
         let free_values_buffer = module.add_function_import(
             free_values_buffer_type,
             INSTRUMENTATION_STACK_MODULE.into(),
@@ -237,7 +237,7 @@ impl From<(FunctionType, &mut Module)> for Signature {
             generate_allocate_types_buffer_name(function_type),
         );
 
-        let free_types_buffer_type = FunctionType::new(&[], &[]);
+        let free_types_buffer_type = FunctionType::new(&[ValType::I32], &[]);
         let free_types_buffer = module.add_function_import(
             free_types_buffer_type,
             INSTRUMENTATION_STACK_MODULE.into(),

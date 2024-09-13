@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
+use crate::{std_lib_compile::DefaultCompilerOptions, AssemblyScript};
+
 #[allow(clippy::struct_excessive_bools)]
-#[derive(Default)]
 pub struct CompilerOptions {
-    pub source_code: String,
     pub optimization_strategy: OptimizationStrategy,
     pub enable_bulk_memory: bool,
     pub enable_sign_extension: bool,
@@ -12,6 +12,26 @@ pub struct CompilerOptions {
     pub flag_use: HashMap<String, String>,
     pub trap_on_abort: bool,
     pub runtime: RuntimeStrategy,
+    pub source: String,
+}
+
+impl DefaultCompilerOptions<AssemblyScript> for CompilerOptions {
+    fn default_for(library_source: String) -> Self {
+        Self {
+            source: library_source,
+            // By default, trap on abort.
+            // This makes that the module has no 'env' dependency to handle failure.
+            trap_on_abort: true,
+            // Other options are set to default
+            enable_bulk_memory: false,
+            enable_nontrapping_f2i: false,
+            enable_export_memory: false,
+            enable_sign_extension: false,
+            flag_use: HashMap::default(),
+            optimization_strategy: OptimizationStrategy::default(),
+            runtime: RuntimeStrategy::default(),
+        }
+    }
 }
 
 #[derive(Default)]
@@ -31,21 +51,6 @@ pub enum RuntimeStrategy {
 }
 
 impl CompilerOptions {
-    #[must_use]
-    pub fn new(source_code: String) -> Self {
-        Self {
-            source_code,
-            optimization_strategy: OptimizationStrategy::O3,
-            enable_bulk_memory: false,
-            enable_sign_extension: false,
-            enable_nontrapping_f2i: false,
-            enable_export_memory: false,
-            flag_use: HashMap::new(),
-            runtime: RuntimeStrategy::Incremental,
-            trap_on_abort: true,
-        }
-    }
-
     pub(crate) fn to_npx_command(&self, source_path: &str, output_path: &str) -> String {
         let flag_bulk_memory = if self.enable_bulk_memory {
             ""
@@ -138,29 +143,15 @@ impl CompilerOptions {
 
 #[cfg(test)]
 mod tests {
-    use crate::std_lib_compile::assemblyscript::{
-        compilation_result::CompilationError, compiler::Compiler,
-    };
+    use crate::std_lib_compile::assemblyscript::compiler::Compiler as AssemblScriptCompiler;
+    use crate::std_lib_compile::assemblyscript::compiler_options::CompilerOptions as AssemblScriptCompilerOptions;
+    use crate::std_lib_compile::{CompilationError, Compiles};
 
     use super::*;
 
-    fn simple_compiler_option_for(source_code: String) -> CompilerOptions {
-        CompilerOptions {
-            source_code,
-            enable_bulk_memory: false,
-            enable_export_memory: false,
-            enable_nontrapping_f2i: false,
-            enable_sign_extension: false,
-            flag_use: HashMap::new(),
-            trap_on_abort: false,
-            optimization_strategy: OptimizationStrategy::O3,
-            runtime: RuntimeStrategy::Incremental,
-        }
-    }
-
     #[test]
     fn test_creation() {
-        let conf = CompilerOptions::new("/* source code here */".into());
+        let conf = CompilerOptions::default_for("".to_string());
         assert_eq!(
             conf.to_npx_command("source_path", "output_path"),
             concat!(
@@ -179,17 +170,17 @@ mod tests {
 
     #[test]
     fn test_assemblyscript_faulty_compilation() {
-        let compiler = Compiler::new();
-        let compiler_options =
-            simple_compiler_option_for("this is not valid assemblyscript code".into());
-        let CompilationError(reason) = compiler.compile(&compiler_options).unwrap_err();
+        let compiler = AssemblScriptCompiler::setup_compiler().unwrap();
+        let compiler_options = AssemblScriptCompilerOptions::default_for(
+            "this is not valid assemblyscript code".to_string(),
+        );
+        let CompilationError { reason, .. } = compiler.compile(&compiler_options).unwrap_err();
         assert!(reason.contains("ERROR"));
     }
 
     #[test]
     fn test_to_npx() {
         let mut options = CompilerOptions {
-            source_code: "source".into(),
             optimization_strategy: OptimizationStrategy::O1,
             enable_bulk_memory: true,
             enable_sign_extension: true,
@@ -198,6 +189,7 @@ mod tests {
             flag_use: HashMap::new(),
             trap_on_abort: true,
             runtime: super::RuntimeStrategy::Incremental,
+            source: "".to_string(),
         };
 
         assert_eq!(
@@ -211,7 +203,6 @@ mod tests {
         );
 
         options = CompilerOptions {
-            source_code: "source".into(),
             optimization_strategy: OptimizationStrategy::O2,
             enable_bulk_memory: false,
             enable_sign_extension: false,
@@ -220,6 +211,7 @@ mod tests {
             flag_use: HashMap::new(),
             trap_on_abort: false,
             runtime: super::RuntimeStrategy::Incremental,
+            source: "".to_string(),
         };
 
         assert_eq!(

@@ -7,7 +7,7 @@ function stack_allocate(bytes: usize): usize {
     return pointer;
 }
 
-function stack_deallocate(bytes: usize): void {
+function stack_deallocate(_ptr: usize, bytes: usize): void {
     // todo... get 'free' pointer and dealloc!
 }
 

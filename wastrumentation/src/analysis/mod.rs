@@ -1,4 +1,4 @@
-use std::{collections::HashSet, path::PathBuf};
+use std::collections::HashSet;
 
 pub const FUNCTION_NAME_BLOCK_PRE: &str = "block_pre";
 pub const FUNCTION_NAME_BLOCK_POST: &str = "block_post";
@@ -18,10 +18,12 @@ pub const FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE: &str = "specialized_if_then_el
 pub const NAMESPACE_TRANSFORMED_INPUT: &str = "transformed_input";
 
 use anyhow::Result;
-use assemblyscript::ASRoot;
+use assemblyscript::{ASRoot, AssemblyScriptProgram};
 pub use rust::Hook;
-use rust_to_wasm_compiler::Profile;
 use wasp_compiler::CompilationResult;
+use wastrumentation_instr_lib::{
+    std_lib_compile::rust::RustSource, AssemblyScript, Rust, SourceCodeBound,
+};
 
 pub mod assemblyscript;
 mod rust;
@@ -67,57 +69,60 @@ pub struct AnalysisInterface {
     pub select: Option<WasmExport>,
 }
 
-pub struct AnalysisCompilationResult {
-    pub analysis_wasm: Vec<u8>,
+pub struct ProcessedAnalysis<Language: SourceCodeBound> {
+    pub analysis_library: Language::SourceCode,
     pub analysis_interface: AnalysisInterface,
 }
 
 #[derive(Clone)]
-pub enum Analysis {
-    Rust {
-        manifest: PathBuf,
-        hooks: HashSet<Hook>,
-    },
-    AssemblyScript {
-        wasp_source: String,
-    },
+pub struct RustAnalysisSpec {
+    pub source: RustSource,
+    pub hooks: HashSet<Hook>,
 }
 
-impl Analysis {
-    pub fn compile(&self, wastrumenter: &Wastrumenter) -> Result<AnalysisCompilationResult> {
-        match self {
-            Analysis::Rust { manifest, hooks } => {
-                let analysis_wasm = rust_to_wasm_compiler::RustToWasmCompiler::new()?
-                    .compile(manifest, Profile::Dev)?;
-                let analysis_interface: AnalysisInterface = rust::interface_from(hooks)?;
-                Ok(AnalysisCompilationResult {
-                    analysis_wasm,
-                    analysis_interface,
-                })
-            }
-            Analysis::AssemblyScript { wasp_source } => {
-                let CompilationResult {
-                    wasp_root,
-                    join_points: _,
-                } = wasp_compiler::compile(wasp_source)?;
+#[derive(Clone)]
+pub struct WaspAnalysisSpec {
+    pub wasp_source: String,
+}
 
-                let analysis_interface = AnalysisInterface::from(&wasp_root);
-                let as_root = ASRoot(wasp_root);
-                let wasp_assemblyscript = as_root.into();
-                let analysis_wasm = wastrumenter.compile(wasp_assemblyscript)?;
+impl TryInto<ProcessedAnalysis<Rust>> for RustAnalysisSpec {
+    type Error = anyhow::Error;
 
-                Ok(AnalysisCompilationResult {
-                    analysis_wasm,
-                    analysis_interface,
-                })
-            }
-        }
+    fn try_into(self) -> std::result::Result<ProcessedAnalysis<Rust>, Self::Error> {
+        let RustAnalysisSpec { ref hooks, source } = self;
+
+        let analysis_interface: AnalysisInterface = rust::interface_from(hooks)?;
+
+        Ok(ProcessedAnalysis {
+            analysis_interface,
+            analysis_library: source,
+        })
+    }
+}
+
+impl TryInto<ProcessedAnalysis<AssemblyScript>> for &WaspAnalysisSpec {
+    type Error = anyhow::Error;
+
+    fn try_into(self) -> std::result::Result<ProcessedAnalysis<AssemblyScript>, Self::Error> {
+        let CompilationResult {
+            wasp_root,
+            join_points: _,
+        } = wasp_compiler::compile(&self.wasp_source)?;
+
+        let analysis_interface = AnalysisInterface::from(&wasp_root);
+        let as_root = ASRoot(wasp_root);
+        let AssemblyScriptProgram { content } = as_root.into();
+
+        Ok(ProcessedAnalysis {
+            analysis_interface,
+            analysis_library: content,
+        })
     }
 }
 
 type ApplyInterface = (WasmExport, WasmImport);
 
-use crate::{analysis::WasmType::I32, Wastrumenter};
+use crate::analysis::WasmType::I32;
 
 impl AnalysisInterface {
     fn interface_generic_apply() -> ApplyInterface {

@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 
-use crate::AssemblyScriptProgram;
 use wasabi_wasm::Code;
 use wasabi_wasm::FunctionType;
 use wasabi_wasm::ImportOrPresent;
@@ -9,6 +8,8 @@ use wasabi_wasm::ValType;
 
 use wasabi_wasm::Function;
 use wasabi_wasm::Idx;
+use wastrumentation_instr_lib::LibGeneratable;
+use wastrumentation_instr_lib::Library;
 
 use crate::analysis::{AnalysisInterface, WasmExport, WasmImport, WasmType};
 use crate::parse_nesting::HighLevelBody;
@@ -26,16 +27,16 @@ pub mod function_application;
 pub mod function_call;
 pub mod function_call_indirect;
 
-pub struct InstrumentationResult {
+pub struct InstrumentationResult<InstrumentationLanguage: LibGeneratable> {
     pub module: Vec<u8>,
-    pub instrumentation_lib: AssemblyScriptProgram,
+    pub instrumentation_library: Option<Library<InstrumentationLanguage>>,
 }
 
-pub fn instrument(
+pub fn instrument<InstrumentationLanguage: LibGeneratable>(
     module: &[u8],
     analysis_interface: &AnalysisInterface,
     target_indices: &Option<Vec<u32>>,
-) -> InstrumentationResult {
+) -> InstrumentationResult<InstrumentationLanguage> {
     let AnalysisInterface {
         generic_interface,
         if_then_else_trap,
@@ -52,8 +53,6 @@ pub fn instrument(
         post_loop,
         select,
     } = analysis_interface;
-
-    let mut instrumentation_lib = String::new();
 
     let (mut module, _offsets, _issue) = Module::from_bytes(module).unwrap();
 
@@ -139,22 +138,21 @@ pub fn instrument(
         .map(|export| module.install(export))
         .map(|index| module.instrument_function_bodies(&target_indices, &BrTable(index)));
 
-    if let Some((generic_import, generic_export)) = generic_interface {
-        let generic_function_instrumentation_lib = function_application::instrument(
-            &mut module,
-            &target_indices,
-            generic_import,
-            generic_export,
-        );
-
-        instrumentation_lib.push_str(&generic_function_instrumentation_lib.content);
-    };
+    let instrumentation_library =
+        generic_interface
+            .as_ref()
+            .map(|(generic_import, generic_export)| {
+                function_application::instrument::<InstrumentationLanguage>(
+                    &mut module,
+                    &target_indices,
+                    generic_import,
+                    generic_export,
+                )
+            });
 
     InstrumentationResult {
         module: module.to_bytes().unwrap(),
-        instrumentation_lib: AssemblyScriptProgram {
-            content: instrumentation_lib,
-        },
+        instrumentation_library,
     }
 }
 

@@ -1,10 +1,15 @@
 use std::io::{Read, Write};
-use std::path::absolute;
 
 use clap::Parser;
 use clio::*;
 use serde::Deserialize;
-use wastrumentation::{analysis, analysis::Hook as AnalysisHook, Wastrumenter};
+use wastrumentation::analysis::RustAnalysisSpec;
+use wastrumentation::{analysis::Hook as AnalysisHook, Wastrumenter};
+
+use wastrumentation_instr_lib::std_lib_compile::Compiles;
+
+use wastrumentation_instr_lib::std_lib_compile::assemblyscript::compiler::Compiler as AssemblyScriptCompiler;
+use wastrumentation_instr_lib::std_lib_compile::rust::{Compiler as RustCompiler, RustSource};
 
 /// Command-line interface to the wastrumentation utility
 #[derive(Parser, Debug)]
@@ -52,7 +57,7 @@ impl From<&Hook> for AnalysisHook {
     }
 }
 
-fn main() -> std::io::Result<()> {
+fn main() -> anyhow::Result<()> {
     let Args {
         mut input_program_path,
         rust_analysis_toml_path,
@@ -63,13 +68,21 @@ fn main() -> std::io::Result<()> {
 
     let mut wasm_module = Vec::new();
     input_program_path.read_to_end(&mut wasm_module)?;
-    let hooks = hooks.iter().map(From::from).collect();
 
-    let manifest = absolute(rust_analysis_toml_path.path().path())?;
-    let analysis = analysis::Analysis::Rust { manifest, hooks };
-    let instrumented_wasm_module = Wastrumenter::new()
-        .wastrument(&wasm_module, &analysis, &targets)
-        .expect("Instrumenting failed");
+    let analysis = RustAnalysisSpec {
+        hooks: hooks.iter().map(From::from).collect(),
+        source: RustSource::Manifest(rust_analysis_toml_path.path().to_path_buf()),
+    };
+
+    let instrumentation_language_compiler = AssemblyScriptCompiler::setup_compiler()?;
+    let analysis_language_compiler = RustCompiler::setup_compiler()?;
+
+    let instrumented_wasm_module = Wastrumenter::new(
+        Box::new(instrumentation_language_compiler),
+        Box::new(analysis_language_compiler),
+    )
+    .wastrument(&wasm_module, analysis, &targets)
+    .expect("Instrumenting failed");
 
     output_path.write_all(&instrumented_wasm_module)?;
 
