@@ -27,21 +27,21 @@ function free_types_ret_0_arg_0(ptr: usize): void {
     stack_deallocate(ptr, to_deallocate); // inlined
     return;
 }
-export function allocate_ret__arg_(): usize {
+export function allocate_ret_arg(): usize {
     return allocate_ret_0_arg_0();
 };
 
-export function free_values_ret__arg_(ptr: usize): void {
+export function free_values_ret_arg(ptr: usize): void {
     return free_values_ret_0_arg_0(ptr);
 };
-export function store_rets_ret__arg_(stack_ptr: usize): void {
+export function store_rets_ret_arg(stack_ptr: usize): void {
     return store_rets_ret_0_arg_0(stack_ptr);
 };
-export function allocate_types_ret__arg_(): usize {
+export function allocate_types_ret_arg(): usize {
     const types_buffer = allocate_signature_types_buffer_ret_0_arg_0();
     return types_buffer;
 }
-export function free_types_ret__arg_(ptr: usize): void {
+export function free_types_ret_arg(ptr: usize): void {
     return free_types_ret_0_arg_0(ptr);
 };
 @inline

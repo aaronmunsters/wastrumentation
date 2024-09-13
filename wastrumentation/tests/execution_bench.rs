@@ -241,8 +241,8 @@ impl GlobalValueEquals {
 
 impl Analysis {
     fn instrument_for(&self, input_program: &Vec<u8>) -> Vec<u8> {
-        // InstrLang: Currently alwasy AssemblyScript!
-        // AnLang: Depends on input analysis!
+        // Language for Instrumentation: Currently alwasy Rust
+        // Language for Analysis: Depends on input analysis
 
         let rs_compiler = Box::new(RSCompiler::setup_compiler().unwrap());
 

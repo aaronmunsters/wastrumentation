@@ -2,7 +2,7 @@ use std::{collections::HashSet, vec};
 
 use crate::{
     std_lib_compile::rust::{ManifestSource, RustSourceCode},
-    wasm_constructs::{Signature, WasmType},
+    wasm_constructs::{Signature, SignatureSide, WasmType},
 };
 
 // TODO: since this holds:
@@ -18,22 +18,6 @@ use crate::{
 // I could move all "+" expressions to a tuple variant ... Should not change anything, but 'enforce' constant folding
 
 impl Signature {
-    fn mangled_rust_name(&self) -> String {
-        let signature_rets = &self.return_types;
-        let signature_rets_ident = signature_rets
-            .iter()
-            .map(ToString::to_string)
-            .collect::<Vec<String>>()
-            .join("_");
-        let signature_args = &self.argument_types;
-        let signature_args_ident = signature_args
-            .iter()
-            .map(ToString::to_string)
-            .collect::<Vec<String>>()
-            .join("_");
-        format!("ret_{signature_rets_ident}_arg_{signature_args_ident}")
-    }
-
     fn mangled_rust_name_by_count(&self) -> String {
         let signature_rets_count = self.return_types.len();
         let signature_args_count = self.argument_types.len();
@@ -197,13 +181,13 @@ fn generate_allocate_specialized(signature: &Signature) -> String {
         .join(", ");
 
     let comma_separated_types = signature.rust_comma_separated_types();
-    let mangled_name = signature.mangled_rust_name();
+    let mangled_name = signature.generate_allocate_values_buffer_name();
     let mangled_by_count_name = signature.mangled_rust_name_by_count();
 
     format!(
         "
 #[no_mangle]
-pub fn allocate_{mangled_name}({signature_args_typs_ident}) -> usize {{
+pub fn {mangled_name}({signature_args_typs_ident}) -> usize {{
     return allocate_{mangled_by_count_name}{comma_separated_types}({args});
 }}
 "
@@ -242,13 +226,13 @@ fn generate_allocate_types_buffer_specialized(signature: &Signature) -> String {
         .collect::<Vec<String>>()
         .join("\n    ");
 
-    let mangled_name = signature.mangled_rust_name();
+    let mangled_name = signature.generate_allocate_types_buffer_name();
     let mangled_by_count_name = signature.mangled_rust_name_by_count();
 
     format!(
         "
 #[no_mangle]
-pub fn allocate_types_{mangled_name}() -> usize {{
+pub fn {mangled_name}() -> usize {{
     let types_buffer = allocate_signature_types_buffer_{mangled_by_count_name}();
     {all_stores_followed_by_return}
 }}"
@@ -295,17 +279,17 @@ fn generate_load_specialized(signature: &Signature) -> String {
     let signature_args = &signature.argument_types;
 
     let comma_separated_types = signature.rust_comma_separated_types();
-    let mangled_name = signature.mangled_rust_name();
     let mangled_by_count_name = signature.mangled_rust_name_by_count();
 
     let all_arg_loads = signature_args
         .iter()
         .enumerate()
         .map(|(index, arg_i_ret_type)| {
+            let mangled_name = signature.generate_load_name(SignatureSide::Argument, index);
             format!(
                 "
 #[no_mangle]
-pub fn load_arg{index}_{mangled_name}(stack_ptr: usize) -> {arg_i_ret_type} {{
+pub fn {mangled_name}(stack_ptr: usize) -> {arg_i_ret_type} {{
     return load_arg{index}_{mangled_by_count_name}{comma_separated_types}(stack_ptr);
 }}"
             )
@@ -314,10 +298,11 @@ pub fn load_arg{index}_{mangled_name}(stack_ptr: usize) -> {arg_i_ret_type} {{
         .iter()
         .enumerate()
         .map(|(index, ret_i_ret_type)| {
+            let mangled_name = signature.generate_load_name(SignatureSide::Return, index);
             format!(
                 "
 #[no_mangle]
-pub fn load_ret{index}_{mangled_name}(stack_ptr: usize) -> {ret_i_ret_type} {{
+pub fn {mangled_name}(stack_ptr: usize) -> {ret_i_ret_type} {{
     return load_ret{index}_{mangled_by_count_name}{comma_separated_types}(stack_ptr);
 }}"
             )
@@ -369,17 +354,17 @@ fn generate_store_specialized(signature: &Signature) -> String {
     let signature_args = &signature.argument_types;
 
     let comma_separated_types = signature.rust_comma_separated_types();
-    let mangled_name = signature.mangled_rust_name();
     let mangled_by_count_name = signature.mangled_rust_name_by_count();
 
     let all_arg_stores = signature_args
         .iter()
         .enumerate()
         .map(|(index, arg_i_ret_type)| {
+            let mangled_name = signature.generate_store_name(SignatureSide::Argument, index);
             format!(
                 "
 #[no_mangle]
-pub fn store_arg{index}_{mangled_name}(stack_ptr: usize, a{index}: {arg_i_ret_type}) {{
+pub fn {mangled_name}(stack_ptr: usize, a{index}: {arg_i_ret_type}) {{
     return store_arg{index}_{mangled_by_count_name}{comma_separated_types}(stack_ptr, a{index});
 }}"
             )
@@ -388,10 +373,11 @@ pub fn store_arg{index}_{mangled_name}(stack_ptr: usize, a{index}: {arg_i_ret_ty
         .iter()
         .enumerate()
         .map(|(index, ret_i_ret_type)| {
+            let mangled_name = signature.generate_store_name(SignatureSide::Return, index);
             format!(
                 "
 #[no_mangle]
-pub fn store_ret{index}_{mangled_name}(stack_ptr: usize, a{index}: {ret_i_ret_type}) {{
+pub fn {mangled_name}(stack_ptr: usize, a{index}: {ret_i_ret_type}) {{
     return store_ret{index}_{mangled_by_count_name}{comma_separated_types}(stack_ptr, a{index});
 }}"
             )
@@ -425,10 +411,10 @@ fn generate_free_values_buffer_specialized(signature: &Signature) -> String {
     format!(
         "
 #[no_mangle]
-pub fn free_values_{}(ptr: usize) {{
+pub fn {}(ptr: usize) {{
     return free_values_{}{}(ptr);
 }}",
-        signature.mangled_rust_name(),
+        signature.generate_free_values_buffer_name(),
         signature.mangled_rust_name_by_count(),
         signature.rust_comma_separated_types(),
     )
@@ -453,10 +439,10 @@ fn generate_free_types_buffer_specialized(signature: &Signature) -> String {
     format!(
         "
 #[no_mangle]
-pub fn free_types_{}(ptr: usize) {{
+pub fn {}(ptr: usize) {{
     return free_types_{}(ptr);
 }}",
-        signature.mangled_rust_name(),
+        signature.generate_free_types_buffer_name(),
         signature.mangled_rust_name_by_count(),
     )
 }
@@ -468,7 +454,12 @@ fn generate_store_rets_generic(rets_count: usize, args_count: usize) -> String {
 
     // eg: [`a0: R0`, `a1: R1`]
     let array_of_rets_signature = (0..rets_count).map(|n| format!("a{n}: R{n}"));
-    let total_signature = (vec![String::from("stack_ptr: usize")])
+    let stack_ptr = String::from(if rets_count == 0 {
+        "_stack_ptr: usize"
+    } else {
+        "stack_ptr: usize"
+    });
+    let total_signature = (vec![stack_ptr])
         .into_iter()
         .chain(array_of_rets_signature)
         .collect::<Vec<String>>()
@@ -520,13 +511,13 @@ fn generate_store_rets_specialized(signature: &Signature) -> String {
         .join(", ");
 
     let comma_separated_types = signature.rust_comma_separated_types();
-    let mangled_name = signature.mangled_rust_name();
+    let mangled_name = signature.generate_store_rets_name();
     let mangled_by_count_name = signature.mangled_rust_name_by_count();
 
     format!(
         "
 #[no_mangle]
-pub fn store_rets_{mangled_name}({total_signature}) {{
+pub fn {mangled_name}({total_signature}) {{
     return store_rets_{mangled_by_count_name}{comma_separated_types}({total_arguments});
 }}"
     )
@@ -697,6 +688,18 @@ mod tests {
         hash_set.insert(Signature {
             return_types: vec![WasmType::I32],
             argument_types: vec![WasmType::F64],
+        });
+        hash_set.insert(Signature {
+            return_types: vec![],
+            argument_types: vec![],
+        });
+        hash_set.insert(Signature {
+            return_types: vec![],
+            argument_types: vec![WasmType::I32],
+        });
+        hash_set.insert(Signature {
+            return_types: vec![WasmType::I32],
+            argument_types: vec![],
         });
         let signatures: Vec<Signature> = hash_set.into_iter().collect();
 
@@ -1242,7 +1245,7 @@ pub fn free_types_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(ptr: usize) {
             generate_store_rets_generic(0, 1),
             "
 #[inline(always)]
-fn store_rets_ret_0_arg_1<T0>(stack_ptr: usize) where T0: Copy {
+fn store_rets_ret_0_arg_1<T0>(_stack_ptr: usize) where T0: Copy {
     return;
 }",
         );
@@ -1316,7 +1319,7 @@ fn allocate_signature_types_buffer_ret_5_arg_5() -> usize {
             generate_allocate_types_buffer_specialized(&signature_empty),
             "
 #[no_mangle]
-pub fn allocate_types_ret__arg_() -> usize {
+pub fn allocate_types_ret_arg() -> usize {
     let types_buffer = allocate_signature_types_buffer_ret_0_arg_0();
     return types_buffer;
 }"

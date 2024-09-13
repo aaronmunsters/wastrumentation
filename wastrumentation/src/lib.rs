@@ -23,6 +23,8 @@ use anyhow::{anyhow, Result};
 
 use analysis::ProcessedAnalysis;
 
+pub use stack_library::Signature;
+
 pub struct Wastrumenter<
     InstrumentationLanguage,
     InstrumentationLanguageCompiler,

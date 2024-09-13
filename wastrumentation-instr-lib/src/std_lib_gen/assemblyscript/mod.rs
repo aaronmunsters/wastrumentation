@@ -1,24 +1,8 @@
 use std::{collections::HashSet, vec};
 
-use crate::wasm_constructs::{Signature, WasmType};
+use crate::wasm_constructs::{Signature, SignatureSide, WasmType};
 
 impl Signature {
-    fn mangled_assemblyscript_name(&self) -> String {
-        let signature_rets = &self.return_types;
-        let signature_rets_ident = signature_rets
-            .iter()
-            .map(ToString::to_string)
-            .collect::<Vec<String>>()
-            .join("_");
-        let signature_args = &self.argument_types;
-        let signature_args_ident = signature_args
-            .iter()
-            .map(ToString::to_string)
-            .collect::<Vec<String>>()
-            .join("_");
-        format!("ret_{signature_rets_ident}_arg_{signature_args_ident}")
-    }
-
     fn mangled_assemblyscript_name_by_count(&self) -> String {
         let signature_rets_count = self.return_types.len();
         let signature_args_count = self.argument_types.len();
@@ -166,12 +150,12 @@ fn generate_allocate_specialized(signature: &Signature) -> String {
         .join(", ");
 
     let comma_separated_types = signature.assemblyscript_comma_separated_types();
-    let mangled_name = signature.mangled_assemblyscript_name();
+    let mangled_name = signature.generate_allocate_values_buffer_name();
     let mangled_by_count_name = signature.mangled_assemblyscript_name_by_count();
 
     format!(
         "
-export function allocate_{mangled_name}({signature_args_typs_ident}): usize {{
+export function {mangled_name}({signature_args_typs_ident}): usize {{
     return allocate_{mangled_by_count_name}{comma_separated_types}({args});
 }};
 "
@@ -210,12 +194,12 @@ fn generate_allocate_types_buffer_specialized(signature: &Signature) -> String {
         .collect::<Vec<String>>()
         .join("\n    ");
 
-    let mangled_name = signature.mangled_assemblyscript_name();
+    let mangled_name = signature.generate_allocate_types_buffer_name();
     let mangled_by_count_name = signature.mangled_assemblyscript_name_by_count();
 
     format!(
         "
-export function allocate_types_{mangled_name}(): usize {{
+export function {mangled_name}(): usize {{
     const types_buffer = allocate_signature_types_buffer_{mangled_by_count_name}();
     {all_stores_followed_by_return}
 }}"
@@ -262,16 +246,16 @@ fn generate_load_specialized(signature: &Signature) -> String {
     let signature_args = &signature.argument_types;
 
     let comma_separated_types = signature.assemblyscript_comma_separated_types();
-    let mangled_name = signature.mangled_assemblyscript_name();
     let mangled_by_count_name = signature.mangled_assemblyscript_name_by_count();
 
     let all_arg_loads = signature_args
         .iter()
         .enumerate()
         .map(|(index, arg_i_ret_type)| {
+            let mangled_name = signature.generate_load_name(SignatureSide::Argument, index);
             format!(
                 "
-export function load_arg{index}_{mangled_name}(stack_ptr: usize): {arg_i_ret_type} {{
+export function {mangled_name}(stack_ptr: usize): {arg_i_ret_type} {{
     return load_arg{index}_{mangled_by_count_name}{comma_separated_types}(stack_ptr);
 }};"
             )
@@ -280,9 +264,10 @@ export function load_arg{index}_{mangled_name}(stack_ptr: usize): {arg_i_ret_typ
         .iter()
         .enumerate()
         .map(|(index, ret_i_ret_type)| {
+            let mangled_name = signature.generate_load_name(SignatureSide::Return, index);
             format!(
                 "
-export function load_ret{index}_{mangled_name}(stack_ptr: usize): {ret_i_ret_type} {{
+export function {mangled_name}(stack_ptr: usize): {ret_i_ret_type} {{
     return load_ret{index}_{mangled_by_count_name}{comma_separated_types}(stack_ptr);
 }};"
             )
@@ -334,17 +319,32 @@ fn generate_store_specialized(signature: &Signature) -> String {
     let signature_args = &signature.argument_types;
 
     let comma_separated_types = signature.assemblyscript_comma_separated_types();
-    let mangled_name = signature.mangled_assemblyscript_name();
     let mangled_by_count_name = signature.mangled_assemblyscript_name_by_count();
 
-    let all_arg_stores = signature_args.iter().enumerate().map(|(index, arg_i_ret_type)| format!("
-export function store_arg{index}_{mangled_name}(stack_ptr: usize, a{index}: {arg_i_ret_type}): void {{
+    let all_arg_stores = signature_args
+        .iter()
+        .enumerate()
+        .map(|(index, arg_i_ret_type)| {
+            let mangled_name = signature.generate_store_name(SignatureSide::Argument, index);
+            format!(
+                "
+export function {mangled_name}(stack_ptr: usize, a{index}: {arg_i_ret_type}): void {{
     return store_arg{index}_{mangled_by_count_name}{comma_separated_types}(stack_ptr, a{index});
-}};"));
-    let all_ret_stores = signature_rets.iter().enumerate().map(|(index, ret_i_ret_type)| format!("
-export function store_ret{index}_{mangled_name}(stack_ptr: usize, a{index}: {ret_i_ret_type}): void {{
+}};"
+            )
+        });
+    let all_ret_stores = signature_rets
+        .iter()
+        .enumerate()
+        .map(|(index, ret_i_ret_type)| {
+            let mangled_name = signature.generate_store_name(SignatureSide::Return, index);
+            format!(
+                "
+export function {mangled_name}(stack_ptr: usize, a{index}: {ret_i_ret_type}): void {{
     return store_ret{index}_{mangled_by_count_name}{comma_separated_types}(stack_ptr, a{index});
-}};"));
+}};"
+            )
+        });
     all_arg_stores
         .chain(all_ret_stores)
         .collect::<Vec<String>>()
@@ -374,10 +374,10 @@ function free_values_{generic_name}{string_all_generics}(ptr: usize): void {{
 fn generate_free_values_buffer_specialized(signature: &Signature) -> String {
     format!(
         "
-export function free_values_{}(ptr: usize): void {{
+export function {}(ptr: usize): void {{
     return free_values_{}{}(ptr);
 }};",
-        signature.mangled_assemblyscript_name(),
+        signature.generate_free_values_buffer_name(),
         signature.mangled_assemblyscript_name_by_count(),
         signature.assemblyscript_comma_separated_types(),
     )
@@ -401,10 +401,10 @@ function free_types_{generic_name}(ptr: usize): void {{
 fn generate_free_types_buffer_specialized(signature: &Signature) -> String {
     format!(
         "
-export function free_types_{}(ptr: usize): void {{
+export function {}(ptr: usize): void {{
     return free_types_{}(ptr);
 }};",
-        signature.mangled_assemblyscript_name(),
+        signature.generate_free_types_buffer_name(),
         signature.mangled_assemblyscript_name_by_count(),
     )
 }
@@ -468,12 +468,12 @@ fn generate_store_rets_specialized(signature: &Signature) -> String {
         .join(", ");
 
     let comma_separated_types = signature.assemblyscript_comma_separated_types();
-    let mangled_name = signature.mangled_assemblyscript_name();
+    let mangled_name = signature.generate_store_rets_name();
     let mangled_by_count_name = signature.mangled_assemblyscript_name_by_count();
 
     format!(
         "
-export function store_rets_{mangled_name}({total_signature}): void {{
+export function {mangled_name}({total_signature}): void {{
     return store_rets_{mangled_by_count_name}{comma_separated_types}({total_arguments});
 }};"
     )
@@ -1091,7 +1091,7 @@ function allocate_signature_types_buffer_ret_5_arg_5(): usize {
         assert_eq!(
             generate_allocate_types_buffer_specialized(&signature_empty),
             "
-export function allocate_types_ret__arg_(): usize {
+export function allocate_types_ret_arg(): usize {
     const types_buffer = allocate_signature_types_buffer_ret_0_arg_0();
     return types_buffer;
 }"

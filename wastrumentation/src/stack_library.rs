@@ -7,19 +7,13 @@
 
 use crate::instrument::function_application::INSTRUMENTATION_STACK_MODULE;
 
-use self::stack_library_generator::{
-    generate_allocate_types_buffer_name, generate_allocate_values_buffer_name,
-    generate_free_types_buffer_name, generate_free_values_buffer_name, generate_load_name,
-    generate_store_args_name, generate_store_name, generate_store_rets_name,
-};
-use std::{
-    collections::{HashMap, HashSet},
-    fmt::Display,
-};
+use std::collections::{HashMap, HashSet};
 use wasabi_wasm::{Function, FunctionType, Idx, Module, RefType, ValType};
 
 use wastrumentation_instr_lib::{
-    wasm_constructs::{RefType as LibGenRefType, Signature as LibGenSignature, WasmType},
+    wasm_constructs::{
+        RefType as LibGenRefType, Signature as LibGenSignature, SignatureSide, WasmType,
+    },
     LibGeneratable, Library,
 };
 
@@ -122,126 +116,36 @@ impl Signature {
     }
 }
 
-#[derive(Clone, Copy)]
-enum SignatureSide {
-    Return,
-    Argument,
-}
-
-impl Display for SignatureSide {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let str = match self {
-            Self::Return => "ret",
-            Self::Argument => "arg",
-        };
-        write!(f, "{str}")
-    }
-}
-
-mod stack_library_generator {
-    use wasabi_wasm::FunctionType;
-
-    use super::SignatureSide;
-
-    fn generate_name(name: &str, function_type: FunctionType) -> String {
-        format!(
-            "{}_ret_{}_arg_{}",
-            name,
-            function_type
-                .results()
-                .iter()
-                .map(|ft| ft.to_str())
-                .collect::<Vec<&str>>()
-                .join("_"),
-            function_type
-                .inputs()
-                .iter()
-                .map(|ft| ft.to_str())
-                .collect::<Vec<&str>>()
-                .join("_"),
-        )
-    }
-
-    pub(super) fn generate_allocate_values_buffer_name(function_type: FunctionType) -> String {
-        generate_name("allocate", function_type)
-    }
-
-    pub(super) fn generate_allocate_types_buffer_name(function_type: FunctionType) -> String {
-        generate_name("allocate_types", function_type)
-    }
-
-    pub(super) fn generate_free_values_buffer_name(function_type: FunctionType) -> String {
-        generate_name("free_values", function_type)
-    }
-
-    pub(super) fn generate_free_types_buffer_name(function_type: FunctionType) -> String {
-        generate_name("free_types", function_type)
-    }
-
-    fn generate_indexed_name(
-        name: &str,
-        function_type: FunctionType,
-        signature_side: SignatureSide,
-        index: usize,
-    ) -> String {
-        let prefix = format!("{name}_{signature_side}{index}");
-        generate_name(&prefix, function_type)
-    }
-
-    pub(super) fn generate_load_name(
-        function_type: FunctionType,
-        signature_side: SignatureSide,
-        index: usize,
-    ) -> String {
-        generate_indexed_name("load", function_type, signature_side, index)
-    }
-
-    pub(super) fn generate_store_name(
-        function_type: FunctionType,
-        signature_side: SignatureSide,
-        index: usize,
-    ) -> String {
-        generate_indexed_name("store", function_type, signature_side, index)
-    }
-
-    pub(super) fn generate_store_args_name(function_type: FunctionType) -> String {
-        generate_name("store_args", function_type)
-    }
-
-    pub(super) fn generate_store_rets_name(function_type: FunctionType) -> String {
-        generate_name("store_rets", function_type)
-    }
-}
-
 impl From<(FunctionType, &mut Module)> for Signature {
     fn from((function_type, module): (FunctionType, &mut Module)) -> Self {
+        let lib_gen_signature: LibGenSignature = WasabiFunctionType(&function_type).into();
         let allocate_values_buffer_type =
             FunctionType::new(function_type.inputs(), &[ValType::I32]);
         let allocate_values_buffer = module.add_function_import(
             allocate_values_buffer_type,
             INSTRUMENTATION_STACK_MODULE.into(),
-            generate_allocate_values_buffer_name(function_type),
+            lib_gen_signature.generate_allocate_values_buffer_name(),
         );
 
         let free_values_buffer_type = FunctionType::new(&[ValType::I32], &[]);
         let free_values_buffer = module.add_function_import(
             free_values_buffer_type,
             INSTRUMENTATION_STACK_MODULE.into(),
-            generate_free_values_buffer_name(function_type),
+            lib_gen_signature.generate_free_values_buffer_name(),
         );
 
         let allocate_types_buffer_type = FunctionType::new(&[], &[ValType::I32]);
         let allocate_types_buffer = module.add_function_import(
             allocate_types_buffer_type,
             INSTRUMENTATION_STACK_MODULE.into(),
-            generate_allocate_types_buffer_name(function_type),
+            lib_gen_signature.generate_allocate_types_buffer_name(),
         );
 
         let free_types_buffer_type = FunctionType::new(&[ValType::I32], &[]);
         let free_types_buffer = module.add_function_import(
             free_types_buffer_type,
             INSTRUMENTATION_STACK_MODULE.into(),
-            generate_free_types_buffer_name(function_type),
+            lib_gen_signature.generate_free_types_buffer_name(),
         );
 
         let arg_load_n = function_type
@@ -252,7 +156,7 @@ impl From<(FunctionType, &mut Module)> for Signature {
                 module.add_function_import(
                     FunctionType::new(&[ValType::I32], &[*val_type]),
                     INSTRUMENTATION_STACK_MODULE.into(),
-                    generate_load_name(function_type, SignatureSide::Argument, index),
+                    lib_gen_signature.generate_load_name(SignatureSide::Argument, index),
                 )
             })
             .collect();
@@ -265,7 +169,7 @@ impl From<(FunctionType, &mut Module)> for Signature {
                 module.add_function_import(
                     FunctionType::new(&[ValType::I32], &[*val_type]),
                     INSTRUMENTATION_STACK_MODULE.into(),
-                    generate_load_name(function_type, SignatureSide::Return, index),
+                    lib_gen_signature.generate_load_name(SignatureSide::Return, index),
                 )
             })
             .collect();
@@ -278,7 +182,7 @@ impl From<(FunctionType, &mut Module)> for Signature {
                 module.add_function_import(
                     FunctionType::new(&[ValType::I32, *val_type], &[]),
                     INSTRUMENTATION_STACK_MODULE.into(),
-                    generate_store_name(function_type, SignatureSide::Argument, index),
+                    lib_gen_signature.generate_store_name(SignatureSide::Argument, index),
                 )
             })
             .collect();
@@ -288,7 +192,7 @@ impl From<(FunctionType, &mut Module)> for Signature {
         let arg_store_all = module.add_function_import(
             FunctionType::new(&store_args_signature, &[]),
             INSTRUMENTATION_STACK_MODULE.into(),
-            generate_store_args_name(function_type),
+            lib_gen_signature.generate_store_args_name(),
         );
 
         let ret_store_n = function_type
@@ -299,7 +203,7 @@ impl From<(FunctionType, &mut Module)> for Signature {
                 module.add_function_import(
                     FunctionType::new(&[ValType::I32, *val_type], &[]),
                     INSTRUMENTATION_STACK_MODULE.into(),
-                    generate_store_name(function_type, SignatureSide::Return, index),
+                    lib_gen_signature.generate_store_name(SignatureSide::Return, index),
                 )
             })
             .collect();
@@ -309,7 +213,7 @@ impl From<(FunctionType, &mut Module)> for Signature {
         let ret_store_all = module.add_function_import(
             FunctionType::new(&store_rets_signature, &[]),
             INSTRUMENTATION_STACK_MODULE.into(),
-            generate_store_rets_name(function_type),
+            lib_gen_signature.generate_store_rets_name(),
         );
 
         Signature {

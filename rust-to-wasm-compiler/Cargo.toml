@@ -13,7 +13,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 wat = { workspace = true }
 wasmtime = { workspace = true }
-wastrumentation = { path = "../wastrumentation" }
-wastrumentation-instr-lib = { path = "../wastrumentation-instr-lib" }
+wastrumentation = { workspace = true }
+wastrumentation-instr-lib = { workspace = true }
 rayon = { workspace = true }
 indoc = { workspace = true }

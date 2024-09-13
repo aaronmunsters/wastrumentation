@@ -11,6 +11,13 @@ members = [
 ]
 
 [workspace.dependencies]
+# Crates defined in this project
+rust-to-wasm-compiler = { path = "./rust-to-wasm-compiler" }
+wastrumentation = { path = "./wastrumentation" }
+wastrumentation-instr-lib = { path = "./wastrumentation-instr-lib" }
+wasp-compiler = { path = "./wasp-compiler" }
+wasm-merge = { path = "./wasm-merge" }
+
 anyhow = "1.0"
 wasmtime = "24.0"
 indoc = "2"
