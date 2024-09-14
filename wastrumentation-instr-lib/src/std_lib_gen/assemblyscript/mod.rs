@@ -1,8 +1,20 @@
-use std::{collections::HashSet, vec};
+use std::{collections::HashSet, ops::Deref, vec};
 
-use crate::wasm_constructs::{Signature, SignatureSide, WasmType};
+use wastrumentation::wasm_constructs::{Signature, SignatureSide, WasmType};
 
-impl Signature {
+#[derive(Hash, PartialEq, Eq)]
+pub struct WaspSignature<'a>(&'a Signature);
+
+impl Deref for WaspSignature<'_> {
+    type Target = Signature;
+
+    fn deref(&self) -> &Self::Target {
+        let Self(target) = self;
+        target
+    }
+}
+
+impl WaspSignature<'_> {
     fn mangled_assemblyscript_name_by_count(&self) -> String {
         let signature_rets_count = self.return_types.len();
         let signature_args_count = self.argument_types.len();
@@ -99,13 +111,14 @@ fn ret_offset(ret_pos: usize, rets_count: usize, args_count: usize) -> String {
 
 fn generate_allocate_generic(rets_count: usize, args_count: usize) -> String {
     let string_all_generics =
-        Signature::assemblyscript_comma_separated_generics(rets_count, args_count);
-    let signature = Signature::assemblyscript_generic_comma_separated_typed_arguments(args_count);
-    let generic_name = Signature::generic_assemblyscript_name(rets_count, args_count);
+        WaspSignature::assemblyscript_comma_separated_generics(rets_count, args_count);
+    let signature =
+        WaspSignature::assemblyscript_generic_comma_separated_typed_arguments(args_count);
+    let generic_name = WaspSignature::generic_assemblyscript_name(rets_count, args_count);
 
     // eg: `sizeof<R0>() +  sizeof<R1>() +  sizeof<T0>() +  sizeof<T1>()`
     let total_allocation =
-        Signature::assemblyscript_compute_type_allocation(rets_count, args_count);
+        WaspSignature::assemblyscript_compute_type_allocation(rets_count, args_count);
     let all_stores_followed_by_return = (0..args_count)
         .map(|n| {
             let offset = arg_offset(n, rets_count, args_count);
@@ -130,7 +143,7 @@ function allocate_{generic_name}{string_all_generics}({signature}): usize {{
     )
 }
 
-fn generate_allocate_specialized(signature: &Signature) -> String {
+fn generate_allocate_specialized(signature: &WaspSignature) -> String {
     // eg: Signature { return_type: [`i64`, `i32`], argument_types: [`f64`, `f32`] }
     // eg: [`f64`, `f32`]
     let signature_args = &signature.argument_types;
@@ -164,7 +177,7 @@ export function {mangled_name}({signature_args_typs_ident}): usize {{
 
 fn generate_allocate_types_buffer_generic(rets_count: usize, args_count: usize) -> String {
     let total_allocation = format!("sizeof<i32>() * {};", rets_count + args_count);
-    let generic_name = Signature::generic_assemblyscript_name(rets_count, args_count);
+    let generic_name = WaspSignature::generic_assemblyscript_name(rets_count, args_count);
     format!(
         "
 @inline
@@ -176,7 +189,7 @@ function allocate_signature_types_buffer_{generic_name}(): usize {{
     )
 }
 
-fn generate_allocate_types_buffer_specialized(signature: &Signature) -> String {
+fn generate_allocate_types_buffer_specialized(signature: &WaspSignature) -> String {
     // eg: [`i64`, `i32`]
     let signature_rets = &signature.return_types;
     // eg: [`f64`, `f32`]
@@ -208,8 +221,8 @@ export function {mangled_name}(): usize {{
 
 fn generate_load_generic(rets_count: usize, args_count: usize) -> String {
     let string_all_generics =
-        Signature::assemblyscript_comma_separated_generics(rets_count, args_count);
-    let generic_name = Signature::generic_assemblyscript_name(rets_count, args_count);
+        WaspSignature::assemblyscript_comma_separated_generics(rets_count, args_count);
+    let generic_name = WaspSignature::generic_assemblyscript_name(rets_count, args_count);
 
     let all_arg_loads = (0..args_count).map(|n| {
         let an_offset = arg_offset(n, rets_count, args_count);
@@ -239,7 +252,7 @@ function load_ret{n}_{generic_name}{string_all_generics}(stack_ptr: usize): R{n}
         .join("\n")
 }
 
-fn generate_load_specialized(signature: &Signature) -> String {
+fn generate_load_specialized(signature: &WaspSignature) -> String {
     // eg: [`i64`, `i32`]
     let signature_rets = &signature.return_types;
     // eg: [`f64`, `f32`]
@@ -281,8 +294,8 @@ export function {mangled_name}(stack_ptr: usize): {ret_i_ret_type} {{
 
 fn generate_store_generic(rets_count: usize, args_count: usize) -> String {
     let string_all_generics =
-        Signature::assemblyscript_comma_separated_generics(rets_count, args_count);
-    let generic_name = Signature::generic_assemblyscript_name(rets_count, args_count);
+        WaspSignature::assemblyscript_comma_separated_generics(rets_count, args_count);
+    let generic_name = WaspSignature::generic_assemblyscript_name(rets_count, args_count);
 
     let all_arg_stores = (0..args_count).map(|n| {
         let an_offset = arg_offset(n, rets_count, args_count);
@@ -312,7 +325,7 @@ function store_ret{n}_{generic_name}{string_all_generics}(stack_ptr: usize, r{n}
         .join("\n")
 }
 
-fn generate_store_specialized(signature: &Signature) -> String {
+fn generate_store_specialized(signature: &WaspSignature) -> String {
     // eg: [`i64`, `i32`]
     let signature_rets = &signature.return_types;
     // eg: [`f64`, `f32`]
@@ -353,12 +366,12 @@ export function {mangled_name}(stack_ptr: usize, a{index}: {ret_i_ret_type}): vo
 
 fn generate_free_values_buffer_generic(rets_count: usize, args_count: usize) -> String {
     let string_all_generics =
-        Signature::assemblyscript_comma_separated_generics(rets_count, args_count);
-    let generic_name = Signature::generic_assemblyscript_name(rets_count, args_count);
+        WaspSignature::assemblyscript_comma_separated_generics(rets_count, args_count);
+    let generic_name = WaspSignature::generic_assemblyscript_name(rets_count, args_count);
 
     // eg: `sizeof<R0>() +  sizeof<R1>() +  sizeof<T0>() +  sizeof<T1>()`
     let total_allocation =
-        Signature::assemblyscript_compute_type_allocation(rets_count, args_count);
+        WaspSignature::assemblyscript_compute_type_allocation(rets_count, args_count);
 
     format!(
         "
@@ -371,7 +384,7 @@ function free_values_{generic_name}{string_all_generics}(ptr: usize): void {{
     )
 }
 
-fn generate_free_values_buffer_specialized(signature: &Signature) -> String {
+fn generate_free_values_buffer_specialized(signature: &WaspSignature) -> String {
     format!(
         "
 export function {}(ptr: usize): void {{
@@ -384,7 +397,7 @@ export function {}(ptr: usize): void {{
 }
 
 fn generate_free_types_buffer_generic(rets_count: usize, args_count: usize) -> String {
-    let generic_name = Signature::generic_assemblyscript_name(rets_count, args_count);
+    let generic_name = WaspSignature::generic_assemblyscript_name(rets_count, args_count);
     let total_allocation = format!("sizeof<i32>() * {};", rets_count + args_count);
 
     format!(
@@ -398,7 +411,7 @@ function free_types_{generic_name}(ptr: usize): void {{
     )
 }
 
-fn generate_free_types_buffer_specialized(signature: &Signature) -> String {
+fn generate_free_types_buffer_specialized(signature: &WaspSignature) -> String {
     format!(
         "
 export function {}(ptr: usize): void {{
@@ -411,8 +424,8 @@ export function {}(ptr: usize): void {{
 
 fn generate_store_rets_generic(rets_count: usize, args_count: usize) -> String {
     let string_all_generics =
-        Signature::assemblyscript_comma_separated_generics(rets_count, args_count);
-    let generic_name = Signature::generic_assemblyscript_name(rets_count, args_count);
+        WaspSignature::assemblyscript_comma_separated_generics(rets_count, args_count);
+    let generic_name = WaspSignature::generic_assemblyscript_name(rets_count, args_count);
 
     // eg: [`a0: R0`, `a1: R1`]
     let array_of_rets_signature = (0..rets_count).map(|n| format!("a{n}: R{n}"));
@@ -441,7 +454,7 @@ function store_rets_{generic_name}{string_all_generics}({total_signature}): void
     )
 }
 
-fn generate_store_rets_specialized(signature: &Signature) -> String {
+fn generate_store_rets_specialized(signature: &WaspSignature) -> String {
     // eg: [`i64`, `i32`]
     let signature_rets = &signature.return_types;
     // eg: [`a0`, `a1`]
@@ -489,9 +502,10 @@ pub fn generate_lib(signatures: &[Signature]) -> String {
 
 fn generate_lib_for(signatures: &[Signature]) -> String {
     let mut processed_signature_counts: HashSet<(usize, usize)> = HashSet::new();
-    let mut processed_signatures: HashSet<&Signature> = HashSet::new();
+    let mut processed_signatures: HashSet<WaspSignature> = HashSet::new();
     let mut program = String::new();
     for signature in signatures {
+        let signature = WaspSignature(signature);
         let signature_ret_count = signature.return_types.len();
         let signature_arg_count = signature.argument_types.len();
         let signature_length = (signature.return_types.len(), signature.argument_types.len());
@@ -509,8 +523,7 @@ fn generate_lib_for(signatures: &[Signature]) -> String {
                 program.push_str(generator(signature_ret_count, signature_arg_count).as_str());
             }
         }
-        if !processed_signatures.contains(signature) {
-            processed_signatures.insert(signature);
+        if !processed_signatures.contains(&signature) {
             for generator in [
                 generate_allocate_specialized,
                 generate_load_specialized,
@@ -520,8 +533,9 @@ fn generate_lib_for(signatures: &[Signature]) -> String {
                 generate_allocate_types_buffer_specialized,
                 generate_free_types_buffer_specialized,
             ] {
-                program.push_str(&generator(signature));
+                program.push_str(&generator(&signature));
             }
+            processed_signatures.insert(signature);
         }
     }
     program
@@ -529,9 +543,8 @@ fn generate_lib_for(signatures: &[Signature]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::wasm_constructs::RefType;
-
     use super::*;
+    use wastrumentation::wasm_constructs::{RefType, WasmType};
 
     // Some sample signatures for testing purposes
     fn get_ret_f64_f32_arg_i32_i64() -> Signature {
@@ -656,7 +669,7 @@ function allocate_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(a0: T0, a1
     #[test]
     fn generating_allocate_specialized_instructions() {
         assert_eq!(
-            generate_allocate_specialized(&get_ret_f64_f32_arg_i32_i64()),
+            generate_allocate_specialized(&WaspSignature(&get_ret_f64_f32_arg_i32_i64())),
             "
 export function allocate_ret_f64_f32_arg_i32_i64(a0: i32, a1: i64): usize {
     return allocate_ret_2_arg_2<f64, f32, i32, i64>(a0, a1);
@@ -664,7 +677,7 @@ export function allocate_ret_f64_f32_arg_i32_i64(a0: i32, a1: i64): usize {
 "
         );
 
-        assert_eq!(generate_allocate_specialized(&get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64()), "
+        assert_eq!(generate_allocate_specialized(&WaspSignature(&get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64())), "
 export function allocate_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(a0: i64, a1: i32, a2: f32, a3: f64): usize {
     return allocate_ret_4_arg_4<f64, f32, i32, i64, i64, i32, f32, f64>(a0, a1, a2, a3);
 };
@@ -747,7 +760,7 @@ function load_ret4_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr
     #[test]
     fn generating_load_specialized_instructions() {
         assert_eq!(
-            generate_load_specialized(&get_ret_f64_f32_arg_i32_i64()),
+            generate_load_specialized(&WaspSignature(&get_ret_f64_f32_arg_i32_i64())),
             "
 export function load_arg0_ret_f64_f32_arg_i32_i64(stack_ptr: usize): i32 {
     return load_arg0_ret_2_arg_2<f64, f32, i32, i64>(stack_ptr);
@@ -767,7 +780,9 @@ export function load_ret1_ret_f64_f32_arg_i32_i64(stack_ptr: usize): f32 {
         );
 
         assert_eq!(
-            generate_load_specialized(&get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64()),
+            generate_load_specialized(&WaspSignature(
+                &get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64()
+            )),
             "
 export function load_arg0_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize): i64 {
     return load_arg0_ret_4_arg_4<f64, f32, i32, i64, i64, i32, f32, f64>(stack_ptr);
@@ -879,7 +894,7 @@ function store_ret4_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_pt
     #[test]
     fn generating_store_specialized_instructions() {
         assert_eq!(
-            generate_store_specialized(&get_ret_f64_f32_arg_i32_i64()),
+            generate_store_specialized(&WaspSignature(&get_ret_f64_f32_arg_i32_i64())),
             "
 export function store_arg0_ret_f64_f32_arg_i32_i64(stack_ptr: usize, a0: i32): void {
     return store_arg0_ret_2_arg_2<f64, f32, i32, i64>(stack_ptr, a0);
@@ -898,7 +913,7 @@ export function store_ret1_ret_f64_f32_arg_i32_i64(stack_ptr: usize, a1: f32): v
 };",
         );
 
-        assert_eq!(generate_store_specialized(&get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64()), "
+        assert_eq!(generate_store_specialized(&WaspSignature(&get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64())), "
 export function store_arg0_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize, a0: i64): void {
     return store_arg0_ret_4_arg_4<f64, f32, i32, i64, i64, i32, f32, f64>(stack_ptr, a0);
 };
@@ -956,7 +971,7 @@ function free_values_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(ptr: us
     #[test]
     fn generating_free_specialized_instruction() {
         assert_eq!(
-            generate_free_values_buffer_specialized(&get_ret_f64_f32_arg_i32_i64()),
+            generate_free_values_buffer_specialized(&WaspSignature(&get_ret_f64_f32_arg_i32_i64())),
             "
 export function free_values_ret_f64_f32_arg_i32_i64(ptr: usize): void {
     return free_values_ret_2_arg_2<f64, f32, i32, i64>(ptr);
@@ -964,7 +979,9 @@ export function free_values_ret_f64_f32_arg_i32_i64(ptr: usize): void {
         );
 
         assert_eq!(
-            generate_free_values_buffer_specialized(&get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64()),
+            generate_free_values_buffer_specialized(&WaspSignature(
+                &get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64()
+            )),
             "
 export function free_values_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(ptr: usize): void {
     return free_values_ret_4_arg_4<f64, f32, i32, i64, i64, i32, f32, f64>(ptr);
@@ -999,14 +1016,16 @@ function free_types_ret_5_arg_5(ptr: usize): void {
     #[test]
     fn generating_free_types_specialized_instruction() {
         assert_eq!(
-            generate_free_types_buffer_specialized(&get_ret_f64_f32_arg_i32_i64()),
+            generate_free_types_buffer_specialized(&WaspSignature(&get_ret_f64_f32_arg_i32_i64())),
             "
 export function free_types_ret_f64_f32_arg_i32_i64(ptr: usize): void {
     return free_types_ret_2_arg_2(ptr);
 };"
         );
         assert_eq!(
-            generate_free_types_buffer_specialized(&get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64()),
+            generate_free_types_buffer_specialized(&WaspSignature(
+                &get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64()
+            )),
             "
 export function free_types_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(ptr: usize): void {
     return free_types_ret_4_arg_4(ptr);
@@ -1044,14 +1063,14 @@ function store_rets_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_pt
     #[test]
     fn generating_store_rets_specialized_instruction() {
         assert_eq!(
-            generate_store_rets_specialized(&get_ret_f64_f32_arg_i32_i64()),
+            generate_store_rets_specialized(&WaspSignature(&get_ret_f64_f32_arg_i32_i64())),
             "
 export function store_rets_ret_f64_f32_arg_i32_i64(stack_ptr: usize, a0: f64, a1: f32): void {
     return store_rets_ret_2_arg_2<f64, f32, i32, i64>(stack_ptr, a0, a1);
 };"
         );
 
-        assert_eq!(generate_store_rets_specialized(&get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64()), "
+        assert_eq!(generate_store_rets_specialized(&WaspSignature(&get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64())), "
 export function store_rets_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize, a0: f64, a1: f32, a2: i32, a3: i64): void {
     return store_rets_ret_4_arg_4<f64, f32, i32, i64, i64, i32, f32, f64>(stack_ptr, a0, a1, a2, a3);
 };");
@@ -1089,7 +1108,7 @@ function allocate_signature_types_buffer_ret_5_arg_5(): usize {
             argument_types: vec![],
         };
         assert_eq!(
-            generate_allocate_types_buffer_specialized(&signature_empty),
+            generate_allocate_types_buffer_specialized(&WaspSignature(&signature_empty)),
             "
 export function allocate_types_ret_arg(): usize {
     const types_buffer = allocate_signature_types_buffer_ret_0_arg_0();
@@ -1101,7 +1120,7 @@ export function allocate_types_ret_arg(): usize {
             argument_types: vec![WasmType::I32, WasmType::I64],
         };
         assert_eq!(
-            generate_allocate_types_buffer_specialized(&signature_0),
+            generate_allocate_types_buffer_specialized(&WaspSignature(&signature_0)),
             "
 export function allocate_types_ret_f64_f32_arg_i32_i64(): usize {
     const types_buffer = allocate_signature_types_buffer_ret_2_arg_2();
@@ -1117,7 +1136,7 @@ export function allocate_types_ret_f64_f32_arg_i32_i64(): usize {
             argument_types: vec![WasmType::I64, WasmType::I32, WasmType::F32, WasmType::F64],
         };
         assert_eq!(
-            generate_allocate_types_buffer_specialized(&signature_1),
+            generate_allocate_types_buffer_specialized(&WaspSignature(&signature_1)),
             "
 export function allocate_types_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(): usize {
     const types_buffer = allocate_signature_types_buffer_ret_4_arg_4();
@@ -1144,7 +1163,7 @@ export function allocate_types_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(): usize 
             ],
         };
         assert_eq!(
-            generate_allocate_types_buffer_specialized(&signature_2),
+            generate_allocate_types_buffer_specialized(&WaspSignature(&signature_2)),
             "
 export function allocate_types_ret_ref_func_ref_func_arg_ref_extern_ref_extern(): usize {
     const types_buffer = allocate_signature_types_buffer_ret_2_arg_2();

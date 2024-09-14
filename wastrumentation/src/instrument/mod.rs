@@ -6,10 +6,9 @@ use wasabi_wasm::ImportOrPresent;
 use wasabi_wasm::Module;
 use wasabi_wasm::ValType;
 
+use crate::compiler::{LibGeneratable, Library};
 use wasabi_wasm::Function;
 use wasabi_wasm::Idx;
-use wastrumentation_instr_lib::LibGeneratable;
-use wastrumentation_instr_lib::Library;
 
 use crate::analysis::{AnalysisInterface, WasmExport, WasmImport, WasmType};
 use crate::parse_nesting::HighLevelBody;

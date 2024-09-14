@@ -7,37 +7,33 @@
 
 use crate::instrument::function_application::INSTRUMENTATION_STACK_MODULE;
 
+use crate::compiler::{LibGeneratable, Library};
+use crate::wasm_constructs::{RefType as LibGenRefType, Signature, SignatureSide, WasmType};
 use std::collections::{HashMap, HashSet};
 use wasabi_wasm::{Function, FunctionType, Idx, Module, RefType, ValType};
-
-use wastrumentation_instr_lib::{
-    wasm_constructs::{
-        RefType as LibGenRefType, Signature as LibGenSignature, SignatureSide, WasmType,
-    },
-    LibGeneratable, Library,
-};
 
 // TODO: use some macro's here to generate most of the boilerplate -> this makes it also more maintainable
 // TODO: tie this together with the generation library, ie. get names from there!
 
 pub struct StackLibrary<Language: LibGeneratable> {
-    pub signature_import_links: HashMap<FunctionType, Signature>,
+    pub signature_import_links: HashMap<FunctionType, ModuleLinkedStackHooks>,
     pub library: Library<Language>,
 }
 
 impl<Language: LibGeneratable> StackLibrary<Language> {
     pub fn from_module(module: &mut Module, functions: &HashSet<Idx<Function>>) -> Self {
-        let signature_import_links: HashMap<FunctionType, Signature> =
+        let signature_import_links: HashMap<FunctionType, ModuleLinkedStackHooks> =
             functions.iter().fold(HashMap::new(), |mut acc, index| {
                 let function_type = module.function(*index).type_;
                 if acc.contains_key(&function_type) {
                     return acc;
                 }
-                let stack_library = Signature::from_function_type_module(function_type, module);
+                let stack_library =
+                    ModuleLinkedStackHooks::from_function_type_module(function_type, module);
                 acc.insert(function_type, stack_library);
                 acc
             });
-        let signatures: Vec<LibGenSignature> = signature_import_links
+        let signatures: Vec<Signature> = signature_import_links
             .keys()
             .map(WasabiFunctionType)
             .map(Into::into)
@@ -72,7 +68,7 @@ impl WasabiFunctionType<'_> {
     }
 }
 
-impl<'a> From<WasabiFunctionType<'a>> for LibGenSignature {
+impl<'a> From<WasabiFunctionType<'a>> for Signature {
     fn from(value: WasabiFunctionType) -> Self {
         let WasabiFunctionType(function_type) = value;
         Self {
@@ -91,7 +87,7 @@ impl<'a> From<WasabiFunctionType<'a>> for LibGenSignature {
 }
 
 // TODO: remove the dead code, this might be related to the specialized instrumentation code
-pub struct Signature {
+pub struct ModuleLinkedStackHooks {
     #[allow(dead_code)]
     pub function_type: FunctionType,
     pub allocate_values_buffer: Idx<Function>,
@@ -109,16 +105,16 @@ pub struct Signature {
     pub ret_store_all: Idx<Function>,
 }
 
-impl Signature {
+impl ModuleLinkedStackHooks {
     /// This will add the known imports to the function
     pub fn from_function_type_module(function_type: FunctionType, module: &mut Module) -> Self {
         (function_type, module).into()
     }
 }
 
-impl From<(FunctionType, &mut Module)> for Signature {
+impl From<(FunctionType, &mut Module)> for ModuleLinkedStackHooks {
     fn from((function_type, module): (FunctionType, &mut Module)) -> Self {
-        let lib_gen_signature: LibGenSignature = WasabiFunctionType(&function_type).into();
+        let lib_gen_signature: Signature = WasabiFunctionType(&function_type).into();
         let allocate_values_buffer_type =
             FunctionType::new(function_type.inputs(), &[ValType::I32]);
         let allocate_values_buffer = module.add_function_import(
@@ -216,7 +212,7 @@ impl From<(FunctionType, &mut Module)> for Signature {
             lib_gen_signature.generate_store_rets_name(),
         );
 
-        Signature {
+        ModuleLinkedStackHooks {
             function_type,
             allocate_values_buffer,
             allocate_types_buffer,

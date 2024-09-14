@@ -1,9 +1,7 @@
-use std::{collections::HashSet, vec};
+use std::{collections::HashSet, ops::Deref, vec};
 
-use crate::{
-    std_lib_compile::rust::{ManifestSource, RustSourceCode},
-    wasm_constructs::{Signature, SignatureSide, WasmType},
-};
+use crate::std_lib_compile::rust::{ManifestSource, RustSourceCode};
+use wastrumentation::wasm_constructs::{Signature, SignatureSide, WasmType};
 
 // TODO: since this holds:
 
@@ -17,7 +15,19 @@ use crate::{
 
 // I could move all "+" expressions to a tuple variant ... Should not change anything, but 'enforce' constant folding
 
-impl Signature {
+#[derive(Hash, PartialEq, Eq)]
+pub struct RustSignature<'a>(&'a Signature);
+
+impl Deref for RustSignature<'_> {
+    type Target = Signature;
+
+    fn deref(&self) -> &Self::Target {
+        let Self(target) = self;
+        target
+    }
+}
+
+impl RustSignature<'_> {
     fn mangled_rust_name_by_count(&self) -> String {
         let signature_rets_count = self.return_types.len();
         let signature_args_count = self.argument_types.len();
@@ -127,13 +137,13 @@ fn ret_offset(ret_pos: usize, rets_count: usize, args_count: usize) -> String {
 }
 
 fn generate_allocate_generic(rets_count: usize, args_count: usize) -> String {
-    let string_all_generics = Signature::rust_comma_separated_generics(rets_count, args_count);
-    let signature = Signature::rust_generic_comma_separated_typed_arguments(args_count);
-    let generic_name = Signature::generic_rust_name(rets_count, args_count);
-    let where_clause = Signature::generic_rust_where_clause(rets_count, args_count);
+    let string_all_generics = RustSignature::rust_comma_separated_generics(rets_count, args_count);
+    let signature = RustSignature::rust_generic_comma_separated_typed_arguments(args_count);
+    let generic_name = RustSignature::generic_rust_name(rets_count, args_count);
+    let where_clause = RustSignature::generic_rust_where_clause(rets_count, args_count);
 
     // eg: `size_of::<R0>() +  size_of::<R1>() +  size_of::<T0>() +  size_of::<T1>()`
-    let total_allocation = Signature::rust_compute_type_allocation(rets_count, args_count);
+    let total_allocation = RustSignature::rust_compute_type_allocation(rets_count, args_count);
     let all_stores_followed_by_return = (0..args_count)
         .map(|n| {
             let offset = arg_offset(n, rets_count, args_count);
@@ -161,7 +171,7 @@ fn allocate_{generic_name}{string_all_generics}({signature}) -> usize {where_cla
     )
 }
 
-fn generate_allocate_specialized(signature: &Signature) -> String {
+fn generate_allocate_specialized(signature: &RustSignature) -> String {
     // eg: Signature { return_type: [`i64`, `i32`], argument_types: [`f64`, `f32`] }
     // eg: [`f64`, `f32`]
     let signature_args = &signature.argument_types;
@@ -196,7 +206,7 @@ pub fn {mangled_name}({signature_args_typs_ident}) -> usize {{
 
 fn generate_allocate_types_buffer_generic(rets_count: usize, args_count: usize) -> String {
     let total_allocation = format!("size_of::<i32>() * {}", rets_count + args_count);
-    let generic_name = Signature::generic_rust_name(rets_count, args_count);
+    let generic_name = RustSignature::generic_rust_name(rets_count, args_count);
     format!(
         "
 #[inline(always)]
@@ -208,7 +218,7 @@ fn allocate_signature_types_buffer_{generic_name}() -> usize {{
     )
 }
 
-fn generate_allocate_types_buffer_specialized(signature: &Signature) -> String {
+fn generate_allocate_types_buffer_specialized(signature: &RustSignature) -> String {
     // eg: [`i64`, `i32`]
     let signature_rets = &signature.return_types;
     // eg: [`f64`, `f32`]
@@ -240,9 +250,9 @@ pub fn {mangled_name}() -> usize {{
 }
 
 fn generate_load_generic(rets_count: usize, args_count: usize) -> String {
-    let string_all_generics = Signature::rust_comma_separated_generics(rets_count, args_count);
-    let generic_name = Signature::generic_rust_name(rets_count, args_count);
-    let where_clause = Signature::generic_rust_where_clause(rets_count, args_count);
+    let string_all_generics = RustSignature::rust_comma_separated_generics(rets_count, args_count);
+    let generic_name = RustSignature::generic_rust_name(rets_count, args_count);
+    let where_clause = RustSignature::generic_rust_where_clause(rets_count, args_count);
 
     let all_arg_loads = (0..args_count).map(|n| {
         let an_offset = arg_offset(n, rets_count, args_count);
@@ -272,7 +282,7 @@ fn load_ret{n}_{generic_name}{string_all_generics}(stack_ptr: usize) -> R{n} {wh
         .join("\n")
 }
 
-fn generate_load_specialized(signature: &Signature) -> String {
+fn generate_load_specialized(signature: &RustSignature) -> String {
     // eg: [`i64`, `i32`]
     let signature_rets = &signature.return_types;
     // eg: [`f64`, `f32`]
@@ -315,9 +325,9 @@ pub fn {mangled_name}(stack_ptr: usize) -> {ret_i_ret_type} {{
 }
 
 fn generate_store_generic(rets_count: usize, args_count: usize) -> String {
-    let string_all_generics = Signature::rust_comma_separated_generics(rets_count, args_count);
-    let generic_name = Signature::generic_rust_name(rets_count, args_count);
-    let where_clause = Signature::generic_rust_where_clause(rets_count, args_count);
+    let string_all_generics = RustSignature::rust_comma_separated_generics(rets_count, args_count);
+    let generic_name = RustSignature::generic_rust_name(rets_count, args_count);
+    let where_clause = RustSignature::generic_rust_where_clause(rets_count, args_count);
 
     let all_arg_stores = (0..args_count).map(|n| {
         let an_offset = arg_offset(n, rets_count, args_count);
@@ -347,7 +357,7 @@ fn store_ret{n}_{generic_name}{string_all_generics}(stack_ptr: usize, r{n}: R{n}
         .join("\n")
 }
 
-fn generate_store_specialized(signature: &Signature) -> String {
+fn generate_store_specialized(signature: &RustSignature) -> String {
     // eg: [`i64`, `i32`]
     let signature_rets = &signature.return_types;
     // eg: [`f64`, `f32`]
@@ -389,12 +399,12 @@ pub fn {mangled_name}(stack_ptr: usize, a{index}: {ret_i_ret_type}) {{
 }
 
 fn generate_free_values_buffer_generic(rets_count: usize, args_count: usize) -> String {
-    let string_all_generics = Signature::rust_comma_separated_generics(rets_count, args_count);
-    let generic_name = Signature::generic_rust_name(rets_count, args_count);
-    let where_clause = Signature::generic_rust_where_clause(rets_count, args_count);
+    let string_all_generics = RustSignature::rust_comma_separated_generics(rets_count, args_count);
+    let generic_name = RustSignature::generic_rust_name(rets_count, args_count);
+    let where_clause = RustSignature::generic_rust_where_clause(rets_count, args_count);
 
     // eg: `size_of::<R0>() +  size_of::<R1>() +  size_of::<T0>() +  size_of::<T1>()`
-    let total_allocation = Signature::rust_compute_type_allocation(rets_count, args_count);
+    let total_allocation = RustSignature::rust_compute_type_allocation(rets_count, args_count);
 
     format!(
         "
@@ -407,7 +417,7 @@ fn free_values_{generic_name}{string_all_generics}(ptr: usize) {where_clause} {{
     )
 }
 
-fn generate_free_values_buffer_specialized(signature: &Signature) -> String {
+fn generate_free_values_buffer_specialized(signature: &RustSignature) -> String {
     format!(
         "
 #[no_mangle]
@@ -421,7 +431,7 @@ pub fn {}(ptr: usize) {{
 }
 
 fn generate_free_types_buffer_generic(rets_count: usize, args_count: usize) -> String {
-    let generic_name = Signature::generic_rust_name(rets_count, args_count);
+    let generic_name = RustSignature::generic_rust_name(rets_count, args_count);
     let total_allocation = format!("size_of::<i32>() * {}", rets_count + args_count);
 
     format!(
@@ -435,7 +445,7 @@ fn free_types_{generic_name}(ptr: usize) {{
     )
 }
 
-fn generate_free_types_buffer_specialized(signature: &Signature) -> String {
+fn generate_free_types_buffer_specialized(signature: &RustSignature) -> String {
     format!(
         "
 #[no_mangle]
@@ -448,9 +458,9 @@ pub fn {}(ptr: usize) {{
 }
 
 fn generate_store_rets_generic(rets_count: usize, args_count: usize) -> String {
-    let string_all_generics = Signature::rust_comma_separated_generics(rets_count, args_count);
-    let generic_name = Signature::generic_rust_name(rets_count, args_count);
-    let where_clause = Signature::generic_rust_where_clause(rets_count, args_count);
+    let string_all_generics = RustSignature::rust_comma_separated_generics(rets_count, args_count);
+    let generic_name = RustSignature::generic_rust_name(rets_count, args_count);
+    let where_clause = RustSignature::generic_rust_where_clause(rets_count, args_count);
 
     // eg: [`a0: R0`, `a1: R1`]
     let array_of_rets_signature = (0..rets_count).map(|n| format!("a{n}: R{n}"));
@@ -484,7 +494,7 @@ fn store_rets_{generic_name}{string_all_generics}({total_signature}) {where_clau
     )
 }
 
-fn generate_store_rets_specialized(signature: &Signature) -> String {
+fn generate_store_rets_specialized(signature: &RustSignature) -> String {
     // eg: [`i64`, `i32`]
     let signature_rets = &signature.return_types;
     // eg: [`a0`, `a1`]
@@ -637,9 +647,10 @@ pub fn generate_lib(signatures: &[Signature]) -> (ManifestSource, RustSourceCode
 
 fn generate_lib_for(signatures: &[Signature]) -> String {
     let mut processed_signature_counts: HashSet<(usize, usize)> = HashSet::new();
-    let mut processed_signatures: HashSet<&Signature> = HashSet::new();
+    let mut processed_signatures: HashSet<RustSignature> = HashSet::new();
     let mut program = String::new();
     for signature in signatures {
+        let signature = RustSignature(signature);
         let signature_ret_count = signature.return_types.len();
         let signature_arg_count = signature.argument_types.len();
         let signature_length = (signature.return_types.len(), signature.argument_types.len());
@@ -657,8 +668,7 @@ fn generate_lib_for(signatures: &[Signature]) -> String {
                 program.push_str(generator(signature_ret_count, signature_arg_count).as_str());
             }
         }
-        if !processed_signatures.contains(signature) {
-            processed_signatures.insert(signature);
+        if !processed_signatures.contains(&signature) {
             for generator in [
                 generate_allocate_specialized,
                 generate_load_specialized,
@@ -668,8 +678,9 @@ fn generate_lib_for(signatures: &[Signature]) -> String {
                 generate_allocate_types_buffer_specialized,
                 generate_free_types_buffer_specialized,
             ] {
-                program.push_str(&generator(signature));
+                program.push_str(&generator(&signature));
             }
+            processed_signatures.insert(signature);
         }
     }
     program
@@ -677,7 +688,7 @@ fn generate_lib_for(signatures: &[Signature]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::wasm_constructs::RefType;
+    use wastrumentation::wasm_constructs::RefType;
 
     use super::*;
     use rust_to_wasm_compiler::{Profile, RustToWasmCompiler};
@@ -848,7 +859,7 @@ fn allocate_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(a0: T0, a1: T1, 
     #[test]
     fn generating_allocate_specialized_instructions() {
         assert_eq!(
-            generate_allocate_specialized(&get_ret_f64_f32_arg_i32_i64()),
+            generate_allocate_specialized(&RustSignature(&get_ret_f64_f32_arg_i32_i64())),
             "
 #[no_mangle]
 pub fn allocate_ret_f64_f32_arg_i32_i64(a0: i32, a1: i64) -> usize {
@@ -857,7 +868,7 @@ pub fn allocate_ret_f64_f32_arg_i32_i64(a0: i32, a1: i64) -> usize {
 "
         );
 
-        assert_eq!(generate_allocate_specialized(&get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64()), "
+        assert_eq!(generate_allocate_specialized(&RustSignature(&get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64())), "
 #[no_mangle]
 pub fn allocate_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(a0: i64, a1: i32, a2: f32, a3: f64) -> usize {
     return allocate_ret_4_arg_4::<f64, f32, i32, i64, i64, i32, f32, f64>(a0, a1, a2, a3);
@@ -941,7 +952,7 @@ fn load_ret4_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usiz
     #[test]
     fn generating_load_specialized_instructions() {
         assert_eq!(
-            generate_load_specialized(&get_ret_f64_f32_arg_i32_i64()),
+            generate_load_specialized(&RustSignature(&get_ret_f64_f32_arg_i32_i64())),
             "
 #[no_mangle]
 pub fn load_arg0_ret_f64_f32_arg_i32_i64(stack_ptr: usize) -> i32 {
@@ -965,7 +976,9 @@ pub fn load_ret1_ret_f64_f32_arg_i32_i64(stack_ptr: usize) -> f32 {
         );
 
         assert_eq!(
-            generate_load_specialized(&get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64()),
+            generate_load_specialized(&RustSignature(
+                &get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64()
+            )),
             "
 #[no_mangle]
 pub fn load_arg0_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize) -> i64 {
@@ -1085,7 +1098,7 @@ fn store_ret4_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usi
     #[test]
     fn generating_store_specialized_instructions() {
         assert_eq!(
-            generate_store_specialized(&get_ret_f64_f32_arg_i32_i64()),
+            generate_store_specialized(&RustSignature(&get_ret_f64_f32_arg_i32_i64())),
             "
 #[no_mangle]
 pub fn store_arg0_ret_f64_f32_arg_i32_i64(stack_ptr: usize, a0: i32) {
@@ -1109,7 +1122,9 @@ pub fn store_ret1_ret_f64_f32_arg_i32_i64(stack_ptr: usize, a1: f32) {
         );
 
         assert_eq!(
-            generate_store_specialized(&get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64()),
+            generate_store_specialized(&RustSignature(
+                &get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64()
+            )),
             "
 #[no_mangle]
 pub fn store_arg0_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize, a0: i64) {
@@ -1177,7 +1192,7 @@ fn free_values_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(ptr: usize) w
     #[test]
     fn generating_free_specialized_instruction() {
         assert_eq!(
-            generate_free_values_buffer_specialized(&get_ret_f64_f32_arg_i32_i64()),
+            generate_free_values_buffer_specialized(&RustSignature(&get_ret_f64_f32_arg_i32_i64())),
             "
 #[no_mangle]
 pub fn free_values_ret_f64_f32_arg_i32_i64(ptr: usize) {
@@ -1186,7 +1201,9 @@ pub fn free_values_ret_f64_f32_arg_i32_i64(ptr: usize) {
         );
 
         assert_eq!(
-            generate_free_values_buffer_specialized(&get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64()),
+            generate_free_values_buffer_specialized(&RustSignature(
+                &get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64()
+            )),
             "
 #[no_mangle]
 pub fn free_values_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(ptr: usize) {
@@ -1222,7 +1239,7 @@ fn free_types_ret_5_arg_5(ptr: usize) {
     #[test]
     fn generating_free_types_specialized_instruction() {
         assert_eq!(
-            generate_free_types_buffer_specialized(&get_ret_f64_f32_arg_i32_i64()),
+            generate_free_types_buffer_specialized(&RustSignature(&get_ret_f64_f32_arg_i32_i64())),
             "
 #[no_mangle]
 pub fn free_types_ret_f64_f32_arg_i32_i64(ptr: usize) {
@@ -1230,7 +1247,9 @@ pub fn free_types_ret_f64_f32_arg_i32_i64(ptr: usize) {
 }"
         );
         assert_eq!(
-            generate_free_types_buffer_specialized(&get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64()),
+            generate_free_types_buffer_specialized(&RustSignature(
+                &get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64()
+            )),
             "
 #[no_mangle]
 pub fn free_types_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(ptr: usize) {
@@ -1269,7 +1288,7 @@ fn store_rets_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usi
     #[test]
     fn generating_store_rets_specialized_instruction() {
         assert_eq!(
-            generate_store_rets_specialized(&get_ret_f64_f32_arg_i32_i64()),
+            generate_store_rets_specialized(&RustSignature(&get_ret_f64_f32_arg_i32_i64())),
             "
 #[no_mangle]
 pub fn store_rets_ret_f64_f32_arg_i32_i64(stack_ptr: usize, a0: f64, a1: f32) {
@@ -1277,7 +1296,7 @@ pub fn store_rets_ret_f64_f32_arg_i32_i64(stack_ptr: usize, a0: f64, a1: f32) {
 }"
         );
 
-        assert_eq!(generate_store_rets_specialized(&get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64()), "
+        assert_eq!(generate_store_rets_specialized(&RustSignature(&get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64())), "
 #[no_mangle]
 pub fn store_rets_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize, a0: f64, a1: f32, a2: i32, a3: i64) {
     return store_rets_ret_4_arg_4::<f64, f32, i32, i64, i64, i32, f32, f64>(stack_ptr, a0, a1, a2, a3);
@@ -1316,7 +1335,7 @@ fn allocate_signature_types_buffer_ret_5_arg_5() -> usize {
             argument_types: vec![],
         };
         assert_eq!(
-            generate_allocate_types_buffer_specialized(&signature_empty),
+            generate_allocate_types_buffer_specialized(&RustSignature(&signature_empty)),
             "
 #[no_mangle]
 pub fn allocate_types_ret_arg() -> usize {
@@ -1329,7 +1348,7 @@ pub fn allocate_types_ret_arg() -> usize {
             argument_types: vec![WasmType::I32, WasmType::I64],
         };
         assert_eq!(
-            generate_allocate_types_buffer_specialized(&signature_0),
+            generate_allocate_types_buffer_specialized(&RustSignature(&signature_0)),
             "
 #[no_mangle]
 pub fn allocate_types_ret_f64_f32_arg_i32_i64() -> usize {
@@ -1346,7 +1365,7 @@ pub fn allocate_types_ret_f64_f32_arg_i32_i64() -> usize {
             argument_types: vec![WasmType::I64, WasmType::I32, WasmType::F32, WasmType::F64],
         };
         assert_eq!(
-            generate_allocate_types_buffer_specialized(&signature_1),
+            generate_allocate_types_buffer_specialized(&RustSignature(&signature_1)),
             "
 #[no_mangle]
 pub fn allocate_types_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64() -> usize {
@@ -1374,7 +1393,7 @@ pub fn allocate_types_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64() -> usize {
             ],
         };
         assert_eq!(
-            generate_allocate_types_buffer_specialized(&signature_2),
+            generate_allocate_types_buffer_specialized(&RustSignature(&signature_2)),
             "
 #[no_mangle]
 pub fn allocate_types_ret_ref_func_ref_func_arg_ref_extern_ref_extern() -> usize {

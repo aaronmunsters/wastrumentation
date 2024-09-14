@@ -4,12 +4,15 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-walrus = "0.21.1"
+rust-to-wasm-compiler = { workspace = true }
+wasp-compiler = { workspace = true }
+wastrumentation = { workspace = true }
 tempfile = { workspace = true }
 bitmask = "0.5.0"
 indoc = { workspace = true }
-rust-to-wasm-compiler = { workspace = true }
 anyhow = { workspace = true }
+serde = { workspace = true }
+num-integer = "0.1"
 
 [dev-dependencies]
 wasmtime = { workspace = true }

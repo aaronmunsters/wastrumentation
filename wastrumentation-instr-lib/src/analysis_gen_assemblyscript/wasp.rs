@@ -6,12 +6,13 @@ use wasp_compiler::ast::{
         TrapLoopBefore, TrapSelect, TrapSignature,
     },
 };
+use wastrumentation::analysis::AnalysisInterface;
 
-use super::super::AnalysisInterface;
-
-impl From<&Root> for AnalysisInterface {
-    fn from(wasp_root: &Root) -> Self {
-        let mut wasp_interface = Self::default();
+pub struct WaspRoot(pub Root);
+impl From<&WaspRoot> for AnalysisInterface {
+    fn from(root: &WaspRoot) -> Self {
+        let WaspRoot(wasp_root) = root;
+        let mut wasp_interface = AnalysisInterface::default();
         let Root(advice_definitions) = wasp_root;
         for advice_definition in advice_definitions {
             if let AdviceDefinition::AdviceTrap(trap_signature) = advice_definition {
@@ -92,11 +93,12 @@ impl From<&Root> for AnalysisInterface {
 
 #[cfg(test)]
 mod tests {
-    use wasp_compiler::ast::wasp::{
-        ApplyGen, BranchFormalCondition, GenericTarget, TrapIfThen, TrapIfThenElse,
+    use wasp_compiler::{
+        ast::wasp::{
+            ApplyGen, BranchFormalCondition, GenericTarget, TrapIfThen, TrapIfThenElse, WasmType,
+        },
+        wasp_interface::{WasmExport, WasmImport},
     };
-
-    use crate::analysis::{WasmExport, WasmImport, WasmType};
 
     use super::*;
 
@@ -128,7 +130,7 @@ mod tests {
     fn test_generation_empty() {
         // empty wasp root generates empty interface
         let wasp_root: Root = Root(vec![]);
-        let wasp_interface = AnalysisInterface::from(&wasp_root);
+        let wasp_interface = AnalysisInterface::from(&WaspRoot(wasp_root));
         assert_eq!(wasp_interface, AnalysisInterface::default());
     }
 
@@ -137,7 +139,7 @@ mod tests {
         let wasp_root: Root = Root(vec![AdviceDefinition::AdviceGlobal(
             "global functionality".into(),
         )]);
-        let wasp_interface = AnalysisInterface::from(&wasp_root);
+        let wasp_interface = AnalysisInterface::from(&WaspRoot(wasp_root));
         assert_eq!(wasp_interface, AnalysisInterface::default());
     }
 
@@ -154,7 +156,7 @@ mod tests {
                 body: "trap body".into(),
             }),
         )]);
-        let wasp_interface = AnalysisInterface::from(&wasp_root);
+        let wasp_interface = AnalysisInterface::from(&WaspRoot(wasp_root));
 
         assert_eq!(
             wasp_interface,
@@ -173,7 +175,7 @@ mod tests {
                 body: "trap body".into(),
             }),
         )]);
-        let wasp_interface = AnalysisInterface::from(&wasp_root);
+        let wasp_interface = AnalysisInterface::from(&WaspRoot(wasp_root));
 
         assert_eq!(
             wasp_interface,
@@ -192,7 +194,7 @@ mod tests {
                 body: "trap body".into(),
             }),
         )]);
-        let wasp_interface = AnalysisInterface::from(&wasp_root);
+        let wasp_interface = AnalysisInterface::from(&WaspRoot(wasp_root));
 
         assert_eq!(
             wasp_interface,

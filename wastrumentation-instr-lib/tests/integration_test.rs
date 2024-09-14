@@ -1,5 +1,6 @@
-use wastrumentation_instr_lib::wasm_constructs::{Signature, WasmType};
-use wastrumentation_instr_lib::{AssemblyScript, LibGeneratable, Library};
+use wastrumentation::compiler::{LibGeneratable, Library};
+use wastrumentation::wasm_constructs::{Signature, WasmType};
+use wastrumentation_instr_lib::AssemblyScript;
 
 // Some sample signatures for testing purposes
 fn get_ret_f64_f32_arg_i32_i64() -> Signature {

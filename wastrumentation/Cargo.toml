@@ -6,20 +6,16 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rust-to-wasm-compiler = { workspace = true }
 wasabi_wasm = { git = "https://github.com/aaronmunsters/wasabi.git", branch = "candidate" }
-wasp-compiler = { workspace = true }
-wastrumentation-instr-lib = { workspace = true }
 wasm-merge = { workspace = true }
 anyhow = { workspace = true }
 indoc = { workspace = true }
-serde = { workspace = true }
-num-integer = "0.1"
 
 [dev-dependencies]
 serde_json = { workspace = true }
 wat = { workspace = true }
 wasmtime = { workspace = true }
 wastrumentation = { workspace = true }
-wastrumentation-instr-lib = { workspace = true }
 rayon = { workspace = true }
+wastrumentation-instr-lib = { workspace = true }
+serde = { workspace = true }

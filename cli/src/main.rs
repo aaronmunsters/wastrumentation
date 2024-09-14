@@ -3,10 +3,9 @@ use std::io::{Read, Write};
 use clap::Parser;
 use clio::*;
 use serde::Deserialize;
-use wastrumentation::analysis::RustAnalysisSpec;
-use wastrumentation::{analysis::Hook as AnalysisHook, Wastrumenter};
-
-use wastrumentation_instr_lib::std_lib_compile::Compiles;
+use wastrumentation::compiler::Compiles;
+use wastrumentation::Wastrumenter;
+use wastrumentation_instr_lib::std_lib_compile::rust::{Hook as AnalysisHook, RustAnalysisSpec};
 
 use wastrumentation_instr_lib::std_lib_compile::assemblyscript::compiler::Compiler as AssemblyScriptCompiler;
 use wastrumentation_instr_lib::std_lib_compile::rust::{Compiler as RustCompiler, RustSource};

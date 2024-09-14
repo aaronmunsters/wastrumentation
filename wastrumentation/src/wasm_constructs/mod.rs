@@ -16,7 +16,7 @@ pub enum RefType {
 }
 
 impl WasmType {
-    pub(crate) fn runtime_enum_value(&self) -> usize {
+    pub fn runtime_enum_value(&self) -> usize {
         match self {
             WasmType::I32 => 0,
             WasmType::F32 => 1,
@@ -52,12 +52,13 @@ pub struct Signature {
 }
 
 impl Signature {
-    pub(crate) fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.argument_types.is_empty() && self.return_types.is_empty()
     }
 }
 
 impl Signature {
+    // TODO: move this closed to stack-lib?
     pub(crate) fn generate_name(&self, name: &str) -> String {
         let Signature {
             return_types,

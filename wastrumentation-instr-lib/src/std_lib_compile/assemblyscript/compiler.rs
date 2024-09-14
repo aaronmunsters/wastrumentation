@@ -1,15 +1,47 @@
 use super::compiler_options::CompilerOptions;
-use crate::std_lib_compile::{CompilationError, CompilationResult, Compiles};
+use crate::analysis_gen_assemblyscript::wasp::WaspRoot;
 use crate::AssemblyScript;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::process::Command;
 
+use crate::analysis_gen_assemblyscript::{ASRoot, AssemblyScriptProgram};
 use anyhow::anyhow;
 use tempfile::{tempdir, TempDir};
+use wasp_compiler::CompilationResult as WaspCompilerResult;
+use wastrumentation::analysis::{AnalysisInterface, ProcessedAnalysis};
+use wastrumentation::compiler::{CompilationError, CompilationResult, Compiles};
 
 pub struct Compiler {
     working_dir: TempDir,
+}
+
+#[derive(Clone)]
+pub struct WaspAnalysisSpec {
+    pub wasp_source: String,
+}
+
+impl TryInto<ProcessedAnalysis<AssemblyScript>> for &WaspAnalysisSpec {
+    type Error = anyhow::Error;
+
+    fn try_into(self) -> std::result::Result<ProcessedAnalysis<AssemblyScript>, Self::Error> {
+        let WaspCompilerResult {
+            wasp_root,
+            join_points: _,
+        } = wasp_compiler::compile(&self.wasp_source)?;
+
+        let wasp_root = WaspRoot(wasp_root);
+        let analysis_interface = AnalysisInterface::from(&wasp_root);
+
+        let WaspRoot(wasp_root) = wasp_root; // FIXME: ugly pattern of taking it out again
+        let as_root = ASRoot(wasp_root);
+        let AssemblyScriptProgram { content } = as_root.into();
+
+        Ok(ProcessedAnalysis {
+            analysis_interface,
+            analysis_library: content,
+        })
+    }
 }
 
 impl Compiles<AssemblyScript> for Compiler {
@@ -123,8 +155,9 @@ impl Compiles<AssemblyScript> for Compiler {
 
 #[cfg(test)]
 mod tests {
+    use crate::std_lib_compile::assemblyscript::compiler::Compiler;
     use crate::std_lib_compile::assemblyscript::compiler_options::CompilerOptions;
-    use crate::std_lib_compile::{assemblyscript::compiler::Compiler, DefaultCompilerOptions};
+    use wastrumentation::compiler::DefaultCompilerOptions;
 
     use super::*;
     use wasmtime::{Engine, Instance, Module, Store};

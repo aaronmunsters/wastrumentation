@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use crate::{std_lib_compile::DefaultCompilerOptions, AssemblyScript};
+use wastrumentation::compiler::DefaultCompilerOptions;
+
+use crate::AssemblyScript;
 
 #[allow(clippy::struct_excessive_bools)]
 pub struct CompilerOptions {
@@ -143,9 +145,10 @@ impl CompilerOptions {
 
 #[cfg(test)]
 mod tests {
+    use wastrumentation::compiler::{CompilationError, Compiles};
+
     use crate::std_lib_compile::assemblyscript::compiler::Compiler as AssemblScriptCompiler;
     use crate::std_lib_compile::assemblyscript::compiler_options::CompilerOptions as AssemblScriptCompilerOptions;
-    use crate::std_lib_compile::{CompilationError, Compiles};
 
     use super::*;
 

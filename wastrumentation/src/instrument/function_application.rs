@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use crate::compiler::{LibGeneratable, Library};
 use crate::stack_library::StackLibrary;
 use wasabi_wasm::Element;
 use wasabi_wasm::ElementMode;
@@ -15,8 +16,6 @@ use wasabi_wasm::RefType;
 use wasabi_wasm::Table;
 use wasabi_wasm::Val;
 use wasabi_wasm::ValType;
-use wastrumentation_instr_lib::LibGeneratable;
-use wastrumentation_instr_lib::Library;
 
 use crate::analysis::{WasmExport, WasmImport};
 

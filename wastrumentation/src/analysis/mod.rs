@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 pub const FUNCTION_NAME_BLOCK_PRE: &str = "block_pre";
 pub const FUNCTION_NAME_BLOCK_POST: &str = "block_post";
 pub const FUNCTION_NAME_CALL_BASE: &str = "call_base";
@@ -16,17 +14,6 @@ pub const FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_PRE: &str = "specialized_call_
 pub const FUNCTION_NAME_SPECIALIZED_IF_THEN: &str = "specialized_if_then_k";
 pub const FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE: &str = "specialized_if_then_else_k";
 pub const NAMESPACE_TRANSFORMED_INPUT: &str = "transformed_input";
-
-use anyhow::Result;
-use assemblyscript::{ASRoot, AssemblyScriptProgram};
-pub use rust::Hook;
-use wasp_compiler::CompilationResult;
-use wastrumentation_instr_lib::{
-    std_lib_compile::rust::RustSource, AssemblyScript, Rust, SourceCodeBound,
-};
-
-pub mod assemblyscript;
-mod rust;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum WasmType {
@@ -74,58 +61,12 @@ pub struct ProcessedAnalysis<Language: SourceCodeBound> {
     pub analysis_interface: AnalysisInterface,
 }
 
-#[derive(Clone)]
-pub struct RustAnalysisSpec {
-    pub source: RustSource,
-    pub hooks: HashSet<Hook>,
-}
-
-#[derive(Clone)]
-pub struct WaspAnalysisSpec {
-    pub wasp_source: String,
-}
-
-impl TryInto<ProcessedAnalysis<Rust>> for RustAnalysisSpec {
-    type Error = anyhow::Error;
-
-    fn try_into(self) -> std::result::Result<ProcessedAnalysis<Rust>, Self::Error> {
-        let RustAnalysisSpec { ref hooks, source } = self;
-
-        let analysis_interface: AnalysisInterface = rust::interface_from(hooks)?;
-
-        Ok(ProcessedAnalysis {
-            analysis_interface,
-            analysis_library: source,
-        })
-    }
-}
-
-impl TryInto<ProcessedAnalysis<AssemblyScript>> for &WaspAnalysisSpec {
-    type Error = anyhow::Error;
-
-    fn try_into(self) -> std::result::Result<ProcessedAnalysis<AssemblyScript>, Self::Error> {
-        let CompilationResult {
-            wasp_root,
-            join_points: _,
-        } = wasp_compiler::compile(&self.wasp_source)?;
-
-        let analysis_interface = AnalysisInterface::from(&wasp_root);
-        let as_root = ASRoot(wasp_root);
-        let AssemblyScriptProgram { content } = as_root.into();
-
-        Ok(ProcessedAnalysis {
-            analysis_interface,
-            analysis_library: content,
-        })
-    }
-}
-
 type ApplyInterface = (WasmExport, WasmImport);
 
-use crate::analysis::WasmType::I32;
+use crate::{analysis::WasmType::I32, compiler::SourceCodeBound};
 
 impl AnalysisInterface {
-    fn interface_generic_apply() -> ApplyInterface {
+    pub fn interface_generic_apply() -> ApplyInterface {
         // The analysis its interface
         // -> EXPORTS a `generic apply`, implemented by the analysis developer
         // -> IMPORTS a `call base`, which the analysis may call into to 'resume' case computation
@@ -146,7 +87,7 @@ impl AnalysisInterface {
         )
     }
 
-    fn interface_if_then() -> WasmExport {
+    pub fn interface_if_then() -> WasmExport {
         WasmExport {
             name: FUNCTION_NAME_SPECIALIZED_IF_THEN.into(),
             // path_kontinuation
@@ -156,7 +97,7 @@ impl AnalysisInterface {
         }
     }
 
-    fn interface_if_then_else() -> WasmExport {
+    pub fn interface_if_then_else() -> WasmExport {
         WasmExport {
             name: FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE.into(),
             // path_kontinuation
@@ -166,7 +107,7 @@ impl AnalysisInterface {
         }
     }
 
-    fn interface_br_if() -> WasmExport {
+    pub fn interface_br_if() -> WasmExport {
         WasmExport {
             name: FUNCTION_NAME_SPECIALIZED_BR_IF.into(),
             // path_kontinuation, label
@@ -177,7 +118,7 @@ impl AnalysisInterface {
         }
     }
 
-    fn interface_br_table() -> WasmExport {
+    pub fn interface_br_table() -> WasmExport {
         WasmExport {
             name: FUNCTION_NAME_SPECIALIZED_BR_TABLE.into(),
             // table_target_index, default
@@ -187,7 +128,7 @@ impl AnalysisInterface {
         }
     }
 
-    fn interface_call_pre() -> WasmExport {
+    pub fn interface_call_pre() -> WasmExport {
         WasmExport {
             name: FUNCTION_NAME_SPECIALIZED_CALL_PRE.into(),
             // function_target
@@ -197,7 +138,7 @@ impl AnalysisInterface {
         }
     }
 
-    fn interface_call_post() -> WasmExport {
+    pub fn interface_call_post() -> WasmExport {
         WasmExport {
             name: FUNCTION_NAME_SPECIALIZED_CALL_POST.into(),
             // function_target
@@ -207,7 +148,7 @@ impl AnalysisInterface {
         }
     }
 
-    fn interface_call_indirect_pre() -> WasmExport {
+    pub fn interface_call_indirect_pre() -> WasmExport {
         WasmExport {
             name: FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_PRE.into(),
             // function_table_index, function_table
@@ -217,7 +158,7 @@ impl AnalysisInterface {
         }
     }
 
-    fn interface_call_indirect_post() -> WasmExport {
+    pub fn interface_call_indirect_post() -> WasmExport {
         WasmExport {
             name: FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_POST.into(),
             // function_table
@@ -227,35 +168,35 @@ impl AnalysisInterface {
         }
     }
 
-    fn interface_block_pre() -> WasmExport {
+    pub fn interface_block_pre() -> WasmExport {
         WasmExport {
             name: FUNCTION_NAME_BLOCK_PRE.into(),
             args: vec![],
             results: vec![],
         }
     }
-    fn interface_block_post() -> WasmExport {
+    pub fn interface_block_post() -> WasmExport {
         WasmExport {
             name: FUNCTION_NAME_BLOCK_POST.into(),
             args: vec![],
             results: vec![],
         }
     }
-    fn interface_loop_pre() -> WasmExport {
+    pub fn interface_loop_pre() -> WasmExport {
         WasmExport {
             name: FUNCTION_NAME_LOOP_PRE.into(),
             args: vec![],
             results: vec![],
         }
     }
-    fn interface_loop_post() -> WasmExport {
+    pub fn interface_loop_post() -> WasmExport {
         WasmExport {
             name: FUNCTION_NAME_LOOP_POST.into(),
             args: vec![],
             results: vec![],
         }
     }
-    fn interface_select() -> WasmExport {
+    pub fn interface_select() -> WasmExport {
         WasmExport {
             name: FUNCTION_NAME_SELECT.into(),
             // condition

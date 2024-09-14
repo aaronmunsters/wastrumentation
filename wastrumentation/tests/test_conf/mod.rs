@@ -1,6 +1,6 @@
 use serde::Deserialize;
 use std::path::PathBuf;
-use wastrumentation::analysis::Hook;
+use wastrumentation_instr_lib::std_lib_compile::rust::Hook;
 
 #[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]

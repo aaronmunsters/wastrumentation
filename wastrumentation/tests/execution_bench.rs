@@ -4,9 +4,12 @@ use test_conf::{
     UninstrumentedAssertion, WasmValue,
 };
 use wasmtime::*;
-use wastrumentation::{analysis::RustAnalysisSpec, Wastrumenter};
-use wastrumentation_instr_lib::std_lib_compile::Compiles;
-use wastrumentation_instr_lib::std_lib_compile::DefaultCompilerOptions;
+use wastrumentation::{
+    compiler::{Compiles, DefaultCompilerOptions},
+    Wastrumenter,
+};
+use wastrumentation_instr_lib::std_lib_compile::assemblyscript::compiler::WaspAnalysisSpec;
+use wastrumentation_instr_lib::std_lib_compile::rust::RustAnalysisSpec;
 
 use crate::test_conf::{CallYields, GlobalValueEquals, InputProgramAssertion, TestConfiguration};
 use std::fs::{read, read_to_string};
@@ -251,8 +254,7 @@ impl Analysis {
                 let full_analysis_path = PathBuf::from(TEST_RELATIVE_PATH).join(analysis_path);
                 let wasp_source = read_to_string(full_analysis_path)
                     .unwrap_or_else(|_| panic!("Could not open {analysis_path:?}"));
-                let wasp_analysis_spec =
-                    wastrumentation::analysis::WaspAnalysisSpec { wasp_source };
+                let wasp_analysis_spec = WaspAnalysisSpec { wasp_source };
 
                 let as_compiler = Box::new(ASCompiler::setup_compiler().unwrap());
 
