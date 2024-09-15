@@ -1,6 +1,6 @@
 (aspect
     (global >>>GUEST>>>
-        export let all_expectations_met: i32 = 1;
+        export let all_expectations_met: i32 = 0;
 
         class WasmValue {
           readonly wasm_type: WasmType;
