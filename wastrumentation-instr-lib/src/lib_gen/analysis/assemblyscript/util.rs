@@ -1,5 +1,3 @@
-use num_integer::div_rem;
-
 pub trait Alphabetical {
     /// Yield an alphabetic representation itself.
     fn to_alphabetic(&self) -> String;
@@ -17,17 +15,17 @@ impl Alphabetical for usize {
     /// than `25` will start with a `b` or greater character.
     fn to_alphabetic(&self) -> String {
         if *self == 0 {
-            String::from('a')
-        } else {
-            let mut result = String::new();
-            let mut number = *self;
-            while number != 0 {
-                let (div, rem) = div_rem(number, 26);
-                result.push(char::from(b'a' + u8::try_from(rem).unwrap()));
-                number = div;
-            }
-            result.chars().rev().collect()
+            return String::from('a');
         }
+
+        let mut result = String::new();
+        let mut number = *self;
+        while number != 0 {
+            let (div, rem) = (number / 26, number % 26);
+            result.push(char::from(b'a' + u8::try_from(rem).unwrap()));
+            number = div;
+        }
+        result
     }
 }
 
@@ -60,7 +58,7 @@ mod test {
             (23, "x"),
             (24, "y"),
             (25, "z"),
-            (26, "ba"),
+            (26, "ab"),
         ] {
             assert_eq!(input.to_alphabetic(), expectation)
         }

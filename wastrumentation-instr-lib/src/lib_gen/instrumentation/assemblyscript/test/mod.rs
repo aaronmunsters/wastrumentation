@@ -1,6 +1,6 @@
+use crate::lib_compile::assemblyscript::AssemblyScript;
 use wastrumentation::compiler::{LibGeneratable, Library};
 use wastrumentation::wasm_constructs::{Signature, WasmType};
-use wastrumentation_instr_lib::AssemblyScript;
 
 // Some sample signatures for testing purposes
 fn get_ret_f64_f32_arg_i32_i64() -> Signature {
@@ -38,9 +38,7 @@ fn generating_library_for_signatures() {
 
     let Library { content: lib, .. } = AssemblyScript::generate_lib(&signatures);
 
-    let mut expected = String::from(include_str!(
-        "../src/std_lib_gen/assemblyscript/lib_boilerplate.ts"
-    ));
+    let mut expected = String::from(include_str!("../lib_boilerplate.ts"));
     expected.push_str(include_str!("expected_lib.ts"));
 
     assert_eq!(lib, expected);

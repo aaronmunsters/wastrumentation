@@ -13,7 +13,7 @@ pub trait SourceCodeBound
 where
     Self: Sized,
 {
-    type DefaultCompiler: DefaultCompilerOptions<Self>;
+    type DefaultCompilerOptions: DefaultCompilerOptions<Self>;
     type SourceCode;
 }
 
@@ -59,4 +59,31 @@ where
 
 pub trait DefaultCompilerOptions<Language: SourceCodeBound> {
     fn default_for(library: Language::SourceCode) -> Self;
+}
+
+#[cfg(test)]
+mod tests {
+    use std::marker::PhantomData;
+
+    use indoc::indoc;
+    use wastrumentation::compiler::CompilationError;
+
+    #[derive(Debug)]
+    struct ExampleLanguage();
+
+    #[test]
+    fn test_debug() {
+        let compilation_error = CompilationError::<ExampleLanguage> {
+            language: PhantomData,
+            reason: ("reason".into()),
+        };
+
+        let expectation = indoc! { r#"
+        CompilationError {
+            reason: "reason",
+            language: PhantomData<wastrumentation::compiler::tests::ExampleLanguage>,
+        }"# };
+
+        assert_eq!(format!("{compilation_error:#?}",), expectation);
+    }
 }

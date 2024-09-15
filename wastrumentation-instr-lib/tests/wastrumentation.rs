@@ -1,11 +1,10 @@
-// TODO: move these tests to wastrumentation-instr-lib ...
-
-use wastrumentation::compiler::{Compiles, DefaultCompilerOptions};
+use assemblyscript_compiler::compiler::Compiler as AssemblyscriptCompiler;
+use assemblyscript_compiler::options::CompilerOptions as AssemblyscriptCompilerOptions;
+use wastrumentation::compiler::Compiles;
 use wastrumentation::Wastrumenter;
-use wastrumentation_instr_lib::std_lib_compile::assemblyscript::compiler::Compiler as AssemblyscriptCompiler;
-use wastrumentation_instr_lib::std_lib_compile::assemblyscript::compiler::WaspAnalysisSpec;
-use wastrumentation_instr_lib::std_lib_compile::assemblyscript::compiler_options::CompilerOptions as AssemblyscriptCompilerOptions;
-use wastrumentation_instr_lib::std_lib_compile::rust::Compiler as RustCompiler;
+
+use wastrumentation_instr_lib::lib_compile::rust::compiler::Compiler as RustCompiler;
+use wastrumentation_instr_lib::lib_gen::analysis::assemblyscript::WaspAnalysisSpec;
 
 use wasmtime::*;
 

@@ -1,8 +1,4 @@
-use std::collections::HashMap;
-
-use wastrumentation::compiler::DefaultCompilerOptions;
-
-use crate::AssemblyScript;
+use std::{collections::HashMap, path::Path};
 
 #[allow(clippy::struct_excessive_bools)]
 pub struct CompilerOptions {
@@ -17,8 +13,8 @@ pub struct CompilerOptions {
     pub source: String,
 }
 
-impl DefaultCompilerOptions<AssemblyScript> for CompilerOptions {
-    fn default_for(library_source: String) -> Self {
+impl CompilerOptions {
+    pub fn default_for(library_source: String) -> Self {
         Self {
             source: library_source,
             // By default, trap on abort.
@@ -53,7 +49,7 @@ pub enum RuntimeStrategy {
 }
 
 impl CompilerOptions {
-    pub(crate) fn to_npx_command(&self, source_path: &str, output_path: &str) -> String {
+    pub(crate) fn to_npx_command(&self, source_path: &Path, output_path: &Path) -> String {
         let flag_bulk_memory = if self.enable_bulk_memory {
             ""
         } else {
@@ -120,7 +116,7 @@ impl CompilerOptions {
         format!(
             concat!(
                 // Pass input file & output file to command
-                "node ./node_modules/assemblyscript/bin/asc.js {source_path} -o {output_path} ",
+                "node ./node_modules/assemblyscript/bin/asc.js {source_path:?} -o {output_path:?} ",
                 // Pas additional options to command
                 "{flag_optimization}",
                 "{flag_bulk_memory}",
@@ -145,21 +141,21 @@ impl CompilerOptions {
 
 #[cfg(test)]
 mod tests {
-    use wastrumentation::compiler::{CompilationError, Compiles};
-
-    use crate::std_lib_compile::assemblyscript::compiler::Compiler as AssemblScriptCompiler;
-    use crate::std_lib_compile::assemblyscript::compiler_options::CompilerOptions as AssemblScriptCompilerOptions;
+    use std::path::PathBuf;
 
     use super::*;
 
     #[test]
     fn test_creation() {
         let conf = CompilerOptions::default_for("".to_string());
+        let source_path = PathBuf::from("source_path");
+        let output_path = PathBuf::from("output_path");
+
         assert_eq!(
-            conf.to_npx_command("source_path", "output_path"),
+            conf.to_npx_command(&source_path, &output_path),
             concat!(
-                "node ./node_modules/assemblyscript/bin/asc.js source_path ",
-                "-o output_path",
+                "node ./node_modules/assemblyscript/bin/asc.js \"source_path\" ",
+                "-o \"output_path\"",
                 " -O3 ",
                 "--disable bulk-memory ",
                 "--disable sign-extension ",
@@ -169,16 +165,6 @@ mod tests {
                 "--lib . --use abort=custom_abort ",
             )
         );
-    }
-
-    #[test]
-    fn test_assemblyscript_faulty_compilation() {
-        let compiler = AssemblScriptCompiler::setup_compiler().unwrap();
-        let compiler_options = AssemblScriptCompilerOptions::default_for(
-            "this is not valid assemblyscript code".to_string(),
-        );
-        let CompilationError { reason, .. } = compiler.compile(&compiler_options).unwrap_err();
-        assert!(reason.contains("ERROR"));
     }
 
     #[test]
@@ -195,11 +181,14 @@ mod tests {
             source: "".to_string(),
         };
 
+        let source_path = PathBuf::from("path").join("to").join("source");
+        let output_path = PathBuf::from("path").join("to").join("output");
+
         assert_eq!(
-            options.to_npx_command("path/to/source", "path/to/output"),
+            options.to_npx_command(&source_path, &output_path),
             concat!(
-                "node ./node_modules/assemblyscript/bin/asc.js path/to/source ",
-                "-o path/to/output ",
+                "node ./node_modules/assemblyscript/bin/asc.js \"path/to/source\" ",
+                "-o \"path/to/output\" ",
                 "-O1 --runtime incremental ",
                 "--lib . --use abort=custom_abort ",
             )
@@ -218,10 +207,10 @@ mod tests {
         };
 
         assert_eq!(
-            options.to_npx_command("path/to/source", "path/to/output"),
+            options.to_npx_command(&source_path, &output_path),
             concat!(
-                "node ./node_modules/assemblyscript/bin/asc.js path/to/source ",
-                "-o path/to/output ",
+                "node ./node_modules/assemblyscript/bin/asc.js \"path/to/source\" ",
+                "-o \"path/to/output\" ",
                 "-O2 ",
                 "--disable bulk-memory ",
                 "--disable sign-extension ",

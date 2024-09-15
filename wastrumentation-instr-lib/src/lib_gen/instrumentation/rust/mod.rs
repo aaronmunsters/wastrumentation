@@ -1,7 +1,11 @@
-use std::{collections::HashSet, ops::Deref, vec};
+use std::{collections::HashSet, marker::PhantomData, ops::Deref, vec};
 
-use crate::std_lib_compile::rust::{ManifestSource, RustSourceCode};
-use wastrumentation::wasm_constructs::{Signature, SignatureSide, WasmType};
+use crate::lib_compile::rust::options::{ManifestSource, RustSource, RustSourceCode};
+use crate::lib_compile::rust::Rust;
+use wastrumentation::{
+    compiler::{LibGeneratable, Library},
+    wasm_constructs::{Signature, SignatureSide, WasmType},
+};
 
 // TODO: since this holds:
 
@@ -14,6 +18,16 @@ use wastrumentation::wasm_constructs::{Signature, SignatureSide, WasmType};
 // => WARNING: Due to alignment, some structures are padded. As such, size_of::<struct _X(i32,u8)>() != size_of::<(i32,u8)>() ...
 
 // I could move all "+" expressions to a tuple variant ... Should not change anything, but 'enforce' constant folding
+
+impl LibGeneratable for Rust {
+    fn generate_lib(signatures: &[Signature]) -> Library<Self> {
+        let (manifest_source, rust_source) = generate_lib(signatures);
+        Library::<Self> {
+            content: RustSource::SourceCode(manifest_source, rust_source),
+            language: PhantomData,
+        }
+    }
+}
 
 #[derive(Hash, PartialEq, Eq)]
 pub struct RustSignature<'a>(&'a Signature);

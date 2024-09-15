@@ -5,10 +5,11 @@ use clio::*;
 use serde::Deserialize;
 use wastrumentation::compiler::Compiles;
 use wastrumentation::Wastrumenter;
-use wastrumentation_instr_lib::std_lib_compile::rust::{Hook as AnalysisHook, RustAnalysisSpec};
+use wastrumentation_instr_lib::lib_gen::analysis::rust::{Hook as AnalysisHook, RustAnalysisSpec};
 
-use wastrumentation_instr_lib::std_lib_compile::assemblyscript::compiler::Compiler as AssemblyScriptCompiler;
-use wastrumentation_instr_lib::std_lib_compile::rust::{Compiler as RustCompiler, RustSource};
+use assemblyscript_compiler::compiler::Compiler as AssemblyScriptCompiler;
+use wastrumentation_instr_lib::lib_compile::rust::compiler::Compiler as RustCompiler;
+use wastrumentation_instr_lib::lib_compile::rust::options::RustSource;
 
 /// Command-line interface to the wastrumentation utility
 #[derive(Parser, Debug)]

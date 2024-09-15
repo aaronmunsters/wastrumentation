@@ -7,6 +7,12 @@ pub mod wasp;
 
 use util::Alphabetical;
 
+use crate::lib_compile::assemblyscript::AssemblyScript;
+use crate::lib_gen::analysis::assemblyscript::wasp::WaspRoot;
+use anyhow::Error;
+use wasp_compiler::CompilationResult as WaspCompilerResult;
+use wastrumentation::analysis::{AnalysisInterface, ProcessedAnalysis};
+
 use wasp_compiler::ast::wasp::{
     AdviceDefinition, ApplyGen, ApplyHookSignature, ApplySpe, BranchFormalCondition,
     BranchFormalDefault, BranchFormalLabel, BranchFormalTarget, FormalIndex, FormalTable,
@@ -29,6 +35,34 @@ use wastrumentation::analysis::{
 const STD_ANALYSIS_LIB_GENRIC_APPLY: &str = include_str!("std_analysis_lib_gen_apply.ts");
 const STD_ANALYSIS_LIB_IF: &str = include_str!("std_analysis_lib_if.ts");
 const STD_ANALYSIS_LIB_CALL: &str = include_str!("std_analysis_lib_call.ts");
+
+#[derive(Clone)]
+pub struct WaspAnalysisSpec {
+    pub wasp_source: String,
+}
+
+impl TryInto<ProcessedAnalysis<AssemblyScript>> for &WaspAnalysisSpec {
+    type Error = Error;
+
+    fn try_into(self) -> std::result::Result<ProcessedAnalysis<AssemblyScript>, Self::Error> {
+        let WaspCompilerResult {
+            wasp_root,
+            join_points: _,
+        } = wasp_compiler::compile(&self.wasp_source)?;
+
+        let wasp_root = WaspRoot(wasp_root);
+        let analysis_interface = AnalysisInterface::from(&wasp_root);
+
+        let WaspRoot(wasp_root) = wasp_root; // FIXME: ugly pattern of taking it out again
+        let as_root = ASRoot(wasp_root);
+        let AssemblyScriptProgram { content } = as_root.into();
+
+        Ok(ProcessedAnalysis {
+            analysis_interface,
+            analysis_library: content,
+        })
+    }
+}
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct AssemblyScriptProgram {

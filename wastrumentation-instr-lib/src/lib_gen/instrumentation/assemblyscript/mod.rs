@@ -1,6 +1,21 @@
-use std::{collections::HashSet, ops::Deref, vec};
+#[cfg(test)]
+mod test;
 
+use std::{collections::HashSet, marker::PhantomData, ops::Deref, vec};
+
+use crate::lib_compile::assemblyscript::AssemblyScript;
+
+use wastrumentation::compiler::{LibGeneratable, Library};
 use wastrumentation::wasm_constructs::{Signature, SignatureSide, WasmType};
+
+impl LibGeneratable for AssemblyScript {
+    fn generate_lib(signatures: &[Signature]) -> Library<Self> {
+        Library::<Self> {
+            content: generate_lib(signatures),
+            language: PhantomData,
+        }
+    }
+}
 
 #[derive(Hash, PartialEq, Eq)]
 pub struct WaspSignature<'a>(&'a Signature);

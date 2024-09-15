@@ -12,10 +12,8 @@ anyhow = { workspace = true }
 indoc = { workspace = true }
 
 [dev-dependencies]
-serde_json = { workspace = true }
-wat = { workspace = true }
 wasmtime = { workspace = true }
 wastrumentation = { workspace = true }
-rayon = { workspace = true }
 wastrumentation-instr-lib = { workspace = true }
-serde = { workspace = true }
+assemblyscript-compiler = { workspace = true }
+wat = { workspace = true }
