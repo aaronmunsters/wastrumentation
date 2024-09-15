@@ -89,6 +89,7 @@ impl WasmType {
     }
 }
 
+#[derive(Clone)]
 pub enum WasmValue {
     I32(i32),
     F32(f32),

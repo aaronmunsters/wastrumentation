@@ -78,11 +78,13 @@ mod tests {
             reason: ("reason".into()),
         };
 
-        let expectation = indoc! { r#"
-        CompilationError {
+        let module_path = module_path!();
+
+        let expectation = format! { indoc! { r#"
+        CompilationError {{
             reason: "reason",
-            language: PhantomData<wastrumentation::compiler::tests::ExampleLanguage>,
-        }"# };
+            language: PhantomData<{module_path}::ExampleLanguage>,
+        }}"# }, module_path = module_path };
 
         assert_eq!(format!("{compilation_error:#?}",), expectation);
     }
