@@ -51,7 +51,7 @@ const SOURCE_CODE_INPUT: &str = r#"
 #[test]
 fn example_instrumentation_rust() {
     let as_compiler = AssemblyscriptCompiler::setup_compiler().unwrap();
-    let as_compiler_options = AssemblyscriptCompilerOptions::default_for(SOURCE_CODE_INPUT.into());
+    let as_compiler_options = AssemblyscriptCompilerOptions::default_for(SOURCE_CODE_INPUT);
 
     let input_program = as_compiler.compile(&as_compiler_options).unwrap();
 

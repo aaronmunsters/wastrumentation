@@ -14,9 +14,9 @@ pub struct CompilerOptions {
 }
 
 impl CompilerOptions {
-    pub fn default_for(library_source: String) -> Self {
+    pub fn default_for(library_source: impl Into<String>) -> Self {
         Self {
-            source: library_source,
+            source: library_source.into(),
             // By default, trap on abort.
             // This makes that the module has no 'env' dependency to handle failure.
             trap_on_abort: true,

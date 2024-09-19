@@ -102,8 +102,7 @@ mod tests {
         export function add_three(a: i32, b: i32, c: i32): i32 {
             return a + b + c;
         }
-        "#
-        .to_string();
+        "#;
 
         let compiler = Compiler::new().unwrap();
         let compile_options = CompilerOptions::default_for(source_code);
@@ -123,8 +122,7 @@ mod tests {
         export function add_to_fac(a: i32, b: i32, c: i32): i32 {
             return a + b + fac(c);
         }
-        "#
-        .to_string();
+        "#;
 
         let compiler = Compiler::new().unwrap();
         let compile_options = CompilerOptions::default_for(source_code);
@@ -147,7 +145,7 @@ mod tests {
     fn test_assemblyscript_faulty_compilation() {
         let compiler = Compiler::new().unwrap();
         let compiler_options =
-            CompilerOptions::default_for("this is not valid assemblyscript code".to_string());
+            CompilerOptions::default_for("this is not valid assemblyscript code");
 
         println!("{}", compiler.compile(&compiler_options).unwrap_err());
 
