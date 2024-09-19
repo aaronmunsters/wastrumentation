@@ -37,6 +37,7 @@ const TYPE_F32: i32 = 1;
 const TYPE_I64: i32 = 2;
 const TYPE_F64: i32 = 3;
 
+#[derive(PartialEq)]
 pub enum WasmType {
     I32,
     F32,
@@ -44,8 +45,20 @@ pub enum WasmType {
     F64,
 }
 
+impl From<&i32> for WasmType {
+    fn from(serialized_type: &i32) -> Self {
+        match serialized_type {
+            &TYPE_I32 => Self::I32,
+            &TYPE_F32 => Self::F32,
+            &TYPE_I64 => Self::I64,
+            &TYPE_F64 => Self::F64,
+            _ => panic!(),
+        }
+    }
+}
+
 impl WasmType {
-    fn size(&self) -> usize {
+    pub fn size(&self) -> usize {
         match self {
             WasmType::I32 => size_of::<i32>(),
             WasmType::F32 => size_of::<f32>(),
@@ -53,9 +66,11 @@ impl WasmType {
             WasmType::F64 => size_of::<f64>(),
         }
     }
-}
 
-impl WasmType {
+    pub fn size_i32(&self) -> i32 {
+        self.size().try_into().unwrap()
+    }
+
     fn load(&self, ptr: i32, offset: usize) -> WasmValue {
         let offset = offset as i32;
         match self {
@@ -77,19 +92,9 @@ impl WasmType {
             },
         }
     }
-
-    fn from(serialized_type: i32) -> Self {
-        match serialized_type {
-            TYPE_I32 => Self::I32,
-            TYPE_F32 => Self::F32,
-            TYPE_I64 => Self::I64,
-            TYPE_F64 => Self::F64,
-            _ => panic!(),
-        }
-    }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum WasmValue {
     I32(i32),
     F32(f32),
@@ -161,15 +166,18 @@ use alloc::vec::Vec;
 
 impl RuntimeValues {
     pub fn new(argc: i32, resc: i32, sigv: i32, sigtypv: i32) -> Self {
-        let total_values = usize::try_from(argc + resc).unwrap();
-        let signature_type_slice = unsafe { from_raw_parts(sigtypv as *const i32, total_values) };
-        let mut signature_types: Vec<WasmType> = Vec::with_capacity(total_values);
-        let mut signature_offsets: Vec<usize> = Vec::with_capacity(total_values);
-        let mut offset_so_far = 0;
-        for serialized_type in signature_type_slice.iter() {
-            let wasm_type = WasmType::from(*serialized_type);
-            signature_offsets.push(offset_so_far);
-            offset_so_far += wasm_type.size();
+        let total_values = argc + resc;
+        let mut signature_types: Vec<WasmType> = Vec::with_capacity(total_values as usize);
+        let mut signature_offsets: Vec<usize> = Vec::with_capacity(total_values as usize);
+
+        let mut offset = 0;
+        for value_index in 0..total_values {
+            let serialized_type =
+                unsafe { wastrumentation_stack_load_i32(sigtypv, value_index * 4) };
+            let wasm_type: WasmType = (&serialized_type).into();
+
+            signature_offsets.push(offset);
+            offset += wasm_type.size();
             signature_types.push(wasm_type);
         }
         Self {
@@ -302,4 +310,4 @@ macro_rules! advice {
     };
 }
 
-use core::{mem::size_of, slice::from_raw_parts};
+use core::mem::size_of;

@@ -169,6 +169,30 @@
             }
           }
         ]
+      },
+      {
+        "analysis": {
+          "Rust": {
+            "hooks": [
+              "GenericApply"
+            ],
+            "manifest": "./tests/analyses/rust/signatures-check/Cargo.toml"
+          }
+        },
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": [
+          {
+            "CallYields": {
+              "arguments": [],
+              "call": "are_all_expectations_met",
+              "results": [
+                {
+                  "I32": 1
+                }
+              ]
+            }
+          }
+        ]
       }
     ],
     "uninstrumented_assertion": {
