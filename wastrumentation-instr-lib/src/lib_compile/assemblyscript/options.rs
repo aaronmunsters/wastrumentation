@@ -1,4 +1,4 @@
-use assemblyscript_compiler::options::CompilerOptions;
+pub use assemblyscript_compiler::options::CompilerOptions;
 use wastrumentation::compiler::DefaultCompilerOptions;
 
 use super::AssemblyScript;

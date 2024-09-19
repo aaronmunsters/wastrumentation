@@ -2,7 +2,7 @@ use anyhow::Result;
 
 use super::AssemblyScript;
 
-use assemblyscript_compiler::compiler::Compiler;
+pub use assemblyscript_compiler::compiler::Compiler;
 use assemblyscript_compiler::options::CompilerOptions;
 
 use wastrumentation::compiler::{CompilationError, CompilationResult, Compiles};
