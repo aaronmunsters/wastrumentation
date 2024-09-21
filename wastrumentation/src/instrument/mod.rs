@@ -82,60 +82,28 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
         .instrument(&mut module, &target_indices)
         .unwrap();
 
-    pre_block
-        .as_ref()
-        .map(|export| module.install(export))
-        .map(|index| module.instrument_function_bodies(&target_indices, &BlockPre(index)));
-
-    post_block
-        .as_ref()
-        .map(|export| module.install(export))
-        .map(|index| module.instrument_function_bodies(&target_indices, &BlockPost(index)));
-
-    pre_loop
-        .as_ref()
-        .map(|export| module.install(export))
-        .map(|index| module.instrument_function_bodies(&target_indices, &LoopPre(index)));
-
-    post_loop
-        .as_ref()
-        .map(|export| module.install(export))
-        .map(|index| module.instrument_function_bodies(&target_indices, &LoopPost(index)));
-
-    select
-        .as_ref()
-        .map(|export| module.install(export))
-        .map(|index| module.instrument_function_bodies(&target_indices, &Select(index)));
-
-    pre_trap_call_indirect
-        .as_ref()
-        .map(|export| module.install(export))
-        .map(|index| module.instrument_function_bodies(&target_indices, &CallIndirectPre(index)));
-
-    post_trap_call_indirect
-        .as_ref()
-        .map(|export| module.install(export))
-        .map(|index| module.instrument_function_bodies(&target_indices, &CallIndirectPost(index)));
-
-    if_then_trap
-        .as_ref()
-        .map(|export| module.install(export))
-        .map(|index| module.instrument_function_bodies(&target_indices, &IfThen(index)));
-
-    if_then_else_trap
-        .as_ref()
-        .map(|export| module.install(export))
-        .map(|index| module.instrument_function_bodies(&target_indices, &IfThenElse(index)));
-
-    br_if_trap
-        .as_ref()
-        .map(|export| module.install(export))
-        .map(|index| module.instrument_function_bodies(&target_indices, &BrIf(index)));
-
-    br_table_trap
-        .as_ref()
-        .map(|export| module.install(export))
-        .map(|index| module.instrument_function_bodies(&target_indices, &BrTable(index)));
+    type TFn = fn(Idx<Function>) -> Box<dyn TransformationStrategy>;
+    for (export, target) in [
+        (pre_block, (|i| Box::new(BlockPre(i)))),
+        (post_block, (|i| Box::new(BlockPost(i)))),
+        (pre_loop, (|i| Box::new(LoopPre(i)))),
+        (post_loop, (|i| Box::new(LoopPost(i)))),
+        (select, (|i| Box::new(Select(i)))),
+        (pre_trap_call_indirect, (|i| Box::new(CallIndirectPre(i)))),
+        (post_trap_call_indirect, (|i| Box::new(CallIndirectPost(i)))),
+        (if_then_trap, (|i| Box::new(IfThen(i)))),
+        (if_then_else_trap, (|i| Box::new(IfThenElse(i)))),
+        (br_if_trap, (|i| Box::new(BrIf(i)))),
+        (br_table_trap, (|i| Box::new(BrTable(i)))),
+    ] as [(&Option<WasmExport>, TFn); 11]
+    {
+        export
+            .as_ref()
+            .map(|export| module.install(export))
+            .map(|index| {
+                module.instrument_function_bodies(&target_indices, target(index).as_ref())
+            });
+    }
 
     let instrumentation_library =
         generic_interface
@@ -176,7 +144,7 @@ trait Instrumentable {
     fn instrument_function_bodies(
         &mut self,
         target_functions: &HashSet<Idx<Function>>,
-        instrumentation_strategy: &impl TransformationStrategy,
+        instrumentation_strategy: &dyn TransformationStrategy,
     ) -> Result<(), &'static str>;
 }
 impl Instrumentable for Module {
@@ -191,7 +159,7 @@ impl Instrumentable for Module {
     fn instrument_function_bodies(
         &mut self,
         target_functions: &HashSet<Idx<Function>>,
-        instrumentation_strategy: &impl TransformationStrategy,
+        instrumentation_strategy: &dyn TransformationStrategy,
     ) -> Result<(), &'static str> {
         for target_function_idx in target_functions {
             let target_function = self.function_mut(*target_function_idx);
@@ -269,7 +237,7 @@ pub trait TransformationStrategy {
 
 impl HighLevelBody {
     #[must_use]
-    pub fn transform_for(&self, transformation_strategy: &impl TransformationStrategy) -> Self {
+    pub fn transform_for(&self, transformation_strategy: &dyn TransformationStrategy) -> Self {
         transformation_strategy.transform(self)
     }
 }
