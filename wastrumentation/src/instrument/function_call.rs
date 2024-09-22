@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::analysis::WasmExport;
-use crate::parse_nesting::{HighLevelBody, Instr, LowLevelBody};
+use crate::parse_nesting::{Body, HighLevelBody, Instr, LowLevelBody};
 use wasabi_wasm::{Code, Function, Idx, ImportOrPresent, Module, Val};
 
 use super::{function_application::INSTRUMENTATION_ANALYSIS_MODULE, FunctionTypeConvertible};
@@ -99,10 +99,10 @@ impl HighLevelBody {
     }
 }
 
-fn transform(body: &Vec<Instr>, target: &TargetCall<Idx<Function>>) -> Vec<Instr> {
+fn transform(body: &Body, target: &TargetCall<Idx<Function>>) -> Body {
     let mut result = Vec::new();
 
-    for instr in body {
+    for (_, instr) in body {
         match (target, instr) {
             (TargetCall::Pre(pre_call_trap), Instr::Call(index)) => {
                 result.extend_from_slice(&[
@@ -164,7 +164,7 @@ fn transform(body: &Vec<Instr>, target: &TargetCall<Idx<Function>>) -> Vec<Instr
             _ => result.push(instr.clone()),
         }
     }
-    result
+    result.into_iter().map(|i| (0, i)).collect()
 }
 
 // TODO: implement tests

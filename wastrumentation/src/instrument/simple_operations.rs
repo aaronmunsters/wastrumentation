@@ -1,4 +1,4 @@
-use crate::parse_nesting::{HighLevelBody, Instr};
+use crate::parse_nesting::{Body, HighLevelBody, Instr};
 use wasabi_wasm::{BinaryOp, Function, Idx, UnaryOp, Val};
 
 use super::TransformationStrategy;
@@ -241,10 +241,10 @@ macro_rules! transformation_strategy {
     };
 }
 
-fn transform(body: &Vec<Instr>, target: Target) -> Vec<Instr> {
+fn transform(body: &Body, target: Target) -> Body {
     let mut result = Vec::new();
 
-    for instr in body {
+    for (_, instr) in body {
         transformation_strategy!(
             target, instr, result,
             Return for Instr::Return
@@ -316,5 +316,5 @@ fn transform(body: &Vec<Instr>, target: Target) -> Vec<Instr> {
             _ => result.push(instr.clone()),
         }
     }
-    result
+    result.into_iter().map(|i| (0, i)).collect()
 }

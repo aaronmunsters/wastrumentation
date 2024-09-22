@@ -1,4 +1,4 @@
-use crate::parse_nesting::{HighLevelBody, Instr};
+use crate::parse_nesting::{Body, HighLevelBody, Instr};
 use wasabi_wasm::{Function, Idx, Val};
 
 use super::TransformationStrategy;
@@ -24,10 +24,10 @@ impl HighLevelBody {
     }
 }
 
-fn transform(body: &Vec<Instr>, target: Target) -> Vec<Instr> {
+fn transform(body: &Body, target: Target) -> Body {
     let mut result = Vec::new();
 
-    for instr in body {
+    for (_, instr) in body {
         match (target, instr) {
             (
                 Target::CallIndirectPre(call_pre_idx),
@@ -74,7 +74,7 @@ fn transform(body: &Vec<Instr>, target: Target) -> Vec<Instr> {
             _ => result.push(instr.clone()),
         }
     }
-    result
+    result.into_iter().map(|i| (0, i)).collect()
 }
 
 // TODO: implement tests

@@ -1,4 +1,4 @@
-use crate::parse_nesting::{HighLevelBody, Instr};
+use crate::parse_nesting::{Body, HighLevelBody, Instr};
 use wasabi_wasm::{Function, Idx, Val};
 
 use super::TransformationStrategy;
@@ -16,7 +16,8 @@ const TRANSFORM_COST_PER_IF_THEN_INSTR: usize = 1;
 const TRANSFORM_COST_PER_IF_THEN_ELSE_INSTR: usize = 1;
 const TRANSFORM_COST_PER_BR_IF: usize = 1;
 
-fn delta_to_instrument_instr(instr: &Instr) -> usize {
+fn delta_to_instrument_instr(index_instr: &(usize, Instr)) -> usize {
+    let (_, instr) = index_instr;
     match instr {
         Instr::If(_, _, None) => TRANSFORM_COST_PER_IF_THEN_INSTR,
         Instr::If(_, _, Some(_)) => TRANSFORM_COST_PER_IF_THEN_ELSE_INSTR,
@@ -37,11 +38,11 @@ impl TransformationStrategy for Target {
 
 /// # Panics
 /// When the index cannot be cast from u32 to i32
-fn transform(body: &Vec<Instr>, target: Target) -> Vec<Instr> {
+fn transform(body: &Body, target: Target) -> Body {
     let mut result =
         Vec::with_capacity(body.iter().map(delta_to_instrument_instr).sum::<usize>() + body.len());
 
-    for instr in body {
+    for (_index, instr) in body {
         match (target, instr) {
             (Target::BrTable(br_table_trap_idx), Instr::BrTable { table: _, default }) => {
                 result.extend_from_slice(&[
@@ -105,7 +106,7 @@ fn transform(body: &Vec<Instr>, target: Target) -> Vec<Instr> {
             _ => result.push(instr.clone()),
         }
     }
-    result
+    result.into_iter().map(|i| (0, i)).collect()
 }
 
 #[cfg(test)]
@@ -395,36 +396,57 @@ mod tests {
             use super::Instr::*;
             use wasabi_wasm::{BinaryOp::*, LocalOp::*, UnaryOp::*, Val::*};
             HighLevelBody(vec![
-                Local(Get, 0_usize.into()),
-                Unary(I32Eqz),
-                If(
-                    type_,
-                    vec![Block(
+                (0, Local(Get, 0_usize.into())),
+                (1, Unary(I32Eqz)),
+                (
+                    2,
+                    If(
                         type_,
-                        vec![
-                            Local(Get, 0_usize.into()),
-                            Const(I32(1)),
-                            Binary(I32Eq),
-                            If(
+                        vec![(
+                            3,
+                            Block(
                                 type_,
-                                vec![Block(
-                                    type_,
-                                    vec![
-                                        Local(Get, 0_usize.into()),
-                                        Const(I32(2)),
-                                        Binary(I32Eq),
+                                vec![
+                                    (4, Local(Get, 0_usize.into())),
+                                    (5, Const(I32(1))),
+                                    (6, Binary(I32Eq)),
+                                    (
+                                        7,
                                         If(
                                             type_,
-                                            vec![Block(type_, vec![Const(I32(42))])],
-                                            Some(vec![Const(I32(21))]),
+                                            vec![(
+                                                8,
+                                                Block(
+                                                    type_,
+                                                    vec![
+                                                        (9, Local(Get, 0_usize.into())),
+                                                        (10, Const(I32(2))),
+                                                        (11, Binary(I32Eq)),
+                                                        (
+                                                            12,
+                                                            If(
+                                                                type_,
+                                                                vec![(
+                                                                    13,
+                                                                    Block(
+                                                                        type_,
+                                                                        vec![(14, Const(I32(42)))],
+                                                                    ),
+                                                                )],
+                                                                Some(vec![(17, Const(I32(21)))]),
+                                                            ),
+                                                        ),
+                                                    ],
+                                                ),
+                                            )],
+                                            Some(vec![(21, Const(I32(10)))]),
                                         ),
-                                    ],
-                                )],
-                                Some(vec![Const(I32(10))]),
+                                    ),
+                                ],
                             ),
-                        ],
-                    )],
-                    Some(vec![Const(I32(5))]),
+                        )],
+                        Some(vec![(25, Const(I32(5)))]),
+                    ),
                 ),
             ])
         },)
