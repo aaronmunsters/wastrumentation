@@ -19,12 +19,14 @@ use self::branch_if::Target::{BrIf, BrTable, IfThen, IfThenElse};
 use self::function_application::INSTRUMENTATION_ANALYSIS_MODULE;
 use self::function_call::TargetCall;
 use self::function_call_indirect::Target::{CallIndirectPost, CallIndirectPre};
+use self::simple_operations::Target::*;
 
 pub mod block_loop;
 pub mod branch_if;
 pub mod function_application;
 pub mod function_call;
 pub mod function_call_indirect;
+pub mod simple_operations;
 
 pub struct InstrumentationResult<InstrumentationLanguage: LibGeneratable> {
     pub module: Vec<u8>,
@@ -51,6 +53,35 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
         pre_loop,
         post_loop,
         select,
+        drop_trap,
+        return_trap,
+        const_i32_trap,
+        const_f32_trap,
+        const_i64_trap,
+        const_f64_trap,
+        unary_i32_to_i32,
+        unary_i64_to_i32,
+        unary_i64_to_i64,
+        unary_f32_to_f32,
+        unary_f64_to_f64,
+        unary_f32_to_i32,
+        unary_f64_to_i32,
+        unary_i32_to_i64,
+        unary_f32_to_i64,
+        unary_f64_to_i64,
+        unary_i32_to_f32,
+        unary_i64_to_f32,
+        unary_f64_to_f32,
+        unary_i32_to_f64,
+        unary_i64_to_f64,
+        unary_f32_to_f64,
+        binary_i32_i32_to_i32,
+        binary_i64_i64_to_i32,
+        binary_f32_f32_to_i32,
+        binary_f64_f64_to_i32,
+        binary_i64_i64_to_i64,
+        binary_f32_f32_to_f32,
+        binary_f64_f64_to_f64,
     } = analysis_interface;
 
     let (mut module, _offsets, _issue) = Module::from_bytes(module).unwrap();
@@ -95,7 +126,36 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
         (if_then_else_trap, (|i| Box::new(IfThenElse(i)))),
         (br_if_trap, (|i| Box::new(BrIf(i)))),
         (br_table_trap, (|i| Box::new(BrTable(i)))),
-    ] as [(&Option<WasmExport>, TFn); 11]
+        (drop_trap, (|i| Box::new(Drop(i)))),
+        (return_trap, (|i| Box::new(Return(i)))),
+        (const_i32_trap, (|i| Box::new(ConstI32(i)))),
+        (const_f32_trap, (|i| Box::new(ConstF32(i)))),
+        (const_i64_trap, (|i| Box::new(ConstI64(i)))),
+        (const_f64_trap, (|i| Box::new(ConstF64(i)))),
+        (unary_i32_to_i32, (|i| Box::new(UnaryI32ToI32(i)))),
+        (unary_i64_to_i32, (|i| Box::new(UnaryI64ToI32(i)))),
+        (unary_i64_to_i64, (|i| Box::new(UnaryI64ToI64(i)))),
+        (unary_f32_to_f32, (|i| Box::new(UnaryF32ToF32(i)))),
+        (unary_f64_to_f64, (|i| Box::new(UnaryF64ToF64(i)))),
+        (unary_f32_to_i32, (|i| Box::new(UnaryF32ToI32(i)))),
+        (unary_f64_to_i32, (|i| Box::new(UnaryF64ToI32(i)))),
+        (unary_i32_to_i64, (|i| Box::new(UnaryI32ToI64(i)))),
+        (unary_f32_to_i64, (|i| Box::new(UnaryF32ToI64(i)))),
+        (unary_f64_to_i64, (|i| Box::new(UnaryF64ToI64(i)))),
+        (unary_i32_to_f32, (|i| Box::new(UnaryI32ToF32(i)))),
+        (unary_i64_to_f32, (|i| Box::new(UnaryI64ToF32(i)))),
+        (unary_f64_to_f32, (|i| Box::new(UnaryF64ToF32(i)))),
+        (unary_i32_to_f64, (|i| Box::new(UnaryI32ToF64(i)))),
+        (unary_i64_to_f64, (|i| Box::new(UnaryI64ToF64(i)))),
+        (unary_f32_to_f64, (|i| Box::new(UnaryF32ToF64(i)))),
+        (binary_i32_i32_to_i32, (|i| Box::new(BinaryI32I32toI32(i)))),
+        (binary_i64_i64_to_i32, (|i| Box::new(BinaryI64I64toI32(i)))),
+        (binary_f32_f32_to_i32, (|i| Box::new(BinaryF32F32toI32(i)))),
+        (binary_f64_f64_to_i32, (|i| Box::new(BinaryF64F64toI32(i)))),
+        (binary_i64_i64_to_i64, (|i| Box::new(BinaryI64I64toI64(i)))),
+        (binary_f32_f32_to_f32, (|i| Box::new(BinaryF32F32toF32(i)))),
+        (binary_f64_f64_to_f64, (|i| Box::new(BinaryF64F64toF64(i)))),
+    ] as [(&Option<WasmExport>, TFn); 40]
     {
         export
             .as_ref()
