@@ -3,7 +3,12 @@ use wasabi_wasm::{
     LocalOp, Memarg, Memory, RefType, StoreOp, Table, UnaryOp, Val, ValType,
 };
 
-pub type Body = Vec<(usize, Instr)>;
+use super::typed_high_level_body_error::LowToHighError;
+
+type BodyInner = Vec<Instr>;
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
+pub struct Body(pub BodyInner);
 
 /// Equal to `wasabi_wasm::Instr` minus `Else` and `End` instruction
 /// Which occur in `Block`, `Loop` and `If`
@@ -73,7 +78,7 @@ impl Instr {
 }
 
 impl TryFrom<wasabi_wasm::Instr> for Instr {
-    type Error = &'static str;
+    type Error = LowToHighError;
 
     fn try_from(value: wasabi_wasm::Instr) -> Result<Self, Self::Error> {
         Ok(match value {
@@ -118,7 +123,7 @@ impl TryFrom<wasabi_wasm::Instr> for Instr {
             | wasabi_wasm::Instr::Loop(_)
             | wasabi_wasm::Instr::If(_)
             | wasabi_wasm::Instr::Else
-            | wasabi_wasm::Instr::End => return Err("Cannot convert nested structures trivially!"),
+            | wasabi_wasm::Instr::End => return Err(LowToHighError::TrivialCastAttempt),
         })
     }
 }
@@ -126,28 +131,15 @@ impl TryFrom<wasabi_wasm::Instr> for Instr {
 #[derive(Debug, PartialEq, Eq)]
 pub struct LowLevelBody(pub Vec<wasabi_wasm::Instr>);
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct HighLevelBody(pub Body);
-
-impl TryFrom<LowLevelBody> for HighLevelBody {
-    type Error = &'static str;
+impl TryFrom<LowLevelBody> for Body {
+    type Error = LowToHighError;
 
     fn try_from(low_level_body: LowLevelBody) -> Result<Self, Self::Error> {
         enum Entered {
-            Block {
-                index: usize,
-                type_: FunctionType,
-            },
-            Loop {
-                index: usize,
-                type_: FunctionType,
-            },
-            IfStart {
-                index: usize,
-                type_: FunctionType,
-            },
+            Block(FunctionType),
+            Loop(FunctionType),
+            IfStart(FunctionType),
             IfThenElse {
-                index: usize,
                 type_: FunctionType,
                 then_body: Body,
             },
@@ -156,85 +148,68 @@ impl TryFrom<LowLevelBody> for HighLevelBody {
         let LowLevelBody(body) = low_level_body;
 
         let [instructions @ .., wasabi_wasm::Instr::End] = &body[..] else {
-            return Err("Expected low level body to terminate in `End`");
+            return Err(LowToHighError::BodyNonEndTermination);
         };
 
         let mut entered_stack: Vec<Entered> = Vec::new();
-        let mut body_stack: Vec<Body> = Vec::new();
-        let mut current_body: Body = Vec::new();
+        let mut body_stack: Vec<BodyInner> = Vec::new();
+        let mut current_body: BodyInner = Vec::new();
 
-        for (index, instruction) in instructions.iter().enumerate() {
+        for instruction in instructions {
             match instruction {
                 wasabi_wasm::Instr::Block(type_) => {
-                    entered_stack.push(Entered::Block {
-                        index,
-                        type_: *type_,
-                    });
+                    entered_stack.push(Entered::Block(*type_));
                     body_stack.push(current_body.clone());
                     current_body = Vec::new();
                 }
                 wasabi_wasm::Instr::Loop(type_) => {
-                    entered_stack.push(Entered::Loop {
-                        index,
-                        type_: *type_,
-                    });
+                    entered_stack.push(Entered::Loop(*type_));
                     body_stack.push(current_body.clone());
                     current_body = Vec::new();
                 }
                 wasabi_wasm::Instr::If(type_) => {
-                    entered_stack.push(Entered::IfStart {
-                        index,
-                        type_: *type_,
-                    });
+                    entered_stack.push(Entered::IfStart(*type_));
                     body_stack.push(current_body.clone());
                     current_body = Vec::new();
                 }
                 wasabi_wasm::Instr::Else => match entered_stack.pop() {
-                    Some(Entered::IfStart { index, type_ }) => {
+                    Some(Entered::IfStart(type_)) => {
                         let then_body = current_body.clone();
                         entered_stack.push(Entered::IfThenElse {
-                            index,
                             type_,
-                            then_body,
+                            then_body: Body(then_body),
                         });
                         current_body = Vec::new();
                     }
-                    _ => return Err("Expected an if-start for an `Else`"),
+                    _ => return Err(LowToHighError::IfDidNotPrecedeElse),
                 },
                 wasabi_wasm::Instr::End => {
-                    let ended_body = current_body.clone();
-                    let result_index_instruction = match entered_stack
-                        .pop()
-                        .ok_or("Too many `End`s")?
-                    {
-                        Entered::Block { index, type_ } => (index, Instr::Block(type_, ended_body)),
-                        Entered::Loop { index, type_ } => (index, Instr::Loop(type_, ended_body)),
-                        Entered::IfStart { index, type_ } => {
-                            (index, Instr::if_then(type_, ended_body))
-                        }
-                        Entered::IfThenElse {
-                            index,
-                            type_,
-                            then_body,
-                        } => (index, Instr::if_then_else(type_, then_body, ended_body)),
-                    };
-                    current_body = body_stack.pop().ok_or("`End` has no parent body")?;
+                    let ended_body = Body(current_body.clone());
+                    let result_index_instruction =
+                        match entered_stack.pop().ok_or(LowToHighError::ExcessiveEnd)? {
+                            Entered::Block(type_) => Instr::Block(type_, ended_body),
+                            Entered::Loop(type_) => Instr::Loop(type_, ended_body),
+                            Entered::IfStart(type_) => Instr::if_then(type_, ended_body),
+                            Entered::IfThenElse { type_, then_body } => {
+                                Instr::if_then_else(type_, then_body, ended_body)
+                            }
+                        };
+                    current_body = body_stack.pop().ok_or(LowToHighError::EndWithoutParent)?;
                     current_body.push(result_index_instruction);
                 }
-                instruction => current_body.push((index, instruction.clone().try_into()?)),
+                instruction => current_body.push(instruction.clone().try_into()?),
             };
         }
 
         assert!(entered_stack.is_empty());
         assert!(body_stack.is_empty());
-        Ok(HighLevelBody(current_body))
+        Ok(Body(current_body))
     }
 }
 
-impl From<HighLevelBody> for LowLevelBody {
-    fn from(high_level_body: HighLevelBody) -> Self {
-        let HighLevelBody(instructions) = high_level_body;
-        let mut low_level_body = Self::from_recurse(instructions);
+impl From<Body> for LowLevelBody {
+    fn from(high_level_body: Body) -> Self {
+        let mut low_level_body = Self::from_recurse(high_level_body);
         low_level_body.push(wasabi_wasm::Instr::End);
         Self(low_level_body)
     }
@@ -243,8 +218,9 @@ impl From<HighLevelBody> for LowLevelBody {
 // TODO macro this?
 impl LowLevelBody {
     fn from_recurse(instructions: Body) -> Vec<wasabi_wasm::Instr> {
+        let Body(instructions) = instructions;
         let mut result = Vec::with_capacity(instructions.len());
-        for (_index, instruction) in instructions {
+        for instruction in instructions {
             match instruction {
                 // interesting
                 Instr::Block(type_, body_) => {

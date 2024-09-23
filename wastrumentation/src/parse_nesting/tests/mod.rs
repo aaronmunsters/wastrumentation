@@ -1,64 +1,37 @@
-use super::{Body, HighLevelBody, Instr, LowLevelBody};
+use super::{HighLevelBody, HighLevelInstr, LowLevelBody, TypedHighLevelInstr};
 use wasabi_wasm::{FunctionType, Val::I32, ValType};
 
 fn typ_void_to_i32() -> FunctionType {
     FunctionType::new(&[], &[ValType::I32])
 }
 
-fn const_i32(i: i32) -> Instr {
-    Instr::Const(I32(i))
+fn typ_i32_to_void() -> FunctionType {
+    FunctionType::new(&[ValType::I32], &[])
 }
 
-#[test]
-fn test_parse_simple() {
-    let low_level_body = LowLevelBody({
-        use wasabi_wasm::{Instr::*, Val::I32};
-        vec![
-            // Body begin
-            If(FunctionType::empty()),
-            Const(I32(0)),
-            Else,
-            Const(I32(1)),
-            End,
-            End, // Body end
-        ]
-    });
-
-    let high_level_body_expected = HighLevelBody({
-        vec![(
-            0,
-            Instr::if_then_else(
-                FunctionType::empty(),
-                vec![(1, const_i32(0))],
-                vec![(3, const_i32(1))],
-            ),
-        )]
-    });
-
-    assert_eq!(high_level_body_expected, low_level_body.try_into().unwrap());
+fn const_i32(i: i32) -> HighLevelInstr {
+    HighLevelInstr::Const(I32(i))
 }
 
-fn wat_to_low_level(wat: &str) -> LowLevelBody {
+fn wat_to_high_level(wat: &str) -> HighLevelBody {
     let wasm_bytes = wat::parse_str(wat).unwrap();
     let (module, _, _) = wasabi_wasm::Module::from_bytes(&wasm_bytes).unwrap();
-    let foo_body = &module.function(0_usize.into()).code().unwrap().body;
-    LowLevelBody(foo_body.to_vec())
+    let function = module.function(0_usize.into());
+    let code = function.code().unwrap();
+    HighLevelBody::try_from((&module, function, code)).unwrap()
 }
 
 fn assert_high_and_low(
     wasm_program: &'static str,
-    body_expected_low: &Vec<wasabi_wasm::Instr>,
-    body_expected_high: &Body,
+    body_expected_low: LowLevelBody,
+    body_expected_high: HighLevelBody,
 ) {
-    let LowLevelBody(low_level_body) = wat_to_low_level(wasm_program);
-    // Assert expected input program
-    assert_eq!(body_expected_low, &low_level_body);
-    let HighLevelBody(high_level_body) = LowLevelBody(low_level_body).try_into().unwrap();
-    // Assert succesful nesting parse after parse to high-level representation
-    assert_eq!(&high_level_body, body_expected_high);
-    let LowLevelBody(low_level_body) = HighLevelBody(high_level_body).into();
-    // Assert that the conversion to low-level representation is equivalent
-    assert_eq!(body_expected_low, &low_level_body);
+    // Assert expected high-level program
+    let high_level_body = wat_to_high_level(wasm_program);
+    assert_eq!(high_level_body, body_expected_high);
+    // Assert expected low-level program
+    let low_level_body: LowLevelBody = high_level_body.into();
+    assert_eq!(low_level_body, body_expected_low);
 }
 
 // TODO: macro's for huge bodies?
@@ -69,7 +42,7 @@ fn high_level_low_level_assert() {
         include_str!("branch.wat"),
         {
             use wasabi_wasm::{Instr::*, Val::I32};
-            &vec![
+            LowLevelBody(vec![
                 Const(I32(0)),
                 If(typ_void_to_i32()),
                 Const(I32(1)),
@@ -78,20 +51,21 @@ fn high_level_low_level_assert() {
                 End,
                 Drop,
                 End,
-            ]
+            ])
         },
-        &vec![
-            (0, const_i32(0)),
-            (
+        HighLevelBody(vec![
+            TypedHighLevelInstr::new(0, typ_void_to_i32(), const_i32(0)),
+            TypedHighLevelInstr::new(
                 1,
-                Instr::if_then_else(
+                typ_void_to_i32(),
+                HighLevelInstr::if_then_else(
                     typ_void_to_i32(),
-                    vec![(2, const_i32(1))],
-                    vec![(4, const_i32(2))],
+                    vec![TypedHighLevelInstr::new(2, typ_void_to_i32(), const_i32(1))],
+                    vec![TypedHighLevelInstr::new(4, typ_void_to_i32(), const_i32(2))],
                 ),
             ),
-            (6, Instr::Drop),
-        ],
+            TypedHighLevelInstr::new(6, typ_i32_to_void(), HighLevelInstr::Drop),
+        ]),
     );
 }
 
@@ -101,7 +75,7 @@ fn test_wat_to_high_level_complex() {
         include_str!("nested-branch.wat"),
         {
             use wasabi_wasm::{Instr::*, Val::I32};
-            &vec![
+            LowLevelBody(vec![
                 Const(I32(1000)),
                 If(typ_void_to_i32()),
                 Const(I32(1001)),
@@ -174,56 +148,111 @@ fn test_wat_to_high_level_complex() {
                 End,
                 Drop,
                 End,
-            ]
+            ])
         },
         {
-            use super::Instr::Drop;
-            let if_res_i32 = |then, else_| Instr::if_then_else(typ_void_to_i32(), then, else_);
-            &vec![
-                (0, const_i32(1000)),
-                (
+            use super::HighLevelInstr::Drop;
+            let if_res_i32 =
+                |then, else_| HighLevelInstr::if_then_else(typ_void_to_i32(), then, else_);
+            HighLevelBody(vec![
+                TypedHighLevelInstr::new(0, typ_void_to_i32(), const_i32(1000)),
+                TypedHighLevelInstr::new(
                     1,
+                    typ_void_to_i32(),
                     if_res_i32(
                         vec![
-                            (2, const_i32(1001)),
-                            (
+                            TypedHighLevelInstr::new(
+                                2,
+                                typ_void_to_i32(),
+                                const_i32(1001),
+                            ),
+                            TypedHighLevelInstr::new(
                                 3,
+                                typ_void_to_i32(),
                                 if_res_i32(
                                     vec![
-                                        (4, const_i32(1002)),
-                                        (
+                                        TypedHighLevelInstr::new(
+                                            4,
+                                            typ_void_to_i32(),
+                                            const_i32(1002),
+                                        ),
+                                        TypedHighLevelInstr::new(
                                             5,
+                                            typ_void_to_i32(),
                                             if_res_i32(
-                                                vec![(6, const_i32(0))],
-                                                vec![(8, const_i32(1))],
+                                                vec![TypedHighLevelInstr::new(
+                                                    6,
+                                                    typ_void_to_i32(),
+                                                    const_i32(0),
+                                                )],
+                                                vec![TypedHighLevelInstr::new(
+                                                    8,
+                                                    typ_void_to_i32(),
+                                                    const_i32(1),
+                                                )],
                                             ),
                                         ),
                                     ],
                                     vec![
-                                        (11, const_i32(1003)),
-                                        (
+                                        TypedHighLevelInstr::new(
+                                            11,
+                                            typ_void_to_i32(),
+                                            const_i32(1003),
+                                        ),
+                                        TypedHighLevelInstr::new(
                                             12,
+                                            typ_void_to_i32(),
                                             if_res_i32(
-                                                vec![(13, const_i32(2))],
-                                                vec![(15, const_i32(3))],
+                                                vec![TypedHighLevelInstr::new(
+                                                    13,
+                                                    typ_void_to_i32(),
+                                                    const_i32(2),
+                                                )],
+                                                vec![TypedHighLevelInstr::new(
+                                                    15,
+                                                    typ_void_to_i32(),
+                                                    const_i32(3),
+                                                )],
                                             ),
                                         ),
                                     ],
                                 ),
                             ),
-                            (18, Drop),
-                            (19, const_i32(1004)),
-                            (
+                            TypedHighLevelInstr::new(18, typ_i32_to_void(), Drop),
+                            TypedHighLevelInstr::new(
+                                19,
+                                typ_void_to_i32(),
+                                const_i32(1004),
+                            ),
+                            TypedHighLevelInstr::new(
                                 20,
+                                typ_void_to_i32(),
                                 if_res_i32(
-                                    vec![(21, const_i32(4))],
+                                    vec![TypedHighLevelInstr::new(
+                                        21,
+                                        typ_void_to_i32(),
+                                        const_i32(4),
+                                    )],
                                     vec![
-                                        (23, const_i32(1005)),
-                                        (
+                                        TypedHighLevelInstr::new(
+                                            23,
+                                            typ_void_to_i32(),
+                                            const_i32(1005),
+                                        ),
+                                        TypedHighLevelInstr::new(
                                             24,
+                                            typ_void_to_i32(),
                                             if_res_i32(
-                                                vec![(25, const_i32(5))],
-                                                vec![(27, const_i32(6))],
+                                                vec![TypedHighLevelInstr::new(
+                                                    25,
+                                                    typ_void_to_i32(),
+                                                    const_i32(5),
+                                                )],
+                                                vec![TypedHighLevelInstr::new(
+                                                    27,
+                                                    typ_void_to_i32(),
+                                                    const_i32(6),
+                                                )],
                                             ),
                                         ),
                                     ],
@@ -231,70 +260,89 @@ fn test_wat_to_high_level_complex() {
                             ),
                         ],
                         vec![
-                            (31, const_i32(1006)),
-                            (
+                            TypedHighLevelInstr::new(
+                                31,
+                                typ_void_to_i32(),
+                                const_i32(1006),
+                            ),
+                            TypedHighLevelInstr::new(
                                 32,
+                                typ_void_to_i32(),
                                 if_res_i32(
                                     vec![
-                                        (33, const_i32(1007)),
-                                        (
+                                        TypedHighLevelInstr::new(
+                                            33,
+                                            typ_void_to_i32(),
+                                            const_i32(1007),
+                                        ),
+                                        TypedHighLevelInstr::new(
                                             34,
+                                            typ_void_to_i32(),
                                             if_res_i32(
                                                 vec![
-                                                    (35, const_i32(1008)),
-                                                    (
+                                                    TypedHighLevelInstr::new(
+                                                        35,
+                                                        typ_void_to_i32(),
+                                                        const_i32(1008),
+                                                    ),
+                                                    TypedHighLevelInstr::new(
                                                         36,
+                                                        typ_void_to_i32(),
                                                         if_res_i32(
-                                                            vec![(37, const_i32(7))],
-                                                            vec![(39, const_i32(8))],
+                                                            vec![TypedHighLevelInstr::new(37, typ_void_to_i32(),const_i32(7))],
+                                                            vec![TypedHighLevelInstr::new(39, typ_void_to_i32(),const_i32(8))],
                                                         ),
                                                     ),
                                                 ],
-                                                vec![(42, const_i32(9))],
+                                                vec![TypedHighLevelInstr::new(42,typ_void_to_i32(), const_i32(9))],
                                             ),
                                         ),
                                     ],
                                     vec![
-                                        (45, const_i32(1009)),
-                                        (
+                                        TypedHighLevelInstr::new(45, typ_void_to_i32(),const_i32(1009)),
+                                        TypedHighLevelInstr::new(
                                             46,
+                                            typ_void_to_i32(),
                                             if_res_i32(
                                                 vec![
-                                                    (47, const_i32(1010)),
-                                                    (
+                                                    TypedHighLevelInstr::new(47, typ_void_to_i32(),const_i32(1010)),
+                                                    TypedHighLevelInstr::new(
                                                         48,
+                                                        typ_void_to_i32(),
                                                         if_res_i32(
                                                             vec![
-                                                                (49, const_i32(1011)),
-                                                                (
+                                                                TypedHighLevelInstr::new(49, typ_void_to_i32(),const_i32(1011)),
+                                                                TypedHighLevelInstr::new(
                                                                     50,
+                                                                    typ_void_to_i32(),
                                                                     if_res_i32(
-                                                                        vec![(51, const_i32(10))],
-                                                                        vec![(53, const_i32(11))],
+                                                                        vec![TypedHighLevelInstr::new(51,typ_void_to_i32(), const_i32(10))],
+                                                                        vec![TypedHighLevelInstr::new(53, typ_void_to_i32(),const_i32(11))],
                                                                     ),
                                                                 ),
                                                             ],
-                                                            vec![(56, const_i32(12))],
+                                                            vec![TypedHighLevelInstr::new(56,typ_void_to_i32(), const_i32(12))],
                                                         ),
                                                     ),
                                                 ],
-                                                vec![(59, const_i32(13))],
+                                                vec![TypedHighLevelInstr::new(59, typ_void_to_i32(),const_i32(13))],
                                             ),
                                         ),
                                     ],
                                 ),
                             ),
-                            (62, Drop),
-                            (63, const_i32(1012)),
-                            (
+                            TypedHighLevelInstr::new(62, typ_i32_to_void(), Drop),
+                            TypedHighLevelInstr::new(63, typ_void_to_i32(),const_i32(1012)),
+                            TypedHighLevelInstr::new(
                                 64,
-                                if_res_i32(vec![(65, const_i32(14))], vec![(67, const_i32(15))]),
+                                typ_void_to_i32(),
+                                if_res_i32(vec![TypedHighLevelInstr::new(65,typ_void_to_i32(), const_i32(14))], vec![TypedHighLevelInstr::new(67, typ_void_to_i32(), const_i32(15))]),
                             ),
                         ],
                     ),
                 ),
-                (70, Drop),
-            ]
+                TypedHighLevelInstr::new(70, typ_i32_to_void(), Drop),
+            ])
         },
     );
 }

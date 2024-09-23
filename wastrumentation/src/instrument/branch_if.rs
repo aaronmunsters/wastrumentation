@@ -1,4 +1,6 @@
-use crate::parse_nesting::{Body, HighLevelBody, Instr};
+use crate::parse_nesting::{
+    BodyInner, HighLevelBody, HighLevelInstr as Instr, TypedHighLevelInstr,
+};
 use wasabi_wasm::{Function, Idx, Val};
 
 use super::TransformationStrategy;
@@ -16,8 +18,8 @@ const TRANSFORM_COST_PER_IF_THEN_INSTR: usize = 1;
 const TRANSFORM_COST_PER_IF_THEN_ELSE_INSTR: usize = 1;
 const TRANSFORM_COST_PER_BR_IF: usize = 1;
 
-fn delta_to_instrument_instr(index_instr: &(usize, Instr)) -> usize {
-    let (_, instr) = index_instr;
+fn delta_to_instrument_instr(index_instr: &TypedHighLevelInstr) -> usize {
+    let TypedHighLevelInstr { instr, .. } = index_instr;
     match instr {
         Instr::If(_, _, None) => TRANSFORM_COST_PER_IF_THEN_INSTR,
         Instr::If(_, _, Some(_)) => TRANSFORM_COST_PER_IF_THEN_ELSE_INSTR,
@@ -38,88 +40,105 @@ impl TransformationStrategy for Target {
 
 /// # Panics
 /// When the index cannot be cast from u32 to i32
-fn transform(body: &Body, target: Target) -> Body {
+fn transform(body: &BodyInner, target: Target) -> BodyInner {
     let mut result =
         Vec::with_capacity(body.iter().map(delta_to_instrument_instr).sum::<usize>() + body.len());
 
-    for (_index, instr) in body {
+    for typed_instr @ TypedHighLevelInstr { instr, .. } in body {
         match (target, instr) {
             (Target::BrTable(br_table_trap_idx), Instr::BrTable { table: _, default }) => {
                 result.extend_from_slice(&[
                     // STACK: [table_target_index]
-                    Instr::Const(Val::I32(i32::try_from(default.to_u32()).expect("i32->u32"))),
+                    typed_instr.instrument_with(Instr::Const(Val::I32(
+                        i32::try_from(default.to_u32()).expect("i32->u32"),
+                    ))),
                     // STACK: [table_target_index, default]
-                    Instr::Call(br_table_trap_idx),
+                    typed_instr.instrument_with(Instr::Call(br_table_trap_idx)),
                     // STACK: [table_target_index]
-                    instr.clone(),
+                    typed_instr.place_original(instr.clone()),
                 ]);
             }
             (Target::IfThen(if_then_trap_idx), Instr::If(type_, then, None)) => result
                 .extend_from_slice(&[
                     // STACK: [type_in, condition]
-                    Instr::Call(if_then_trap_idx),
+                    typed_instr.instrument_with(Instr::Call(if_then_trap_idx)),
                     // STACK: [type_in, kontinuation]
-                    Instr::if_then(*type_, transform(then, target)),
+                    typed_instr.place_original(Instr::if_then(*type_, transform(then, target))),
                     // STACK: [type_out]
                 ]),
             (Target::IfThenElse(if_then_else_trap_idx), Instr::If(type_, then, Some(else_))) => {
                 result.extend_from_slice(&[
                     // STACK: [type_in, condition]
-                    Instr::Call(if_then_else_trap_idx),
+                    typed_instr.instrument_with(Instr::Call(if_then_else_trap_idx)),
                     // STACK: [type_in, kontinuation]
-                    Instr::if_then_else(
+                    typed_instr.place_original(Instr::if_then_else(
                         *type_,
                         // STACK: [type_in]
                         transform(then, target),
                         // STACK: [type_in]
                         transform(else_, target),
-                    ),
+                    )),
                     // STACK: [type_out]
                 ]);
             }
             (Target::BrIf(br_if_trap_idx), Instr::BrIf(label)) => {
                 result.extend_from_slice(&[
                     // STACK: [condition]
-                    Instr::Const(Val::I32(i32::try_from(label.to_u32()).unwrap())),
+                    typed_instr.instrument_with(Instr::Const(Val::I32(
+                        i32::try_from(label.to_u32()).unwrap(),
+                    ))),
                     // STACK: [condition, label]
-                    Instr::Call(br_if_trap_idx),
+                    typed_instr.instrument_with(Instr::Call(br_if_trap_idx)),
                     // STACK: [kontinuation]
-                    instr.clone(),
+                    typed_instr.place_original(instr.clone()),
                     // STACK: []
                 ]);
             }
 
+            // DEFAULT TRAVERSAL
             (target, Instr::If(type_, then, None)) => {
-                result.push(Instr::If(*type_, transform(then, target), None));
+                result.push(typed_instr.place_untouched(Instr::If(
+                    *type_,
+                    transform(then, target),
+                    None,
+                )));
             }
-            (target, Instr::If(type_, then, Some(else_))) => result.push(Instr::If(
-                *type_,
-                transform(then, target),
-                Some(transform(else_, target)),
-            )),
+            (target, Instr::If(type_, then, Some(else_))) => {
+                result.push(typed_instr.place_untouched(Instr::If(
+                    *type_,
+                    transform(then, target),
+                    Some(transform(else_, target)),
+                )))
+            }
             (target, Instr::Loop(type_, body)) => {
-                result.push(Instr::Loop(*type_, transform(body, target)));
+                result.push(
+                    typed_instr.place_untouched(Instr::Loop(*type_, transform(body, target))),
+                );
             }
             (target, Instr::Block(type_, body)) => {
-                result.push(Instr::Block(*type_, transform(body, target)));
+                result.push(
+                    typed_instr.place_untouched(Instr::Block(*type_, transform(body, target))),
+                );
             }
-            _ => result.push(instr.clone()),
+            (_, instr) => result.push(typed_instr.place_untouched(instr.clone())),
         }
     }
-    result.into_iter().map(|i| (0, i)).collect()
+    result
 }
 
 #[cfg(test)]
 mod tests {
+
     const THEN_KONTN: i32 = 1;
     const ELSE_KONTN: i32 = 0;
 
     use std::collections::HashSet;
 
-    use wasabi_wasm::{FunctionType, ValType};
-    use wasmtime::{Engine, Instance, Module, Store};
+    use wasabi_wasm::{FunctionType, Module, ValType};
 
-    use crate::{instrument::Instrumentable, parse_nesting::LowLevelBody};
+    use crate::instrument::Instrumentable;
+    use crate::instrument::InstrumentationError;
+    use crate::parse_nesting::LowToHighError;
 
     use super::*;
 
@@ -268,6 +287,7 @@ mod tests {
         instrumentation_body: Vec<wasabi_wasm::Instr>,
         instrumented_assertions: &[BranchExpectation],
     ) {
+        use wasmtime::{Engine, Instance, Module, Store};
         // For execution
         let wasm_bytes = wat::parse_str(branch_program_wasm).unwrap();
         let (mut wasm_module, _, _) = wasabi_wasm::Module::from_bytes(&wasm_bytes).unwrap();
@@ -329,13 +349,15 @@ mod tests {
             .body
             .push(wasabi_wasm::Instr::Call(0_usize.into()));
 
-        assert_eq!(
-            Err("Expected low level body to terminate in `End`"),
+        assert!(matches!(
             wasm_module.instrument_function_bodies(
                 &HashSet::from_iter(vec![0_usize.into()]),
                 &Target::IfThenElse(0_usize.into())
-            )
-        );
+            ),
+            Err(InstrumentationError::LowToHighError {
+                low_to_high_err: LowToHighError::TypeInference { .. }
+            }),
+        ))
     }
 
     #[test]
@@ -349,7 +371,7 @@ mod tests {
 
         // Instrument
         assert_eq!(
-            Err("Attempt to instrument an `import` function"),
+            Err(InstrumentationError::AttemptInstrumentImport),
             wasm_module.instrument_function_bodies(
                 &HashSet::from_iter(vec![0_usize.into()]),
                 &Target::IfThenElse(0_usize.into())
@@ -357,99 +379,148 @@ mod tests {
         );
     }
 
-    fn nested_ifs_body() -> (wasabi_wasm::Module, Vec<wasabi_wasm::Instr>) {
+    fn nested_ifs_body() -> Module {
         const NESTED_PROGRAM: &str = r#"
         (module
           (func $main (param i32) (result i32)
-            (if (i32.eqz (local.get 0))
+            (if (result i32)
+              (i32.eqz (local.get 0))
               (then
-                (block
-                  (if (i32.eq (local.get 0) (i32.const 1))
-                    (then (block
-                      (if (i32.eq (local.get 0) (i32.const 2))
-                        (then (block
-                          (i32.const 42)))
-                        (else (i32.const 21)))))
-                    (else (i32.const 10)))))
+                (block (result i32)
+                  (if (result i32)
+                    (i32.eq (local.get 0) (i32.const 1))
+                    (then
+                      (block (result i32)
+                        (if (result i32)
+                          (i32.eq (local.get 0) (i32.const 2))
+                          (then
+                            (block (result i32)
+                              (i32.const 42)))
+                          (else
+                            (i32.const 21)))))
+                    (else
+                      (i32.const 10)))))
               (else
-                (i32.const 5))))
+                (i32.const 5)
+              )
+            )
+          )
           (export "nestedIfs" (func $main)))"#;
 
         let wasm_bytes = wat::parse_str(NESTED_PROGRAM).unwrap();
         let (wasm_module, _, _) = wasabi_wasm::Module::from_bytes(&wasm_bytes).unwrap();
+        wasm_module
+    }
 
-        let body = wasm_module
-            .function(0_usize.into())
-            .code()
-            .unwrap()
-            .body
-            .clone();
+    fn typ_void_to_i32() -> FunctionType {
+        FunctionType::new(&[], &[ValType::I32])
+    }
 
-        (wasm_module, body)
+    fn typ_i32_to_i32() -> FunctionType {
+        FunctionType::new(&[ValType::I32], &[ValType::I32])
+    }
+
+    fn typ_i32_i32_to_i32() -> FunctionType {
+        FunctionType::new(&[ValType::I32, ValType::I32], &[ValType::I32])
     }
 
     #[test]
     fn test_nested_ifs() {
-        let (mut _wasm_module, body) = nested_ifs_body();
-        assert_eq!(HighLevelBody::try_from(LowLevelBody(body)).unwrap(), {
-            let type_ = FunctionType::empty();
-            use super::Instr::*;
-            use wasabi_wasm::{BinaryOp::*, LocalOp::*, UnaryOp::*, Val::*};
-            HighLevelBody(vec![
-                (0, Local(Get, 0_usize.into())),
-                (1, Unary(I32Eqz)),
-                (
-                    2,
-                    If(
-                        type_,
-                        vec![(
-                            3,
-                            Block(
-                                type_,
-                                vec![
-                                    (4, Local(Get, 0_usize.into())),
-                                    (5, Const(I32(1))),
-                                    (6, Binary(I32Eq)),
-                                    (
-                                        7,
-                                        If(
-                                            type_,
-                                            vec![(
-                                                8,
-                                                Block(
-                                                    type_,
-                                                    vec![
-                                                        (9, Local(Get, 0_usize.into())),
-                                                        (10, Const(I32(2))),
-                                                        (11, Binary(I32Eq)),
-                                                        (
-                                                            12,
-                                                            If(
-                                                                type_,
-                                                                vec![(
-                                                                    13,
-                                                                    Block(
-                                                                        type_,
-                                                                        vec![(14, Const(I32(42)))],
-                                                                    ),
-                                                                )],
-                                                                Some(vec![(17, Const(I32(21)))]),
-                                                            ),
-                                                        ),
-                                                    ],
-                                                ),
-                                            )],
-                                            Some(vec![(21, Const(I32(10)))]),
+        let wasm_module = nested_ifs_body();
+
+        let function: &Function = wasm_module.function(0_usize.into());
+        let code = function.code().unwrap();
+
+        assert_eq!(
+            HighLevelBody::try_from((&wasm_module, function, code)).unwrap(),
+            {
+                use super::Instr::*;
+                use wasabi_wasm::{BinaryOp::*, LocalOp::*, UnaryOp::*, Val::*};
+
+                HighLevelBody(vec![
+                    TypedHighLevelInstr::new(0, typ_void_to_i32(), Local(Get, 0_usize.into())),
+                    TypedHighLevelInstr::new(1, typ_i32_to_i32(), Unary(I32Eqz)),
+                    TypedHighLevelInstr::new(
+                        2,
+                        typ_void_to_i32(),
+                        If(
+                            typ_void_to_i32(),
+                            vec![TypedHighLevelInstr::new(
+                                3,
+                                typ_void_to_i32(),
+                                Block(
+                                    typ_void_to_i32(),
+                                    vec![
+                                        TypedHighLevelInstr::new(
+                                            4,
+                                            typ_void_to_i32(),
+                                            Local(Get, 0_usize.into()),
                                         ),
-                                    ),
-                                ],
-                            ),
-                        )],
-                        Some(vec![(25, Const(I32(5)))]),
+                                        TypedHighLevelInstr::new(5, typ_void_to_i32(), Const(I32(1))),
+                                        TypedHighLevelInstr::new(6, typ_i32_i32_to_i32(), Binary(I32Eq)),
+                                        TypedHighLevelInstr::new(
+                                            7,
+                                            typ_void_to_i32(),
+                                            If(
+                                                typ_void_to_i32(),
+                                                vec![TypedHighLevelInstr::new(
+                                                    8,
+                                                    typ_void_to_i32(),
+                                                    Block(
+                                                        typ_void_to_i32(),
+                                                        vec![
+                                                            TypedHighLevelInstr::new(
+                                                                9,
+                                                                typ_void_to_i32(),
+                                                                Local(Get, 0_usize.into()),
+                                                            ),
+                                                            TypedHighLevelInstr::new(
+                                                                10,
+                                                                typ_void_to_i32(),
+                                                                Const(I32(2)),
+                                                            ),
+                                                            TypedHighLevelInstr::new(
+                                                                11,
+                                                                typ_i32_i32_to_i32(),
+                                                                Binary(I32Eq),
+                                                            ),
+                                                            TypedHighLevelInstr::new(
+                                                                12,
+                                                                typ_void_to_i32(),
+                                                                If(
+                                                                    typ_void_to_i32(),
+                                                                    vec![TypedHighLevelInstr::new(
+                                                                        13,
+                                                                        typ_void_to_i32(),
+                                                                        Block(
+                                                                            typ_void_to_i32(),
+                                                                            vec![TypedHighLevelInstr::new(
+                                                                                14, typ_void_to_i32(),
+                                                                                Const(I32(42)),
+                                                                            )],
+                                                                        ),
+                                                                    )],
+                                                                    Some(vec![TypedHighLevelInstr::new(
+                                                                        17,typ_void_to_i32(),
+                                                                        Const(I32(21)),
+                                                                    )]),
+                                                                ),
+                                                            ),
+                                                        ],
+                                                    ),
+                                                )],
+                                                Some(vec![TypedHighLevelInstr::new(21, typ_void_to_i32(), Const(I32(10)))]),
+                                            ),
+                                        ),
+                                    ],
+                                ),
+                            )],
+                            Some(vec![TypedHighLevelInstr::new(25, typ_void_to_i32(),Const(I32(5)))]),
+                        ),
                     ),
-                ),
-            ])
-        },)
+                ])
+            },
+        )
     }
 
     #[test]

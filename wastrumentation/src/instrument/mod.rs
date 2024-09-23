@@ -7,6 +7,7 @@ use wasabi_wasm::Module;
 use wasabi_wasm::ValType;
 
 use crate::compiler::{LibGeneratable, Library};
+use crate::parse_nesting::LowToHighError;
 use wasabi_wasm::Function;
 use wasabi_wasm::Idx;
 
@@ -205,8 +206,17 @@ trait Instrumentable {
         &mut self,
         target_functions: &HashSet<Idx<Function>>,
         instrumentation_strategy: &dyn TransformationStrategy,
-    ) -> Result<(), &'static str>;
+    ) -> Result<(), InstrumentationError>;
 }
+
+#[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
+pub enum InstrumentationError {
+    #[error("attempt to instrument an `import` function")]
+    AttemptInstrumentImport,
+    #[error("low to high failed {low_to_high_err}")]
+    LowToHighError { low_to_high_err: LowToHighError },
+}
+
 impl Instrumentable for Module {
     fn install(&mut self, export: &WasmExport) -> Idx<Function> {
         self.add_function_import(
@@ -220,21 +230,22 @@ impl Instrumentable for Module {
         &mut self,
         target_functions: &HashSet<Idx<Function>>,
         instrumentation_strategy: &dyn TransformationStrategy,
-    ) -> Result<(), &'static str> {
+    ) -> Result<(), InstrumentationError> {
         for target_function_idx in target_functions {
-            let target_function = self.function_mut(*target_function_idx);
-            let code = target_function.code_mut();
+            let target_function = self.function(*target_function_idx);
+            let code = target_function.code();
             match code {
-                None => return Err("Attempt to instrument an `import` function"),
+                None => return Err(InstrumentationError::AttemptInstrumentImport),
                 Some(code) => {
-                    let high_level_body: HighLevelBody =
-                        LowLevelBody(code.body.clone()).try_into()?;
-                    let high_level_body_transformed =
+                    let high_level_body: HighLevelBody = ((&*self), target_function, code)
+                        .try_into()
+                        .map_err(|e| InstrumentationError::LowToHighError { low_to_high_err: e })?;
+                    let high_level_body_transformed: HighLevelBody =
                         high_level_body.transform_for(instrumentation_strategy);
                     let LowLevelBody(transformed_low_level_body) =
                         high_level_body_transformed.into();
 
-                    target_function.code = ImportOrPresent::Present(Code {
+                    self.function_mut(*target_function_idx).code = ImportOrPresent::Present(Code {
                         body: transformed_low_level_body,
                         locals: code.locals.clone(),
                     });

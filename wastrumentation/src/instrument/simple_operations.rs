@@ -1,4 +1,6 @@
-use crate::parse_nesting::{Body, HighLevelBody, Instr};
+use crate::parse_nesting::{
+    BodyInner, HighLevelBody, HighLevelInstr as Instr, TypedHighLevelInstr,
+};
 use wasabi_wasm::{BinaryOp, Function, Idx, UnaryOp, Val};
 
 use super::TransformationStrategy;
@@ -204,7 +206,7 @@ impl WastrumentationSerializable for BinaryOp {
 
 macro_rules! transformation_strategy {
     (
-        $loop_target:ident, $loop_instr:ident, $total_result:ident,
+        $typed_instr: ident, $loop_target:ident, $loop_instr:ident, $total_result:ident,
         $( $target:ident for $instr:ident instr $enum:ident::{ $( $variant:ident ) | * } )*
     ) => {
         match ($loop_target, $loop_instr) {
@@ -213,9 +215,9 @@ macro_rules! transformation_strategy {
                 (Target::$target(trap_idx), Instr::$instr(op)) if matches!(op, $($enum::$variant) | *) => {
                     $total_result.extend_from_slice(&[
                         // Push serialized operator
-                        Instr::Const(Val::I32(op.serialize())),
+                        $typed_instr.instrument_with(Instr::Const(Val::I32(op.serialize()))),
                         // Call trap
-                        Instr::Call(trap_idx),
+                        $typed_instr.instrument_with(Instr::Call(trap_idx)),
                     ]);
                     continue;
                 }
@@ -225,14 +227,19 @@ macro_rules! transformation_strategy {
     };
 
     (
-        $loop_target:ident, $loop_instr:ident, $total_result:ident,
+        $typed_instr: ident, $loop_target:ident, $loop_instr:ident, $total_result:ident,
         $( $target:ident for $instr:pat_param )*
     ) => {
         match ($loop_target, $loop_instr) {
             // GENERATED TRAVERSAL
             $(
                 (Target::$target(trap_idx), $instr) => {
-                    $total_result.extend_from_slice(&[Instr::Call(trap_idx), $loop_instr.clone()]);
+                    $total_result.extend_from_slice(&[
+                        // Inject original instruction to push constant
+                        $typed_instr.place_original($loop_instr.clone()),
+                        // Inject call to handle constant how trap wishes
+                        $typed_instr.instrument_with(Instr::Call(trap_idx)),
+                    ]);
                     continue;
                 }
             )*,
@@ -241,13 +248,22 @@ macro_rules! transformation_strategy {
     };
 }
 
-fn transform(body: &Body, target: Target) -> Body {
+fn transform(body: &BodyInner, target: Target) -> BodyInner {
     let mut result = Vec::new();
 
-    for (_, instr) in body {
+    for typed_instr @ TypedHighLevelInstr { instr, .. } in body {
+        if let (Target::Return(trap_idx), Instr::Return) = (target, instr) {
+            result.extend_from_slice(&[
+                // Inject call before
+                typed_instr.instrument_with(Instr::Call(trap_idx)),
+                // Inject original instruction after
+                typed_instr.place_original(instr.clone()),
+            ]);
+            continue;
+        }
+
         transformation_strategy!(
-            target, instr, result,
-            Return for Instr::Return
+            typed_instr, target, instr, result,
             ConstI32 for Instr::Const(Val::I32(_))
             ConstF32 for Instr::Const(Val::F32(_))
             ConstI64 for Instr::Const(Val::I64(_))
@@ -255,7 +271,7 @@ fn transform(body: &Body, target: Target) -> Body {
         );
 
         transformation_strategy! {
-            target, instr, result,
+            typed_instr, target, instr, result,
             // Unary
             UnaryI32ToI32 for Unary instr UnaryOp::{I32Eqz}
             UnaryI64ToI32 for Unary instr UnaryOp::{I64Eqz}
@@ -299,22 +315,32 @@ fn transform(body: &Body, target: Target) -> Body {
 
         match (target, instr) {
             // DEFAULT TRAVERSAL
+            (target, Instr::If(type_, then, None)) => {
+                result.push(typed_instr.place_untouched(Instr::If(
+                    *type_,
+                    transform(then, target),
+                    None,
+                )));
+            }
+            (target, Instr::If(type_, then, Some(else_))) => {
+                result.push(typed_instr.place_untouched(Instr::If(
+                    *type_,
+                    transform(then, target),
+                    Some(transform(else_, target)),
+                )))
+            }
             (target, Instr::Loop(type_, body)) => {
-                result.push(Instr::Loop(*type_, transform(body, target)))
+                result.push(
+                    typed_instr.place_untouched(Instr::Loop(*type_, transform(body, target))),
+                );
             }
             (target, Instr::Block(type_, body)) => {
-                result.push(Instr::Block(*type_, transform(body, target)))
+                result.push(
+                    typed_instr.place_untouched(Instr::Block(*type_, transform(body, target))),
+                );
             }
-            (target, Instr::If(type_, then, None)) => {
-                result.push(Instr::If(*type_, transform(then, target), None))
-            }
-            (target, Instr::If(type_, then, Some(else_))) => result.push(Instr::If(
-                *type_,
-                transform(then, target),
-                Some(transform(else_, target)),
-            )),
-            _ => result.push(instr.clone()),
+            (_, instr) => result.push(typed_instr.place_untouched(instr.clone())),
         }
     }
-    result.into_iter().map(|i| (0, i)).collect()
+    result
 }

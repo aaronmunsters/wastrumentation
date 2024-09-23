@@ -10,7 +10,7 @@ pub struct TypedIndexedInstr {
 }
 
 /// Type checks all instructions in a `function`.
-pub fn type_inference_function(
+pub fn type_inference_index_function(
     function: &Function,
     code: &Code,
     module: &Module,
