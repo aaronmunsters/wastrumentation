@@ -10,6 +10,7 @@ wasabi_wasm = { git = "https://github.com/aaronmunsters/wasabi.git", branch = "c
 wasm-merge = { workspace = true }
 anyhow = { workspace = true }
 indoc = { workspace = true }
+thiserror = { workspace = true }
 
 [dev-dependencies]
 wasmtime = { workspace = true }

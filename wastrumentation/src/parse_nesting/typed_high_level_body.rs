@@ -147,8 +147,8 @@ impl TryFrom<(&Module, &Function, &Code)> for Body {
 
     fn try_from(module_function_code: (&Module, &Function, &Code)) -> Result<Self, Self::Error> {
         let (module, function, code) = module_function_code;
-        let indexed_typed_body =
-            type_inference_function(function, code, module).map_err(TypeInference)?;
+        let indexed_typed_body = type_inference_function(function, code, module)
+            .map_err(|e| TypeInference { type_error: e })?;
 
         enum Entered {
             Block {
