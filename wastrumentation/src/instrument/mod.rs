@@ -20,6 +20,7 @@ use self::branch_if::Target::{BrIf, BrTable, IfThen, IfThenElse};
 use self::function_application::INSTRUMENTATION_ANALYSIS_MODULE;
 use self::function_call::TargetCall;
 use self::function_call_indirect::Target::{CallIndirectPost, CallIndirectPre};
+use self::memory::Target::*;
 use self::simple_operations::Target::*;
 
 pub mod block_loop;
@@ -27,6 +28,7 @@ pub mod branch_if;
 pub mod function_application;
 pub mod function_call;
 pub mod function_call_indirect;
+pub mod memory;
 pub mod simple_operations;
 
 pub struct InstrumentationResult<InstrumentationLanguage: LibGeneratable> {
@@ -83,6 +85,36 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
         binary_i64_i64_to_i64,
         binary_f32_f32_to_f32,
         binary_f64_f64_to_f64,
+        memory_size,
+        memory_grow,
+        local_get_i32,
+        local_set_i32,
+        local_tee_i32,
+        global_get_i32,
+        global_set_i32,
+        local_get_f32,
+        local_set_f32,
+        local_tee_f32,
+        global_get_f32,
+        global_set_f32,
+        local_get_i64,
+        local_set_i64,
+        local_tee_i64,
+        global_get_i64,
+        global_set_i64,
+        local_get_f64,
+        local_set_f64,
+        local_tee_f64,
+        global_get_f64,
+        global_set_f64,
+        f32_store,
+        f64_store,
+        i32_store,
+        i64_store,
+        f32_load,
+        f64_load,
+        i32_load,
+        i64_load,
     } = analysis_interface;
 
     let (mut module, _offsets, _issue) = Module::from_bytes(module).unwrap();
@@ -156,7 +188,37 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
         (binary_i64_i64_to_i64, (|i| Box::new(BinaryI64I64toI64(i)))),
         (binary_f32_f32_to_f32, (|i| Box::new(BinaryF32F32toF32(i)))),
         (binary_f64_f64_to_f64, (|i| Box::new(BinaryF64F64toF64(i)))),
-    ] as [(&Option<WasmExport>, TFn); 40]
+        (memory_size, (|i| Box::new(MemorySize(i)))),
+        (memory_grow, (|i| Box::new(MemoryGrow(i)))),
+        (local_get_i32, (|i| Box::new(LocalGetI32(i)))),
+        (local_set_i32, (|i| Box::new(LocalSetI32(i)))),
+        (local_tee_i32, (|i| Box::new(LocalTeeI32(i)))),
+        (global_get_i32, (|i| Box::new(GlobalGetI32(i)))),
+        (global_set_i32, (|i| Box::new(GlobalSetI32(i)))),
+        (local_get_f32, (|i| Box::new(LocalGetF32(i)))),
+        (local_set_f32, (|i| Box::new(LocalSetF32(i)))),
+        (local_tee_f32, (|i| Box::new(LocalTeeF32(i)))),
+        (global_get_f32, (|i| Box::new(GlobalGetF32(i)))),
+        (global_set_f32, (|i| Box::new(GlobalSetF32(i)))),
+        (local_get_i64, (|i| Box::new(LocalGetI64(i)))),
+        (local_set_i64, (|i| Box::new(LocalSetI64(i)))),
+        (local_tee_i64, (|i| Box::new(LocalTeeI64(i)))),
+        (global_get_i64, (|i| Box::new(GlobalGetI64(i)))),
+        (global_set_i64, (|i| Box::new(GlobalSetI64(i)))),
+        (local_get_f64, (|i| Box::new(LocalGetF64(i)))),
+        (local_set_f64, (|i| Box::new(LocalSetF64(i)))),
+        (local_tee_f64, (|i| Box::new(LocalTeeF64(i)))),
+        (global_get_f64, (|i| Box::new(GlobalGetF64(i)))),
+        (global_set_f64, (|i| Box::new(GlobalSetF64(i)))),
+        (f32_store, (|i| Box::new(F32Store(i)))),
+        (f64_store, (|i| Box::new(F64Store(i)))),
+        (i32_store, (|i| Box::new(I32Store(i)))),
+        (i64_store, (|i| Box::new(I64Store(i)))),
+        (f32_load, (|i| Box::new(F32Load(i)))),
+        (f64_load, (|i| Box::new(F64Load(i)))),
+        (i32_load, (|i| Box::new(I32Load(i)))),
+        (i64_load, (|i| Box::new(I64Load(i)))),
+    ] as [(&Option<WasmExport>, TFn); 70]
     {
         export
             .as_ref()
