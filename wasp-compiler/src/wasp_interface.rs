@@ -1,22 +1,5 @@
 use crate::ast::wasp::WasmType;
 
-pub const FUNCTION_NAME_BLOCK_PRE: &str = "block_pre";
-pub const FUNCTION_NAME_BLOCK_POST: &str = "block_post";
-pub const FUNCTION_NAME_CALL_BASE: &str = "call_base";
-pub const FUNCTION_NAME_GENERIC_APPLY: &str = "generic_apply";
-pub const FUNCTION_NAME_LOOP_PRE: &str = "loop_pre";
-pub const FUNCTION_NAME_LOOP_POST: &str = "loop_post";
-pub const FUNCTION_NAME_SELECT: &str = "specialized_select";
-pub const FUNCTION_NAME_SPECIALIZED_BR_IF: &str = "specialized_br_if";
-pub const FUNCTION_NAME_SPECIALIZED_BR_TABLE: &str = "specialized_br_table";
-pub const FUNCTION_NAME_SPECIALIZED_CALL_POST: &str = "specialized_call_post";
-pub const FUNCTION_NAME_SPECIALIZED_CALL_PRE: &str = "specialized_call_pre";
-pub const FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_POST: &str = "specialized_call_indirect_post";
-pub const FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_PRE: &str = "specialized_call_indirect_pre";
-pub const FUNCTION_NAME_SPECIALIZED_IF_THEN: &str = "specialized_if_then_k";
-pub const FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE: &str = "specialized_if_then_else_k";
-pub const NAMESPACE_TRANSFORMED_INPUT: &str = "transformed_input";
-
 // TODO: are `inputs` and `outputs` used?
 #[derive(Debug, PartialEq, Eq, Default)]
 pub struct WaspInterface {
