@@ -34,6 +34,11 @@ pub struct MergeOptions {
     pub no_validate: bool,
     pub rename_export_conflicts: bool,
     pub enable_multi_memory: bool,
+    /// Optionally a primary module is declared.
+    /// The primary module receives index 0, which
+    /// may be important e.g. for the WASI interface
+    /// that reads IO buffers from memory 0.
+    pub primary: Option<InputModule>,
     pub input_modules: Vec<InputModule>,
 }
 
@@ -49,9 +54,16 @@ pub struct InputModule {
 /// # Panics
 /// When accessing resources are failing to be acquired.
 pub fn merge(merge_options: &MergeOptions) -> MergeResult {
-    let merges: Vec<(&InputModule, String, NamedTempFile)> = merge_options
-        .input_modules
+    let MergeOptions {
+        primary,
+        input_modules,
+        ..
+    } = merge_options;
+    let merges: Vec<(&InputModule, String, NamedTempFile)> = primary
+        .as_ref()
+        .map_or(vec![], |p| vec![p])
         .iter()
+        .chain(input_modules.iter().collect::<Vec<&InputModule>>().iter())
         .map(|im @ InputModule { module, .. }| {
             let mut input_module = NamedTempFile::new()
                 .map_err(|e| MergeError(format!("Could not create temp output file: {e}")))?;
@@ -59,7 +71,7 @@ pub fn merge(merge_options: &MergeOptions) -> MergeResult {
                 .write_all(module)
                 .map_err(|e| MergeError(format!("Could not write module to temp file: {e}")))?;
             let input_module_path = input_module.path().to_string_lossy().to_string();
-            Ok((im, input_module_path, input_module))
+            Ok((*im, input_module_path, input_module))
         })
         .collect::<Result<Vec<(&InputModule, String, NamedTempFile)>, MergeError>>()?;
 
@@ -179,6 +191,7 @@ mod tests {
             enable_multi_memory: false,
             no_validate: true,
             rename_export_conflicts: true,
+            primary: None,
             input_modules: vec![
                 InputModule {
                     module: wat2wasm(WAT_EVEN).unwrap(),
@@ -220,6 +233,7 @@ mod tests {
             enable_multi_memory: true,
             no_validate: false,
             rename_export_conflicts: false,
+            primary: None,
             input_modules: vec![
                 InputModule {
                     module: vec![99, 88, 77, 66],
@@ -243,6 +257,7 @@ mod tests {
             no_validate: false,
             rename_export_conflicts: false,
             enable_multi_memory: false,
+            primary: None,
             input_modules: vec![],
         };
         let input_module = InputModule {
@@ -259,6 +274,7 @@ mod tests {
                 /**/ "no_validate: false, ",
                 /**/ "rename_export_conflicts: false, ",
                 /**/ "enable_multi_memory: false, ",
+                /**/ "primary: None, ",
                 /**/ "input_modules: [] ",
                 "}"
             )

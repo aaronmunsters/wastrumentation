@@ -155,6 +155,7 @@ where
             no_validate: true,
             rename_export_conflicts: true,
             enable_multi_memory: true,
+            primary: None,
             input_modules,
         };
         wasm_merge::merge(&merge_options)
