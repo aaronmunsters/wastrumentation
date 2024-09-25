@@ -24,13 +24,13 @@ type_identifier = @{ ASCII_ALPHA_UPPER ~ ASCII_ALPHANUMERIC+ }
 trap_signature = {
     trap_apply
   | trap_call
-  | trap_block_before
-  | trap_block_after
-  | trap_loop_before
-  | trap_loop_after
+  | trap_block_pre
+  | trap_block_post
+  | trap_loop_pre
+  | trap_loop_post
   | trap_select
-  | trap_call_indirect_before
-  | trap_call_indirect_after
+  | trap_call_indirect_pre
+  | trap_call_indirect_post
   | trap_if_then
   | trap_if_then_else
   | trap_br_if
@@ -56,29 +56,29 @@ typed_argument        = { "(" ~ identifier ~ type_identifier ~ ")" }
 branch_formal_condition = { "(" ~ identifier ~ "Condition" ~ ")" }
 branch_formal_label     = { "(" ~ identifier ~ "Label" ~ ")" }
 
-call_qualifier = { "before" | "after" }
+call_qualifier = { "pre" | "post" }
 
 // TRAP CALL
 trap_call     = { "call" ~ call_qualifier ~ formal_target ~ GUEST_BLOCK }
 formal_target = { "(" ~ identifier ~ "FunctionIndex" ~ ")" }
 
 // TRAP BLOCK
-trap_block_before = { "block" ~ "before" ~ GUEST_BLOCK }
-trap_block_after  = { "block" ~ "after" ~ GUEST_BLOCK }
+trap_block_pre  = { "block" ~ "pre" ~ GUEST_BLOCK }
+trap_block_post = { "block" ~ "post" ~ GUEST_BLOCK }
 
 // TRAP LOOP
-trap_loop_before = { "loop" ~ "before" ~ GUEST_BLOCK }
-trap_loop_after  = { "loop" ~ "after" ~ GUEST_BLOCK }
+trap_loop_pre  = { "loop" ~ "pre" ~ GUEST_BLOCK }
+trap_loop_post = { "loop" ~ "post" ~ GUEST_BLOCK }
 
 // TRAP SELECT
 trap_select             = { "select" ~ select_formal_condition ~ GUEST_BLOCK }
 select_formal_condition = { "(" ~ identifier ~ "Condition" ~ ")" }
 
 // TRAP CALL_INDIRECT
-trap_call_indirect_before = { "call_indirect" ~ "before" ~ formal_table ~ formal_index ~ GUEST_BLOCK }
-trap_call_indirect_after  = { "call_indirect" ~ "after" ~ formal_table ~ GUEST_BLOCK }
-formal_table              = { "(" ~ identifier ~ "FunctionTable" ~ ")" }
-formal_index              = { "(" ~ identifier ~ "FunctionTableIndex" ~ ")" }
+trap_call_indirect_pre  = { "call_indirect" ~ "pre" ~ formal_table ~ formal_index ~ GUEST_BLOCK }
+trap_call_indirect_post = { "call_indirect" ~ "post" ~ formal_table ~ GUEST_BLOCK }
+formal_table            = { "(" ~ identifier ~ "FunctionTable" ~ ")" }
+formal_index            = { "(" ~ identifier ~ "FunctionTableIndex" ~ ")" }
 
 // TRAP IF - [ 🐇 ], [ 📝 ], [ 🪖 ]
 trap_if_then      = { "if_then" ~ branch_formal_condition ~ GUEST_BLOCK }

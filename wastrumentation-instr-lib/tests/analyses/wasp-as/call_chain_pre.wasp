@@ -1,0 +1,12 @@
+(aspect
+    (global >>>GUEST>>> export let number_of_calls_pre: i32 = 0;
+                        export let number_of_calls_post: i32 = 0;
+                        export let number_of_apply_pre: i32 = 0;
+                        export let number_of_apply_post: i32 = 0; <<<GUEST<<<)
+
+    (advice call pre (f FunctionIndex) >>>GUEST>>>number_of_calls_pre++;<<<GUEST<<<)
+
+    (advice apply (func    WasmFunction) (args    MutDynArgs) (results MutDynResults)
+        >>>GUEST>>> number_of_apply_pre++;
+                    func.apply();
+                    number_of_apply_post++; <<<GUEST<<<))

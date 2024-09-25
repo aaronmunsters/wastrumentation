@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::ast::{
-    pest::CallQualifier::{After, Before},
+    pest::CallQualifier::{Post, Pre},
     wasp::{ApplyHookSignature, ApplySpe, Root, TrapCall, TrapSignature, WasmParameter, WasmType},
 };
 
@@ -46,10 +46,10 @@ impl JoinPoints {
             JoinPoint::CallIndirectPre => self.call_indirect_pre = true,
             JoinPoint::CallIndirectPost => self.call_indirect_post = true,
             JoinPoint::TrapBrTable => self.br_table = true,
-            JoinPoint::BlockBefore => self.block_pre = true,
-            JoinPoint::BlockAfter => self.block_post = true,
-            JoinPoint::LoopBefore => self.loop_pre = true,
-            JoinPoint::LoopAfter => self.loop_post = true,
+            JoinPoint::BlockPre => self.block_pre = true,
+            JoinPoint::BlockPost => self.block_post = true,
+            JoinPoint::LoopPre => self.loop_pre = true,
+            JoinPoint::LoopPost => self.loop_post = true,
             JoinPoint::Select => self.select = true,
         };
     }
@@ -58,10 +58,10 @@ impl JoinPoints {
 enum JoinPoint {
     Generic,
     Specialised(SpecialisedJoinPoint),
-    BlockBefore,
-    BlockAfter,
-    LoopBefore,
-    LoopAfter,
+    BlockPre,
+    BlockPost,
+    LoopPre,
+    LoopPost,
     Select,
     CallPre,
     CallPost,
@@ -98,20 +98,20 @@ impl TrapSignature {
             TrapSignature::TrapIfThenElse(_) => JoinPoint::IfThenElse,
             TrapSignature::TrapBrIf(_) => JoinPoint::BrIf,
             TrapSignature::TrapCall(TrapCall {
-                call_qualifier: Before,
+                call_qualifier: Pre,
                 ..
             }) => JoinPoint::CallPre,
             TrapSignature::TrapCall(TrapCall {
-                call_qualifier: After,
+                call_qualifier: Post,
                 ..
             }) => JoinPoint::CallPost,
-            TrapSignature::TrapCallIndirectBefore(_) => JoinPoint::CallIndirectPre,
-            TrapSignature::TrapCallIndirectAfter(_) => JoinPoint::CallIndirectPost,
+            TrapSignature::TrapCallIndirectPre(_) => JoinPoint::CallIndirectPre,
+            TrapSignature::TrapCallIndirectPost(_) => JoinPoint::CallIndirectPost,
             TrapSignature::TrapBrTable(_) => JoinPoint::TrapBrTable,
-            TrapSignature::TrapBlockBefore(_) => JoinPoint::BlockBefore,
-            TrapSignature::TrapBlockAfter(_) => JoinPoint::BlockAfter,
-            TrapSignature::TrapLoopBefore(_) => JoinPoint::LoopBefore,
-            TrapSignature::TrapLoopAfter(_) => JoinPoint::LoopAfter,
+            TrapSignature::TrapBlockPre(_) => JoinPoint::BlockPre,
+            TrapSignature::TrapBlockPost(_) => JoinPoint::BlockPost,
+            TrapSignature::TrapLoopPre(_) => JoinPoint::LoopPre,
+            TrapSignature::TrapLoopPost(_) => JoinPoint::LoopPost,
             TrapSignature::TrapSelect(_) => JoinPoint::Select,
         }
     }
@@ -314,7 +314,7 @@ mod tests {
             get_joinpoints(
                 r#"
                 (aspect
-                    (advice call before (f FunctionIndex)
+                    (advice call pre (f FunctionIndex)
                         >>>GUEST>>>🧐🏃<<<GUEST<<<))
                 "#,
             ),
@@ -331,7 +331,7 @@ mod tests {
             get_joinpoints(
                 r#"
                 (aspect
-                    (advice call after (f FunctionIndex)
+                    (advice call post (f FunctionIndex)
                         >>>GUEST>>>🧐🏃<<<GUEST<<<))
                 "#,
             ),
@@ -348,7 +348,7 @@ mod tests {
             get_joinpoints(
                 r#"
                 (aspect
-                    (advice call_indirect before (table FunctionTable)
+                    (advice call_indirect pre (table FunctionTable)
                                                  (index FunctionTableIndex)
                         >>>GUEST>>>🧐🏄<<<GUEST<<<))
                 "#,
@@ -366,7 +366,7 @@ mod tests {
             get_joinpoints(
                 r#"
                 (aspect
-                    (advice call_indirect after (table FunctionTable)
+                    (advice call_indirect post (table FunctionTable)
                         >>>GUEST>>>👀🏄<<<GUEST<<<))
                 "#,
             ),
@@ -405,24 +405,24 @@ mod tests {
                     (advice br_table (target  Target)
                                      (default Default)
                         >>>GUEST>>>🏓<<<GUEST<<<)
-                        (advice block before
+                        (advice block pre
                             >>>GUEST>>>🧐🧱<<<GUEST<<<)
-                        (advice block after
+                        (advice block post
                             >>>GUEST>>>👀🧱<<<GUEST<<<)
-                        (advice loop before
+                        (advice loop pre
                             >>>GUEST>>>🧐➰<<<GUEST<<<)
-                        (advice loop after
+                        (advice loop post
                             >>>GUEST>>>👀➰<<<GUEST<<<)
                         (advice select (cond Condition)
                             >>>GUEST>>>🦂<<<GUEST<<<)
-                    (advice call before (f FunctionIndex)
+                    (advice call pre (f FunctionIndex)
                         >>>GUEST>>>🧐🏃<<<GUEST<<<)
-                    (advice call after (f FunctionIndex)
+                    (advice call post (f FunctionIndex)
                         >>>GUEST>>>👀🏃<<<GUEST<<<)
-                    (advice call_indirect before (table FunctionTable)
-                                                 (index FunctionTableIndex)
+                    (advice call_indirect pre (table FunctionTable)
+                                              (index FunctionTableIndex)
                         >>>GUEST>>>🧐🏄<<<GUEST<<<)
-                    (advice call_indirect after (table FunctionTable)
+                    (advice call_indirect post (table FunctionTable)
                         >>>GUEST>>>👀🏄<<<GUEST<<<)
                 )
                 "#,

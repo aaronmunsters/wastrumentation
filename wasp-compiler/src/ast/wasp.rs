@@ -32,13 +32,13 @@ pub enum AdviceDefinition {
 pub enum TrapSignature {
     TrapApply(TrapApply),
     TrapCall(TrapCall),
-    TrapBlockBefore(TrapBlockBefore),
-    TrapBlockAfter(TrapBlockAfter),
-    TrapLoopBefore(TrapLoopBefore),
-    TrapLoopAfter(TrapLoopAfter),
+    TrapBlockPre(TrapBlockPre),
+    TrapBlockPost(TrapBlockPost),
+    TrapLoopPre(TrapLoopPre),
+    TrapLoopPost(TrapLoopPost),
     TrapSelect(TrapSelect),
-    TrapCallIndirectBefore(TrapCallIndirectBefore),
-    TrapCallIndirectAfter(TrapCallIndirectAfter),
+    TrapCallIndirectPre(TrapCallIndirectPre),
+    TrapCallIndirectPost(TrapCallIndirectPost),
     TrapIfThen(TrapIfThen),
     TrapIfThenElse(TrapIfThenElse),
     TrapBrIf(TrapBrIf),
@@ -91,22 +91,22 @@ pub struct TrapCall {
 pub struct FormalTarget(pub String);
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct TrapBlockBefore {
+pub struct TrapBlockPre {
     pub body: String,
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct TrapBlockAfter {
+pub struct TrapBlockPost {
     pub body: String,
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct TrapLoopBefore {
+pub struct TrapLoopPre {
     pub body: String,
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct TrapLoopAfter {
+pub struct TrapLoopPost {
     pub body: String,
 }
 
@@ -120,14 +120,14 @@ pub struct TrapSelect {
 pub struct SelectFormalCondition(pub String);
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct TrapCallIndirectBefore {
+pub struct TrapCallIndirectPre {
     pub formal_table: FormalTable,
     pub formal_index: FormalIndex,
     pub body: String,
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct TrapCallIndirectAfter {
+pub struct TrapCallIndirectPost {
     pub formal_table: FormalTable,
     pub body: String,
 }
@@ -261,10 +261,10 @@ impl Root {
                     AdviceDefinition::AdviceTrap(TrapSignature::TrapCall { .. })
                 ) || matches!(
                     advice_definition,
-                    AdviceDefinition::AdviceTrap(TrapSignature::TrapCallIndirectBefore { .. })
+                    AdviceDefinition::AdviceTrap(TrapSignature::TrapCallIndirectPre { .. })
                 ) || matches!(
                     advice_definition,
-                    AdviceDefinition::AdviceTrap(TrapSignature::TrapCallIndirectAfter { .. })
+                    AdviceDefinition::AdviceTrap(TrapSignature::TrapCallIndirectPost { .. })
                 )
             })
     }
@@ -324,26 +324,22 @@ impl TryFrom<pest_ast::TrapSignature> for TrapSignature {
                 formal_target: formal_target.into(),
                 body,
             })),
-            pest_ast::TrapSignature::TrapCallIndirectBefore(pest_ast::TrapCallIndirectBefore {
+            pest_ast::TrapSignature::TrapCallIndirectPre(pest_ast::TrapCallIndirectPre {
                 formal_table,
                 formal_index,
                 body,
-            }) => Ok(TrapSignature::TrapCallIndirectBefore(
-                TrapCallIndirectBefore {
-                    formal_table: formal_table.into(),
-                    formal_index: formal_index.into(),
-                    body,
-                },
-            )),
-            pest_ast::TrapSignature::TrapCallIndirectAfter(pest_ast::TrapCallIndirectAfter {
+            }) => Ok(TrapSignature::TrapCallIndirectPre(TrapCallIndirectPre {
+                formal_table: formal_table.into(),
+                formal_index: formal_index.into(),
+                body,
+            })),
+            pest_ast::TrapSignature::TrapCallIndirectPost(pest_ast::TrapCallIndirectPost {
                 formal_table,
                 body,
-            }) => Ok(TrapSignature::TrapCallIndirectAfter(
-                TrapCallIndirectAfter {
-                    formal_table: formal_table.into(),
-                    body,
-                },
-            )),
+            }) => Ok(TrapSignature::TrapCallIndirectPost(TrapCallIndirectPost {
+                formal_table: formal_table.into(),
+                body,
+            })),
             pest_ast::TrapSignature::TrapIfThen(pest_ast::TrapIfThen {
                 branch_formal_condition,
                 body,
@@ -376,17 +372,17 @@ impl TryFrom<pest_ast::TrapSignature> for TrapSignature {
                 branch_formal_default: branch_formal_default.into(),
                 body,
             })),
-            pest_ast::TrapSignature::TrapBlockBefore(pest_ast::TrapBlockBefore { body }) => {
-                Ok(TrapSignature::TrapBlockBefore(TrapBlockBefore { body }))
+            pest_ast::TrapSignature::TrapBlockPre(pest_ast::TrapBlockPre { body }) => {
+                Ok(TrapSignature::TrapBlockPre(TrapBlockPre { body }))
             }
-            pest_ast::TrapSignature::TrapBlockAfter(pest_ast::TrapBlockAfter { body }) => {
-                Ok(TrapSignature::TrapBlockAfter(TrapBlockAfter { body }))
+            pest_ast::TrapSignature::TrapBlockPost(pest_ast::TrapBlockPost { body }) => {
+                Ok(TrapSignature::TrapBlockPost(TrapBlockPost { body }))
             }
-            pest_ast::TrapSignature::TrapLoopBefore(pest_ast::TrapLoopBefore { body }) => {
-                Ok(TrapSignature::TrapLoopBefore(TrapLoopBefore { body }))
+            pest_ast::TrapSignature::TrapLoopPre(pest_ast::TrapLoopPre { body }) => {
+                Ok(TrapSignature::TrapLoopPre(TrapLoopPre { body }))
             }
-            pest_ast::TrapSignature::TrapLoopAfter(pest_ast::TrapLoopAfter { body }) => {
-                Ok(TrapSignature::TrapLoopAfter(TrapLoopAfter { body }))
+            pest_ast::TrapSignature::TrapLoopPost(pest_ast::TrapLoopPost { body }) => {
+                Ok(TrapSignature::TrapLoopPost(TrapLoopPost { body }))
             }
             pest_ast::TrapSignature::TrapSelect(pest_ast::TrapSelect {
                 body,
@@ -699,17 +695,17 @@ mod tests {
                 >>>GUEST>>>🏓<<<GUEST<<<)
             (advice select (cond Condition)
                 >>>GUEST>>>🦂<<<GUEST<<<)
-            (advice call before
+            (advice call pre
                     (f FunctionIndex)
                 >>>GUEST>>>🧐🏃<<<GUEST<<<)
-            (advice call after
+            (advice call post
                     (f FunctionIndex)
                 >>>GUEST>>>👀🏃<<<GUEST<<<)
-            (advice call_indirect before
+            (advice call_indirect pre
                     (table FunctionTable)
                     (index FunctionTableIndex)
                 >>>GUEST>>>🧐🏄<<<GUEST<<<)
-            (advice call_indirect after
+            (advice call_indirect post
                     (table FunctionTable)
                 >>>GUEST>>>👀🏄<<<GUEST<<<))"#;
 
@@ -830,24 +826,24 @@ mod tests {
                     body: "🦂".into(),
                 })),
                 AdviceDefinition::AdviceTrap(TrapSignature::TrapCall(TrapCall {
-                    call_qualifier: CallQualifier::Before,
+                    call_qualifier: CallQualifier::Pre,
                     formal_target: FormalTarget("f".into()),
                     body: "🧐🏃".into(),
                 })),
                 AdviceDefinition::AdviceTrap(TrapSignature::TrapCall(TrapCall {
-                    call_qualifier: CallQualifier::After,
+                    call_qualifier: CallQualifier::Post,
                     formal_target: FormalTarget("f".into()),
                     body: "👀🏃".into(),
                 })),
-                AdviceDefinition::AdviceTrap(TrapSignature::TrapCallIndirectBefore(
-                    TrapCallIndirectBefore {
+                AdviceDefinition::AdviceTrap(TrapSignature::TrapCallIndirectPre(
+                    TrapCallIndirectPre {
                         formal_table: FormalTable("table".into()),
                         formal_index: FormalIndex("index".into()),
                         body: "🧐🏄".into(),
                     }
                 )),
-                AdviceDefinition::AdviceTrap(TrapSignature::TrapCallIndirectAfter(
-                    TrapCallIndirectAfter {
+                AdviceDefinition::AdviceTrap(TrapSignature::TrapCallIndirectPost(
+                    TrapCallIndirectPost {
                         formal_table: FormalTable("table".into()),
                         body: "👀🏄".into(),
                     }

@@ -43,7 +43,7 @@ static mut APPLY_STACK: i32 = 0;
 static mut CALL_STACK: i32 = 0;
 
 advice! {
-    advice call before
+    call pre
     (f: FunctionIndex) {
         let _ = f;
         unsafe {
@@ -62,7 +62,7 @@ advice! {
 }
 
 advice! {
-    advice call after
+    call post
     (f: FunctionIndex) {
         let _ = f;
         unsafe {
@@ -72,7 +72,7 @@ advice! {
 }
 
 advice! {
-    advice call-indirect before
+    call_indirect pre
     (table_f_idx: FunctionTableIndex, table: FunctionTable) {
         let _ = table;
         unsafe {
@@ -92,7 +92,7 @@ advice! {
 }
 
 advice! {
-    advice call-indirect after
+    call_indirect post
     (table: FunctionTable) {
         let _ = table;
         unsafe {
@@ -102,7 +102,7 @@ advice! {
 }
 
 advice! {
-    advice apply
+    apply
     (func: WasmFunction, args: MutDynArgs, results: MutDynResults) {
         let _ = args;
         let _ = results;

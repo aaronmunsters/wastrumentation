@@ -1,9 +1,9 @@
 use wasp_compiler::ast::{
     pest::CallQualifier,
     wasp::{
-        AdviceDefinition, ApplyHookSignature, ApplySpe, Root, TrapApply, TrapBlockAfter,
-        TrapBlockBefore, TrapCall, TrapCallIndirectAfter, TrapCallIndirectBefore, TrapLoopAfter,
-        TrapLoopBefore, TrapSelect, TrapSignature,
+        AdviceDefinition, ApplyHookSignature, ApplySpe, Root, TrapApply, TrapBlockPost,
+        TrapBlockPre, TrapCall, TrapCallIndirectPost, TrapCallIndirectPre, TrapLoopPost,
+        TrapLoopPre, TrapSelect, TrapSignature,
     },
 };
 use wastrumentation::analysis::AnalysisInterface;
@@ -49,36 +49,36 @@ impl From<&WaspRoot> for AnalysisInterface {
                             Some(AnalysisInterface::interface_br_table());
                     }
                     TrapSignature::TrapCall(TrapCall {
-                        call_qualifier: CallQualifier::Before,
+                        call_qualifier: CallQualifier::Pre,
                         ..
                     }) => {
                         wasp_interface.pre_trap_call = Some(AnalysisInterface::interface_call_pre())
                     }
                     TrapSignature::TrapCall(TrapCall {
-                        call_qualifier: CallQualifier::After,
+                        call_qualifier: CallQualifier::Post,
                         ..
                     }) => {
                         wasp_interface.post_trap_call =
                             Some(AnalysisInterface::interface_call_post());
                     }
-                    TrapSignature::TrapCallIndirectBefore(TrapCallIndirectBefore { .. }) => {
+                    TrapSignature::TrapCallIndirectPre(TrapCallIndirectPre { .. }) => {
                         wasp_interface.pre_trap_call_indirect =
                             Some(AnalysisInterface::interface_call_indirect_pre());
                     }
-                    TrapSignature::TrapCallIndirectAfter(TrapCallIndirectAfter { .. }) => {
+                    TrapSignature::TrapCallIndirectPost(TrapCallIndirectPost { .. }) => {
                         wasp_interface.post_trap_call_indirect =
                             Some(AnalysisInterface::interface_call_indirect_post());
                     }
-                    TrapSignature::TrapBlockBefore(TrapBlockBefore { .. }) => {
+                    TrapSignature::TrapBlockPre(TrapBlockPre { .. }) => {
                         wasp_interface.pre_block = Some(AnalysisInterface::interface_block_pre());
                     }
-                    TrapSignature::TrapBlockAfter(TrapBlockAfter { .. }) => {
+                    TrapSignature::TrapBlockPost(TrapBlockPost { .. }) => {
                         wasp_interface.post_block = Some(AnalysisInterface::interface_block_post());
                     }
-                    TrapSignature::TrapLoopBefore(TrapLoopBefore { .. }) => {
+                    TrapSignature::TrapLoopPre(TrapLoopPre { .. }) => {
                         wasp_interface.pre_loop = Some(AnalysisInterface::interface_loop_pre());
                     }
-                    TrapSignature::TrapLoopAfter(TrapLoopAfter { .. }) => {
+                    TrapSignature::TrapLoopPost(TrapLoopPost { .. }) => {
                         wasp_interface.post_loop = Some(AnalysisInterface::interface_loop_post());
                     }
                     TrapSignature::TrapSelect(TrapSelect { .. }) => {

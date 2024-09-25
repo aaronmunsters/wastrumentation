@@ -1,6 +1,6 @@
 (aspect
-    (global >>>GUEST>>> export let number_of_blocks_before: i32 = 0; <<<GUEST<<<)
-    (global >>>GUEST>>> export let number_of_block_after: i32 = 0; <<<GUEST<<<)
+    (global >>>GUEST>>> export let number_of_blocks_pre: i32 = 0; <<<GUEST<<<)
+    (global >>>GUEST>>> export let number_of_block_post: i32 = 0; <<<GUEST<<<)
 
-    (advice block before >>>GUEST>>>number_of_blocks_before++;<<<GUEST<<<)
-    (advice block after  >>>GUEST>>>number_of_block_after++;<<<GUEST<<<))
+    (advice block pre >>>GUEST>>>number_of_blocks_pre++;<<<GUEST<<<)
+    (advice block post  >>>GUEST>>>number_of_block_post++;<<<GUEST<<<))

@@ -3,17 +3,17 @@ Aspect Call (Indirect)
 =======
 
 (aspect
-  (advice call before
+  (advice call pre
           (f FunctionIndex)
     >>>GUEST>>>🧐🏃<<<GUEST<<<)
-  (advice call after
+  (advice call post
           (f FunctionIndex)
     >>>GUEST>>>👀🏃<<<GUEST<<<)
-  (advice call_indirect before
+  (advice call_indirect pre
           (table FunctionTable)
           (index FunctionTableIndex)
     >>>GUEST>>>🧐🏄<<<GUEST<<<)
-  (advice call_indirect after
+  (advice call_indirect post
           (table FunctionTable)
     >>>GUEST>>>👀🏄<<<GUEST<<<))
 
@@ -25,7 +25,7 @@ Aspect Call (Indirect)
       (advice_trap
         (trap_signature
           (trap_call
-            (call_qualifier: "before")
+            (call_qualifier: "pre")
             (formal_target
               (identifier: "f"))
             (GUEST_BLOCK: ">>>GUEST>>>🧐🏃<<<GUEST<<<")))))
@@ -33,14 +33,14 @@ Aspect Call (Indirect)
       (advice_trap
         (trap_signature
           (trap_call
-            (call_qualifier: "after")
+            (call_qualifier: "post")
             (formal_target
               (identifier: "f"))
             (GUEST_BLOCK: ">>>GUEST>>>👀🏃<<<GUEST<<<")))))
     (advice_definition
       (advice_trap
         (trap_signature
-          (trap_call_indirect_before
+          (trap_call_indirect_pre
             (formal_table
               (identifier: "table"))
             (formal_index
@@ -49,7 +49,7 @@ Aspect Call (Indirect)
     (advice_definition
       (advice_trap
         (trap_signature
-          (trap_call_indirect_after
+          (trap_call_indirect_post
             (formal_table
               (identifier: "table"))
             (GUEST_BLOCK: ">>>GUEST>>>👀🏄<<<GUEST<<<"))))))

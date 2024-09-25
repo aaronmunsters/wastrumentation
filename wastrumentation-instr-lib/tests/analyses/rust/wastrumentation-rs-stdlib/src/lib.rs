@@ -249,7 +249,7 @@ impl RuntimeValues {
 
 #[macro_export]
 macro_rules! advice {
-    (advice call before
+    (call pre
         ($func_ident: ident : FunctionIndex) $body:block
     ) => {
         #[no_mangle]
@@ -257,7 +257,7 @@ macro_rules! advice {
         fn specialized_call_pre ($func_ident:FunctionIndex) -> ()
         $body
     };
-    (advice call after
+    (call post
         ($func_ident: ident : FunctionIndex) $body:block
     ) => {
         #[no_mangle]
@@ -265,7 +265,7 @@ macro_rules! advice {
         fn specialized_call_post ($func_ident:FunctionIndex) -> ()
         $body
     };
-    (advice call-indirect before
+    (call_indirect pre
         ($func_table_index_ident: ident : FunctionTableIndex, $func_table_ident: ident : FunctionTable) $body:block
     ) => {
         #[no_mangle]
@@ -280,7 +280,7 @@ macro_rules! advice {
             final_index
         }
     };
-    (advice call-indirect after
+    (call_indirect post
         ($func_table_ident: ident : FunctionTable) $body:block
     ) => {
         #[no_mangle]
@@ -292,7 +292,7 @@ macro_rules! advice {
             $body
         }
     };
-    (advice apply
+    (apply
         (
             $func_ident: ident : WasmFunction,
             $args_ident: ident : MutDynArgs,

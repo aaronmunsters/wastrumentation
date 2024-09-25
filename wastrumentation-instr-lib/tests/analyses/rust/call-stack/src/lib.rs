@@ -40,7 +40,7 @@ static mut APPLY_STACK: i32 = 0;
 static mut CALL_STACK: i32 = 0;
 
 advice! {
-    advice call before
+    call pre
     (f: FunctionIndex) {
         let _ = f;
         unsafe {
@@ -59,7 +59,7 @@ advice! {
 }
 
 advice! {
-    advice call after
+    call post
     (f: FunctionIndex) {
         let _ = f;
         unsafe {
@@ -69,12 +69,12 @@ advice! {
 }
 
 advice! {
-    advice apply
+    apply
     (func: WasmFunction, args: MutDynArgs, results: MutDynResults) {
         let _ = args;
         let _ = results;
 
-        // Before apply:
+        // pre apply:
         // [1] Increment apply stack size
         // [2] Ensure highest apply stack size is recorded
         // [3] Ensure apply count is incremented

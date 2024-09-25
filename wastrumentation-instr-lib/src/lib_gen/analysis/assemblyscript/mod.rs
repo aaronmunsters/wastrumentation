@@ -16,10 +16,9 @@ use wastrumentation::analysis::{AnalysisInterface, ProcessedAnalysis};
 use wasp_compiler::ast::wasp::{
     AdviceDefinition, ApplyGen, ApplyHookSignature, ApplySpe, BranchFormalCondition,
     BranchFormalDefault, BranchFormalLabel, BranchFormalTarget, FormalIndex, FormalTable,
-    FormalTarget, Root, SelectFormalCondition, TrapApply, TrapBlockAfter, TrapBlockBefore,
-    TrapBrIf, TrapBrTable, TrapCall, TrapCallIndirectAfter, TrapCallIndirectBefore, TrapIfThen,
-    TrapIfThenElse, TrapLoopAfter, TrapLoopBefore, TrapSelect, TrapSignature, WasmParameter,
-    WasmType,
+    FormalTarget, Root, SelectFormalCondition, TrapApply, TrapBlockPost, TrapBlockPre, TrapBrIf,
+    TrapBrTable, TrapCall, TrapCallIndirectPost, TrapCallIndirectPre, TrapIfThen, TrapIfThenElse,
+    TrapLoopPost, TrapLoopPre, TrapSelect, TrapSignature, WasmParameter, WasmType,
 };
 use wasp_compiler::wasp_interface::{WasmExport, WasmImport};
 use wastrumentation::analysis::{
@@ -123,24 +122,18 @@ impl Display for ASTrapSignature<'_> {
             TrapSignature::TrapBrIf(trap_br_if) => ASTrapBrIf(trap_br_if).fmt(f),
             TrapSignature::TrapBrTable(trap_br_table) => ASTrapBrTable(trap_br_table).fmt(f),
             TrapSignature::TrapCall(trap_call) => ASTrapCall(trap_call).fmt(f),
-            TrapSignature::TrapCallIndirectBefore(trap_call_indirect_before) => {
-                ASTrapCallIndirectBefore(trap_call_indirect_before).fmt(f)
+            TrapSignature::TrapCallIndirectPre(trap_call_indirect_pre) => {
+                ASTrapCallIndirectPre(trap_call_indirect_pre).fmt(f)
             }
-            TrapSignature::TrapCallIndirectAfter(trap_call_indirect_after) => {
-                ASTrapCallIndirectAfter(trap_call_indirect_after).fmt(f)
+            TrapSignature::TrapCallIndirectPost(trap_call_indirect_post) => {
+                ASTrapCallIndirectPost(trap_call_indirect_post).fmt(f)
             }
-            TrapSignature::TrapBlockBefore(trap_block_before) => {
-                ASTrapBlockBefore(trap_block_before).fmt(f)
+            TrapSignature::TrapBlockPre(trap_block_pre) => ASTrapBlockPre(trap_block_pre).fmt(f),
+            TrapSignature::TrapBlockPost(trap_block_post) => {
+                ASTrapBlockPost(trap_block_post).fmt(f)
             }
-            TrapSignature::TrapBlockAfter(trap_block_after) => {
-                ASTrapBlockAfter(trap_block_after).fmt(f)
-            }
-            TrapSignature::TrapLoopBefore(trap_loop_before) => {
-                ASTrapLoopBefore(trap_loop_before).fmt(f)
-            }
-            TrapSignature::TrapLoopAfter(trap_loop_after) => {
-                ASTrapLoopAfter(trap_loop_after).fmt(f)
-            }
+            TrapSignature::TrapLoopPre(trap_loop_pre) => ASTrapLoopPre(trap_loop_pre).fmt(f),
+            TrapSignature::TrapLoopPost(trap_loop_post) => ASTrapLoopPost(trap_loop_post).fmt(f),
             TrapSignature::TrapSelect(trap_select) => ASTrapSelect(trap_select).fmt(f),
         }
     }
@@ -531,8 +524,8 @@ impl Display for ASTrapCall<'_> {
         }) = &self;
 
         let specialized_name = match call_qualifier {
-            wasp_compiler::ast::pest::CallQualifier::Before => FUNCTION_NAME_SPECIALIZED_CALL_PRE,
-            wasp_compiler::ast::pest::CallQualifier::After => FUNCTION_NAME_SPECIALIZED_CALL_POST,
+            wasp_compiler::ast::pest::CallQualifier::Pre => FUNCTION_NAME_SPECIALIZED_CALL_PRE,
+            wasp_compiler::ast::pest::CallQualifier::Post => FUNCTION_NAME_SPECIALIZED_CALL_POST,
         };
 
         write!(
@@ -553,10 +546,10 @@ impl Display for ASTrapCall<'_> {
     }
 }
 
-struct ASTrapCallIndirectBefore<'a>(&'a TrapCallIndirectBefore);
-impl Display for ASTrapCallIndirectBefore<'_> {
+struct ASTrapCallIndirectPre<'a>(&'a TrapCallIndirectPre);
+impl Display for ASTrapCallIndirectPre<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self(TrapCallIndirectBefore {
+        let Self(TrapCallIndirectPre {
             formal_table: FormalTable(parameter_table),
             formal_index: FormalIndex(parameter_index),
             body,
@@ -586,10 +579,10 @@ impl Display for ASTrapCallIndirectBefore<'_> {
     }
 }
 
-struct ASTrapCallIndirectAfter<'a>(&'a TrapCallIndirectAfter);
-impl Display for ASTrapCallIndirectAfter<'_> {
+struct ASTrapCallIndirectPost<'a>(&'a TrapCallIndirectPost);
+impl Display for ASTrapCallIndirectPost<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self(TrapCallIndirectAfter {
+        let Self(TrapCallIndirectPost {
             formal_table: FormalTable(parameter_table),
             body,
         }) = &self;
@@ -612,10 +605,10 @@ impl Display for ASTrapCallIndirectAfter<'_> {
     }
 }
 
-struct ASTrapBlockBefore<'a>(&'a TrapBlockBefore);
-impl Display for ASTrapBlockBefore<'_> {
+struct ASTrapBlockPre<'a>(&'a TrapBlockPre);
+impl Display for ASTrapBlockPre<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self(TrapBlockBefore { body }) = &self;
+        let Self(TrapBlockPre { body }) = &self;
         write!(
             f,
             indoc! { r#"
@@ -630,10 +623,10 @@ impl Display for ASTrapBlockBefore<'_> {
     }
 }
 
-struct ASTrapBlockAfter<'a>(&'a TrapBlockAfter);
-impl Display for ASTrapBlockAfter<'_> {
+struct ASTrapBlockPost<'a>(&'a TrapBlockPost);
+impl Display for ASTrapBlockPost<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self(TrapBlockAfter { body }) = &self;
+        let Self(TrapBlockPost { body }) = &self;
         write!(
             f,
             indoc! { r#"
@@ -647,10 +640,10 @@ impl Display for ASTrapBlockAfter<'_> {
     }
 }
 
-struct ASTrapLoopBefore<'a>(&'a TrapLoopBefore);
-impl Display for ASTrapLoopBefore<'_> {
+struct ASTrapLoopPre<'a>(&'a TrapLoopPre);
+impl Display for ASTrapLoopPre<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self(TrapLoopBefore { body }) = &self;
+        let Self(TrapLoopPre { body }) = &self;
         write!(
             f,
             indoc! { r#"
@@ -664,10 +657,10 @@ impl Display for ASTrapLoopBefore<'_> {
     }
 }
 
-struct ASTrapLoopAfter<'a>(&'a TrapLoopAfter);
-impl Display for ASTrapLoopAfter<'_> {
+struct ASTrapLoopPost<'a>(&'a TrapLoopPost);
+impl Display for ASTrapLoopPost<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self(TrapLoopAfter { body }) = &self;
+        let Self(TrapLoopPost { body }) = &self;
         write!(
             f,
             indoc! { r#"

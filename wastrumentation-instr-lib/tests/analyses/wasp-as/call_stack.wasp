@@ -13,7 +13,7 @@
         }
     <<<GUEST<<<)
 
-    (advice call before (f FunctionIndex) >>>GUEST>>>
+    (advice call pre (f FunctionIndex) >>>GUEST>>>
         /* [1] */
         call_stack += 1;
         /* [2] */
@@ -22,7 +22,7 @@
         number_of_calls += 1;
     <<<GUEST<<<)
 
-    (advice call after (f FunctionIndex) >>>GUEST>>>
+    (advice call post (f FunctionIndex) >>>GUEST>>>
         call_stack -= 1;
     <<<GUEST<<<)
 

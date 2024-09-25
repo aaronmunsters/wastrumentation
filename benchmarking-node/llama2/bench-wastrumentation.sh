@@ -68,10 +68,10 @@ output_path="./${llama_bin_name}_instrumented.wasm"
 cargo run -- \
     --input-program-path ${input_program_path} \
     --rust-analysis-toml-path ${rust_path} \
-    --hooks call-before          \
-            call-after           \
-            call-indirect-before \
-            call-indirect-after  \
+    --hooks call-pre           \
+            call-post          \
+            call-indirect-pre  \
+            call-indirect-post \
     --output-path ${output_path}
 mv ${output_path} ${input_program_path}
 node --experimental-wasm-multi-memory execute.js ${llama_js_bin_name} ${model_bin_path} # <-- optionally include `verbose` argument

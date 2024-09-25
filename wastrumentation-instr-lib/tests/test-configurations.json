@@ -725,13 +725,13 @@
       },
       {
         "analysis": {
-          "Wasp": "./analyses/wasp-as/call_chain_before_after.wasp"
+          "Wasp": "./analyses/wasp-as/call_chain_pre_post.wasp"
         },
         "input_program_assertion": "EqualToUninstrumented",
         "post_execution_assertions": [
           {
             "GlobalValueEquals": {
-              "identifier": "number_of_calls_before",
+              "identifier": "number_of_calls_pre",
               "result": {
                 "I32": 5
               }
@@ -739,7 +739,7 @@
           },
           {
             "GlobalValueEquals": {
-              "identifier": "number_of_calls_after",
+              "identifier": "number_of_calls_post",
               "result": {
                 "I32": 5
               }
@@ -747,7 +747,7 @@
           },
           {
             "GlobalValueEquals": {
-              "identifier": "number_of_apply_before",
+              "identifier": "number_of_apply_pre",
               "result": {
                 "I32": 6
               }
@@ -755,7 +755,7 @@
           },
           {
             "GlobalValueEquals": {
-              "identifier": "number_of_apply_after",
+              "identifier": "number_of_apply_post",
               "result": {
                 "I32": 6
               }
@@ -765,13 +765,13 @@
       },
       {
         "analysis": {
-          "Wasp": "./analyses/wasp-as/call_chain_before.wasp"
+          "Wasp": "./analyses/wasp-as/call_chain_pre.wasp"
         },
         "input_program_assertion": "EqualToUninstrumented",
         "post_execution_assertions": [
           {
             "GlobalValueEquals": {
-              "identifier": "number_of_calls_before",
+              "identifier": "number_of_calls_pre",
               "result": {
                 "I32": 5
               }
@@ -779,7 +779,7 @@
           },
           {
             "GlobalValueEquals": {
-              "identifier": "number_of_calls_after",
+              "identifier": "number_of_calls_post",
               "result": {
                 "I32": 0
               }
@@ -787,7 +787,7 @@
           },
           {
             "GlobalValueEquals": {
-              "identifier": "number_of_apply_before",
+              "identifier": "number_of_apply_pre",
               "result": {
                 "I32": 6
               }
@@ -795,7 +795,7 @@
           },
           {
             "GlobalValueEquals": {
-              "identifier": "number_of_apply_after",
+              "identifier": "number_of_apply_post",
               "result": {
                 "I32": 6
               }
@@ -805,13 +805,13 @@
       },
       {
         "analysis": {
-          "Wasp": "./analyses/wasp-as/call_chain_after.wasp"
+          "Wasp": "./analyses/wasp-as/call_chain_post.wasp"
         },
         "input_program_assertion": "EqualToUninstrumented",
         "post_execution_assertions": [
           {
             "GlobalValueEquals": {
-              "identifier": "number_of_calls_before",
+              "identifier": "number_of_calls_pre",
               "result": {
                 "I32": 0
               }
@@ -819,7 +819,7 @@
           },
           {
             "GlobalValueEquals": {
-              "identifier": "number_of_calls_after",
+              "identifier": "number_of_calls_post",
               "result": {
                 "I32": 5
               }
@@ -827,7 +827,7 @@
           },
           {
             "GlobalValueEquals": {
-              "identifier": "number_of_apply_before",
+              "identifier": "number_of_apply_pre",
               "result": {
                 "I32": 6
               }
@@ -835,7 +835,7 @@
           },
           {
             "GlobalValueEquals": {
-              "identifier": "number_of_apply_after",
+              "identifier": "number_of_apply_post",
               "result": {
                 "I32": 6
               }
@@ -1029,7 +1029,7 @@
         "post_execution_assertions": [
           {
             "GlobalValueEquals": {
-              "identifier": "number_of_blocks_before",
+              "identifier": "number_of_blocks_pre",
               "result": {
                 "I32": 14
               }
@@ -1037,7 +1037,7 @@
           },
           {
             "GlobalValueEquals": {
-              "identifier": "number_of_block_after",
+              "identifier": "number_of_block_post",
               "result": {
                 "I32": 14
               }
@@ -1077,7 +1077,7 @@
         "post_execution_assertions": [
           {
             "GlobalValueEquals": {
-              "identifier": "number_of_loops_before",
+              "identifier": "number_of_loops_pre",
               "result": {
                 "I32": 14
               }
@@ -1085,7 +1085,7 @@
           },
           {
             "GlobalValueEquals": {
-              "identifier": "number_of_loop_after",
+              "identifier": "number_of_loop_post",
               "result": {
                 "I32": 14
               }
@@ -1460,8 +1460,8 @@
         "analysis": {
           "Rust": {
             "hooks": [
-              "CallBefore",
-              "CallAfter",
+              "CallPre",
+              "CallPost",
               "GenericApply"
             ],
             "manifest": "./tests/analyses/rust/call-stack/Cargo.toml"

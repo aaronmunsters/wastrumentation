@@ -70,10 +70,10 @@ do
     cargo run -- \
         --input-program-path `realpath ./build/${name}.wasm`                                                        \
         --rust-analysis-toml-path `realpath ../../../../input-analyses/rust/call-stack-wastrumentation/Cargo.toml`  \
-        --hooks CallBefore                                                                                          \
-                CallAfter                                                                                           \
-                CallIndirectBefore                                                                                  \
-                CallIndirectAfter                                                                                   \
+        --hooks CallPre                                                                                             \
+                CallPost                                                                                            \
+                CallIndirectPre                                                                                     \
+                CallIndirectPost                                                                                    \
                 GenericApply                                                                                        \
         --output-path "./build-instrumented-wastrumentation/${name}.wasm"
 

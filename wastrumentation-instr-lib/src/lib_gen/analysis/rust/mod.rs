@@ -30,10 +30,10 @@ impl TryInto<ProcessedAnalysis<Rust>> for RustAnalysisSpec {
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Hash, Deserialize)]
 pub enum Hook {
     GenericApply,
-    CallBefore,
-    CallAfter,
-    CallIndirectBefore,
-    CallIndirectAfter,
+    CallPre,
+    CallPost,
+    CallIndirectPre,
+    CallIndirectPost,
 }
 
 pub fn interface_from(hooks: &HashSet<Hook>) -> Result<AnalysisInterface> {
@@ -43,17 +43,17 @@ pub fn interface_from(hooks: &HashSet<Hook>) -> Result<AnalysisInterface> {
             Hook::GenericApply => {
                 interface.generic_interface = Some(AnalysisInterface::interface_generic_apply())
             }
-            Hook::CallBefore => {
+            Hook::CallPre => {
                 interface.pre_trap_call = Some(AnalysisInterface::interface_call_pre())
             }
-            Hook::CallAfter => {
+            Hook::CallPost => {
                 interface.post_trap_call = Some(AnalysisInterface::interface_call_post())
             }
-            Hook::CallIndirectBefore => {
+            Hook::CallIndirectPre => {
                 interface.pre_trap_call_indirect =
                     Some(AnalysisInterface::interface_call_indirect_pre())
             }
-            Hook::CallIndirectAfter => {
+            Hook::CallIndirectPost => {
                 interface.post_trap_call_indirect =
                     Some(AnalysisInterface::interface_call_indirect_post())
             }

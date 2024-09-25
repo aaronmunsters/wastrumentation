@@ -1,6 +1,6 @@
 (aspect
-    (global >>>GUEST>>> export let number_of_loops_before: i32 = 0; <<<GUEST<<<)
-    (global >>>GUEST>>> export let number_of_loop_after: i32 = 0; <<<GUEST<<<)
+    (global >>>GUEST>>> export let number_of_loops_pre: i32 = 0; <<<GUEST<<<)
+    (global >>>GUEST>>> export let number_of_loop_post: i32 = 0; <<<GUEST<<<)
 
-    (advice loop before >>>GUEST>>>number_of_loops_before++;<<<GUEST<<<)
-    (advice loop after  >>>GUEST>>>number_of_loop_after++;<<<GUEST<<<))
+    (advice loop pre >>>GUEST>>>number_of_loops_pre++;<<<GUEST<<<)
+    (advice loop post  >>>GUEST>>>number_of_loop_post++;<<<GUEST<<<))

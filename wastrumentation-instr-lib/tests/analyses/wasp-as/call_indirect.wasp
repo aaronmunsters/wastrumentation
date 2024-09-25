@@ -1,17 +1,17 @@
 (aspect
-    (advice call before (f FunctionIndex) >>>GUEST>>>
+    (advice call pre (f FunctionIndex) >>>GUEST>>>
         // No intercession, intercession @ callee site
     <<<GUEST<<<)
 
-    (advice call after (f FunctionIndex) >>>GUEST>>>
+    (advice call post (f FunctionIndex) >>>GUEST>>>
         // No intercession, intercession @ callee site
     <<<GUEST<<<)
 
-    (advice call_indirect before (table FunctionTable)
+    (advice call_indirect pre (table FunctionTable)
                                  (index FunctionTableIndex) >>>GUEST>>>
         // No intercession, intercession @ callee site
     <<<GUEST<<<)
 
-    (advice call_indirect after (table FunctionTable) >>>GUEST>>>
+    (advice call_indirect post (table FunctionTable) >>>GUEST>>>
         // No intercession, intercession @ callee site
     <<<GUEST<<<))

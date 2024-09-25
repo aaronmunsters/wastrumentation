@@ -198,7 +198,7 @@ lazy_static! {
 }
 
 advice! {
-    advice apply
+    apply
     (func: WasmFunction, args: MutDynArgs, results: MutDynResults) {
         func.apply();
 

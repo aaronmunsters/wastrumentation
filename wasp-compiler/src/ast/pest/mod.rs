@@ -12,15 +12,15 @@ fn span_into_string(span: Span) -> &str {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum CallQualifier {
-    Before,
-    After,
+    Pre,
+    Post,
 }
 
 fn span_into_qualifier(span: Span) -> CallQualifier {
     match span.as_str() {
-        "before" => CallQualifier::Before,
-        "after" => CallQualifier::After,
-        &_ => panic!("Could not parse `before` or `after`"),
+        "pre" => CallQualifier::Pre,
+        "post" => CallQualifier::Post,
+        &_ => panic!("Could not parse `pre` or `post`"),
     }
 }
 
@@ -66,13 +66,13 @@ pub struct AdviceTrap(pub TrapSignature);
 pub enum TrapSignature {
     TrapApply(TrapApply),
     TrapCall(TrapCall),
-    TrapBlockBefore(TrapBlockBefore),
-    TrapBlockAfter(TrapBlockAfter),
-    TrapLoopBefore(TrapLoopBefore),
-    TrapLoopAfter(TrapLoopAfter),
+    TrapBlockPre(TrapBlockPre),
+    TrapBlockPost(TrapBlockPost),
+    TrapLoopPre(TrapLoopPre),
+    TrapLoopPost(TrapLoopPost),
     TrapSelect(TrapSelect),
-    TrapCallIndirectBefore(TrapCallIndirectBefore),
-    TrapCallIndirectAfter(TrapCallIndirectAfter),
+    TrapCallIndirectPre(TrapCallIndirectPre),
+    TrapCallIndirectPost(TrapCallIndirectPost),
     TrapIfThen(TrapIfThen),
     TrapIfThenElse(TrapIfThenElse),
     TrapBrIf(TrapBrIf),
@@ -102,29 +102,29 @@ pub struct TrapCall {
 pub struct FormalTarget(#[pest_ast(inner(with(span_into_string), with(String::from)))] pub String);
 
 #[derive(Debug, FromPest)]
-#[pest_ast(rule(Rule::trap_block_before))]
-pub struct TrapBlockBefore {
+#[pest_ast(rule(Rule::trap_block_pre))]
+pub struct TrapBlockPre {
     #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter), with(String::from)))]
     pub body: String,
 }
 
 #[derive(Debug, FromPest)]
-#[pest_ast(rule(Rule::trap_block_after))]
-pub struct TrapBlockAfter {
+#[pest_ast(rule(Rule::trap_block_post))]
+pub struct TrapBlockPost {
     #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter), with(String::from)))]
     pub body: String,
 }
 
 #[derive(Debug, FromPest)]
-#[pest_ast(rule(Rule::trap_loop_before))]
-pub struct TrapLoopBefore {
+#[pest_ast(rule(Rule::trap_loop_pre))]
+pub struct TrapLoopPre {
     #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter), with(String::from)))]
     pub body: String,
 }
 
 #[derive(Debug, FromPest)]
-#[pest_ast(rule(Rule::trap_loop_after))]
-pub struct TrapLoopAfter {
+#[pest_ast(rule(Rule::trap_loop_post))]
+pub struct TrapLoopPost {
     #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter), with(String::from)))]
     pub body: String,
 }
@@ -144,8 +144,8 @@ pub struct SelectFormalCondition(
 );
 
 #[derive(Debug, FromPest)]
-#[pest_ast(rule(Rule::trap_call_indirect_before))]
-pub struct TrapCallIndirectBefore {
+#[pest_ast(rule(Rule::trap_call_indirect_pre))]
+pub struct TrapCallIndirectPre {
     pub formal_table: FormalTable,
     pub formal_index: FormalIndex,
     #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter), with(String::from)))]
@@ -153,8 +153,8 @@ pub struct TrapCallIndirectBefore {
 }
 
 #[derive(Debug, FromPest)]
-#[pest_ast(rule(Rule::trap_call_indirect_after))]
-pub struct TrapCallIndirectAfter {
+#[pest_ast(rule(Rule::trap_call_indirect_post))]
+pub struct TrapCallIndirectPost {
     pub formal_table: FormalTable,
     #[pest_ast(inner(with(span_into_string), with(drop_guest_delimiter), with(String::from)))]
     pub body: String,
@@ -361,17 +361,17 @@ mod tests {
           >>>GUEST>>>🏓<<<GUEST<<<)
       (advice select (cond Condition)
           >>>GUEST>>>🦂<<<GUEST<<<)
-      (advice call before
+      (advice call pre
               (f FunctionIndex)
           >>>GUEST>>>🧐🏃<<<GUEST<<<)
-      (advice call after
+      (advice call post
               (f FunctionIndex)
           >>>GUEST>>>👀🏃<<<GUEST<<<)
-      (advice call_indirect before
+      (advice call_indirect pre
               (table FunctionTable)
               (index FunctionTableIndex)
           >>>GUEST>>>🧐🏄<<<GUEST<<<)
-      (advice call_indirect after
+      (advice call_indirect post
               (table FunctionTable)
           >>>GUEST>>>👀🏄<<<GUEST<<<))"#;
         let mut parse_tree = WaspParser::parse(Rule::wasp_input, program_source).unwrap();

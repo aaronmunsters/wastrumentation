@@ -30,10 +30,10 @@ output_path="./add_program_instrumented.wasm"
 cargo run -- \
     --input-program-path ${input_program_path} \
     --rust-analysis-toml-path ${rust_path} \
-    --hooks call-before          \
-            call-after           \
-            call-indirect-before \
-            call-indirect-after  \
+    --hooks call-pre          \
+            call-post           \
+            call-indirect-pre \
+            call-indirect-post  \
     --output-path ${output_path}
 
 mv ${output_path} ${input_program_path}

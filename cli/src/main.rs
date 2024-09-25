@@ -39,20 +39,20 @@ struct Args {
 #[derive(clap::ValueEnum, Debug, Clone, Deserialize, PartialEq, Eq, Copy, Hash)]
 enum Hook {
     GenericApply,
-    CallBefore,
-    CallAfter,
-    CallIndirectBefore,
-    CallIndirectAfter,
+    CallPre,
+    CallPost,
+    CallIndirectPre,
+    CallIndirectPost,
 }
 
 impl From<&Hook> for AnalysisHook {
     fn from(hook: &Hook) -> Self {
         match hook {
             Hook::GenericApply => AnalysisHook::GenericApply,
-            Hook::CallBefore => AnalysisHook::CallBefore,
-            Hook::CallAfter => AnalysisHook::CallAfter,
-            Hook::CallIndirectBefore => AnalysisHook::CallIndirectBefore,
-            Hook::CallIndirectAfter => AnalysisHook::CallIndirectAfter,
+            Hook::CallPre => AnalysisHook::CallPre,
+            Hook::CallPost => AnalysisHook::CallPost,
+            Hook::CallIndirectPre => AnalysisHook::CallIndirectPre,
+            Hook::CallIndirectPost => AnalysisHook::CallIndirectPost,
         }
     }
 }
