@@ -1,7 +1,7 @@
 use assemblyscript_compiler::compiler::Compiler as AssemblyscriptCompiler;
 use assemblyscript_compiler::options::CompilerOptions as AssemblyscriptCompilerOptions;
 use wastrumentation::compiler::Compiles;
-use wastrumentation::Wastrumenter;
+use wastrumentation::{Configuration, Wastrumenter};
 
 use wastrumentation_instr_lib::lib_compile::rust::compiler::Compiler as RustCompiler;
 use wastrumentation_instr_lib::lib_gen::analysis::assemblyscript::WaspAnalysisSpec;
@@ -61,7 +61,11 @@ fn example_instrumentation_rust() {
 
     let rust_compiler = RustCompiler::setup_compiler().unwrap();
     let instrumented_input = Wastrumenter::new(Box::new(rust_compiler), Box::new(as_compiler))
-        .wastrument(&input_program, &wasp_analysis_spec, &None)
+        .wastrument(
+            &input_program,
+            &wasp_analysis_spec,
+            &Configuration::default(),
+        )
         .unwrap();
 
     // Execute & check instrumentation
@@ -107,7 +111,11 @@ fn example_instrumentation_wasp() {
         Box::new(assemblyscript_compiler1),
         Box::new(assemblyscript_compiler2),
     )
-    .wastrument(&input_program, &wasp_analysis_spec, &None)
+    .wastrument(
+        &input_program,
+        &wasp_analysis_spec,
+        &Configuration::default(),
+    )
     .unwrap();
 
     // Execute & check instrumentation

@@ -4,6 +4,7 @@ use test_conf::{
     UninstrumentedAssertion, WasmValue,
 };
 use wasmtime::*;
+use wastrumentation::Configuration;
 use wastrumentation::{compiler::Compiles, Wastrumenter};
 use wastrumentation_instr_lib::lib_gen::analysis::assemblyscript::WaspAnalysisSpec;
 use wastrumentation_instr_lib::lib_gen::analysis::rust::RustAnalysisSpec;
@@ -257,7 +258,11 @@ impl Analysis {
                 let as_compiler = Box::new(ASCompiler::setup_compiler().unwrap());
 
                 Wastrumenter::new(rs_compiler, as_compiler)
-                    .wastrument(input_program, &wasp_analysis_spec, &None)
+                    .wastrument(
+                        input_program,
+                        &wasp_analysis_spec,
+                        &Configuration::default(),
+                    )
                     .unwrap()
             }
             Analysis::Rust(AnalysisRust {
@@ -272,7 +277,7 @@ impl Analysis {
                 let second_rs_compiler = Box::new(RSCompiler::setup_compiler().unwrap());
 
                 Wastrumenter::new(rs_compiler, second_rs_compiler)
-                    .wastrument(input_program, analysis, &None)
+                    .wastrument(input_program, analysis, &Configuration::default())
                     .unwrap()
             }
         }

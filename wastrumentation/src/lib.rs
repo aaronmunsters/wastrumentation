@@ -41,6 +41,19 @@ pub struct Wastrumenter<
     analysis_language: PhantomData<AnalysisLanguage>,
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct Configuration {
+    pub target_indices: Option<Vec<u32>>,
+    pub primary_selection: Option<PrimaryTarget>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum PrimaryTarget {
+    Instrumentation,
+    Target,
+    Analysis,
+}
+
 impl<
         InstrumentationLanguage,
         InstrumentationLanguageCompiler,
@@ -77,12 +90,16 @@ where
         &self,
         input_program: &WasmModule,
         analysis: impl TryInto<ProcessedAnalysis<AnalysisLanguage>, Error = Error>,
-        target_indices: &Option<Vec<u32>>,
+        configuration: &Configuration,
     ) -> Result<WasmModule>
     where
         Error: Display,
         Error: Debug,
     {
+        let Configuration {
+            target_indices,
+            primary_selection,
+        } = configuration;
         // 1. Compile analysis
         let ProcessedAnalysis {
             analysis_library,
@@ -118,6 +135,7 @@ where
 
         // 4. Merge them all together
         let instrumented_input = Self::merge(
+            primary_selection,
             instrumented_input,
             analysis_wasm,
             compiled_instrumentation_lib,
@@ -128,34 +146,56 @@ where
     }
 
     fn merge(
+        primary_selection: &Option<PrimaryTarget>,
         instrumented_input: WasmModule,
         compiled_analysis: WasmModule,
         compiled_instrumentation_lib: Option<WasmModule>,
     ) -> Result<WasmModule> {
-        let mut input_modules =
-            if let Some(compiled_instrumentation_lib) = compiled_instrumentation_lib {
-                vec![InputModule {
-                    module: compiled_instrumentation_lib,
-                    namespace: INSTRUMENTATION_STACK_MODULE.into(),
-                }]
-            } else {
-                vec![]
-            };
-        input_modules.append(&mut vec![
-            InputModule {
+        let input_analysis = move || {
+            Some(InputModule {
                 module: compiled_analysis,
                 namespace: INSTRUMENTATION_ANALYSIS_MODULE.into(),
-            },
-            InputModule {
+            })
+        };
+        let input_target = move || {
+            Some(InputModule {
                 module: instrumented_input,
                 namespace: INSTRUMENTATION_INSTRUMENTED_MODULE.into(),
-            },
-        ]);
+            })
+        };
+        let input_instrumentation = move || {
+            compiled_instrumentation_lib.map(|lib| InputModule {
+                module: lib,
+                namespace: INSTRUMENTATION_STACK_MODULE.into(),
+            })
+        };
+
+        let (primary, input_modules) = match primary_selection {
+            Some(PrimaryTarget::Analysis) => (
+                input_analysis(),
+                vec![input_target(), input_instrumentation()],
+            ),
+            Some(PrimaryTarget::Target) => (
+                input_target(),
+                vec![input_analysis(), input_instrumentation()],
+            ),
+            Some(PrimaryTarget::Instrumentation) => (
+                input_instrumentation(),
+                vec![input_target(), input_analysis()],
+            ),
+            None => (
+                None,
+                vec![input_instrumentation(), input_target(), input_analysis()],
+            ),
+        };
+
+        let input_modules = input_modules.into_iter().flatten().collect();
+
         let merge_options = MergeOptions {
             no_validate: true,
             rename_export_conflicts: true,
             enable_multi_memory: true,
-            primary: None,
+            primary,
             input_modules,
         };
         wasm_merge::merge(&merge_options)

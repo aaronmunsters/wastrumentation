@@ -4,7 +4,7 @@ use clap::Parser;
 use clio::*;
 use serde::Deserialize;
 use wastrumentation::compiler::Compiles;
-use wastrumentation::Wastrumenter;
+use wastrumentation::{Configuration, Wastrumenter};
 use wastrumentation_instr_lib::lib_gen::analysis::rust::{Hook as AnalysisHook, RustAnalysisSpec};
 
 use assemblyscript_compiler::compiler::Compiler as AssemblyScriptCompiler;
@@ -76,12 +76,16 @@ fn main() -> anyhow::Result<()> {
 
     let instrumentation_language_compiler = AssemblyScriptCompiler::setup_compiler()?;
     let analysis_language_compiler = RustCompiler::setup_compiler()?;
+    let configuration = Configuration {
+        target_indices: targets,
+        primary_selection: None,
+    };
 
     let instrumented_wasm_module = Wastrumenter::new(
         Box::new(instrumentation_language_compiler),
         Box::new(analysis_language_compiler),
     )
-    .wastrument(&wasm_module, analysis, &targets)
+    .wastrument(&wasm_module, analysis, &configuration)
     .expect("Instrumenting failed");
 
     output_path.write_all(&instrumented_wasm_module)?;
