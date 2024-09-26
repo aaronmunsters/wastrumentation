@@ -2,6 +2,7 @@ use std::io::{Read, Write};
 
 use clap::Parser;
 use clio::*;
+use rust_to_wasm_compiler::WasiSupport;
 use serde::Deserialize;
 use wastrumentation::compiler::Compiles;
 use wastrumentation::{Configuration, Wastrumenter};
@@ -71,7 +72,10 @@ fn main() -> anyhow::Result<()> {
 
     let analysis = RustAnalysisSpec {
         hooks: hooks.iter().map(From::from).collect(),
-        source: RustSource::Manifest(rust_analysis_toml_path.path().to_path_buf()),
+        source: RustSource::Manifest(
+            WasiSupport::Disabled,
+            rust_analysis_toml_path.path().to_path_buf(),
+        ),
     };
 
     let instrumentation_language_compiler = AssemblyScriptCompiler::setup_compiler()?;

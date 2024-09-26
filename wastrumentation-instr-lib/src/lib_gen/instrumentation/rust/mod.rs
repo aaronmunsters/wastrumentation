@@ -2,6 +2,7 @@ use std::{collections::HashSet, marker::PhantomData, ops::Deref, vec};
 
 use crate::lib_compile::rust::options::{ManifestSource, RustSource, RustSourceCode};
 use crate::lib_compile::rust::Rust;
+use rust_to_wasm_compiler::WasiSupport;
 use wastrumentation::{
     compiler::{LibGeneratable, Library},
     wasm_constructs::{Signature, SignatureSide, WasmType},
@@ -23,7 +24,7 @@ impl LibGeneratable for Rust {
     fn generate_lib(signatures: &[Signature]) -> Library<Self> {
         let (manifest_source, rust_source) = generate_lib(signatures);
         Library::<Self> {
-            content: RustSource::SourceCode(manifest_source, rust_source),
+            content: RustSource::SourceCode(WasiSupport::Disabled, manifest_source, rust_source),
             language: PhantomData,
         }
     }
@@ -731,7 +732,12 @@ mod tests {
         let (ManifestSource(manifest), RustSourceCode(rust_source)) = generate_lib(&signatures);
         let wasm_module = RustToWasmCompiler::new()
             .unwrap()
-            .compile_source(&manifest, &rust_source, Profile::Release)
+            .compile_source(
+                WasiSupport::Disabled,
+                &manifest,
+                &rust_source,
+                Profile::Release,
+            )
             .unwrap();
 
         // Compile result

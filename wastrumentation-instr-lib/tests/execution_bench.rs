@@ -1,4 +1,5 @@
 use rayon::prelude::*;
+use rust_to_wasm_compiler::WasiSupport;
 use test_conf::{
     Analysis, AnalysisRust, InputProgram, InstrumentedAssertion, PostExecutionAssertion,
     UninstrumentedAssertion, WasmValue,
@@ -270,7 +271,10 @@ impl Analysis {
                 hooks,
             }) => {
                 let analysis = RustAnalysisSpec {
-                    source: RustSource::Manifest(absolute(manifest_path).unwrap()),
+                    source: RustSource::Manifest(
+                        WasiSupport::Disabled,
+                        absolute(manifest_path).unwrap(),
+                    ),
                     hooks: hooks.clone().into_iter().collect(),
                 };
 

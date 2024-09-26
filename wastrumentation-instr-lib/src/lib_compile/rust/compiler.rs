@@ -33,16 +33,19 @@ impl Compiles<Rust> for Compiler {
     fn compile(&self, compiler_options: &Self::CompilerOptions) -> CompilationResult<Rust> {
         match &compiler_options.source {
             RustSource::SourceCode(
+                wasi_support,
                 ManifestSource(manifest_source_code),
                 RustSourceCode(rust_source_code),
             ) => self.compiler.compile_source(
+                *wasi_support,
                 manifest_source_code,
                 rust_source_code,
                 compiler_options.profile,
             ),
-            RustSource::Manifest(manifest_path) => self
-                .compiler
-                .compile(manifest_path, compiler_options.profile),
+            RustSource::Manifest(wasi_support, manifest_path) => {
+                self.compiler
+                    .compile(*wasi_support, manifest_path, compiler_options.profile)
+            }
         }
         .map_err(|err| CompilationError::because(err.to_string()))
     }

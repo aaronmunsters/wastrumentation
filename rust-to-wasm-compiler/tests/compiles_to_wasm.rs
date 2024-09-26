@@ -1,7 +1,7 @@
 use rayon::prelude::*;
 use std::path::{absolute, Path};
 
-use rust_to_wasm_compiler::{Profile, RustToWasmCompiler};
+use rust_to_wasm_compiler::{Profile, RustToWasmCompiler, WasiSupport};
 use wasmtime::{Config, Engine, Instance, Module, Store, Val};
 
 use indoc::indoc;
@@ -21,7 +21,11 @@ fn compiles_example() {
         // Compile
         let wasm_module = RustToWasmCompiler::new()
             .unwrap()
-            .compile(&absolute(Path::new(path)).unwrap(), Profile::Dev)
+            .compile(
+                WasiSupport::Disabled,
+                &absolute(Path::new(path)).unwrap(),
+                Profile::Dev,
+            )
             .unwrap();
 
         // Run compiled result
@@ -72,7 +76,12 @@ fn compiles_using_sources() {
     // Compile
     let wasm_module = RustToWasmCompiler::new()
         .unwrap()
-        .compile_source(manifest_source, rust_source, Profile::Dev)
+        .compile_source(
+            WasiSupport::Disabled,
+            manifest_source,
+            rust_source,
+            Profile::Dev,
+        )
         .unwrap();
 
     // Run compiled result

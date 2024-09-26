@@ -25,6 +25,12 @@ pub enum Profile {
     Bench,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum WasiSupport {
+    Enabled,
+    Disabled,
+}
+
 impl RustToWasmCompiler {
     /// # Errors
     /// When creating a default global context fails
@@ -35,7 +41,12 @@ impl RustToWasmCompiler {
 
     /// # Errors
     /// Whenever compilation fails
-    pub fn compile(&self, manifest_path: &Path, profile: Profile) -> anyhow::Result<Vec<u8>> {
+    pub fn compile(
+        &self,
+        wasi_support: WasiSupport,
+        manifest_path: &Path,
+        profile: Profile,
+    ) -> anyhow::Result<Vec<u8>> {
         // Create new workspace, inheriting from global context
         let workspace = Workspace::new(manifest_path, &self.gctx)?;
 
@@ -44,8 +55,11 @@ impl RustToWasmCompiler {
             CompileOptions::new(&self.gctx, cargo::core::compiler::CompileMode::Build)?;
 
         // Set target to wasm32-unknown-unknown
-        let wasm32_unknown_unkown = CompileTarget::new("wasm32-unknown-unknown")?;
-        let compile_kind = CompileKind::Target(wasm32_unknown_unkown);
+        let target = CompileTarget::new(match wasi_support {
+            WasiSupport::Enabled => "wasm32-wasip1",
+            WasiSupport::Disabled => "wasm32-unknown-unknown",
+        })?;
+        let compile_kind = CompileKind::Target(target);
         compile_options.build_config.requested_kinds = vec![compile_kind];
         compile_options.build_config.requested_profile = match profile {
             Profile::Release => "release",
@@ -73,6 +87,7 @@ impl RustToWasmCompiler {
     /// Whenever creation of files or compilation fails
     pub fn compile_source(
         &self,
+        wasi_support: WasiSupport,
         manifest: &str,
         lib: &str,
         profile: Profile,
@@ -91,6 +106,6 @@ impl RustToWasmCompiler {
         let mut lib_file = File::create_new(src_path.join("lib.rs"))?;
         lib_file.write_all(lib.as_bytes())?;
 
-        self.compile(&manifest_path, profile)
+        self.compile(wasi_support, &manifest_path, profile)
     }
 }
