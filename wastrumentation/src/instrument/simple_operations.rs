@@ -207,7 +207,7 @@ impl WastrumentationSerializable for BinaryOp {
 macro_rules! transformation_strategy {
     (
         $typed_instr: ident, $loop_target:ident, $loop_instr:ident, $total_result:ident,
-        $( $target:ident for $instr:ident instr $enum:ident::{ $( $variant:ident ) | * } )*
+        $( $target:ident for $instr:ident instr $enum:ident::{ $( $variant:ident ) | * $(|)? } )*
     ) => {
         match ($loop_target, $loop_instr) {
             // GENERATED TRAVERSAL

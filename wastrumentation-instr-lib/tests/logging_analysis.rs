@@ -51,7 +51,7 @@ pub extern "C" fn f(input: i32) -> i32 {
 
 const EXPECTED_ANALYSIS_STDOUT: &str = indoc::indoc! { r#"
 [ANALYSIS:] apply (pre) WasmFunction {
-    base_apply_idx: 1,
+    base_apply_idx: 0,
     uninstr_idx: 1,
     sig_pointer: 1179640,
 }(RuntimeValues {
@@ -153,7 +153,7 @@ const EXPECTED_ANALYSIS_STDOUT: &str = indoc::indoc! { r#"
     1247,
 )
 [ANALYSIS:] apply (post) WasmFunction {
-    base_apply_idx: 1,
+    base_apply_idx: 0,
     uninstr_idx: 1,
     sig_pointer: 1179640,
 }(RuntimeValues {

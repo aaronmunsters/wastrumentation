@@ -196,9 +196,9 @@ impl WasmValue {
 
     pub fn i32_from_bool(b: bool) -> Self {
         if b {
-            Self::I32(0)
-        } else {
             Self::I32(1)
+        } else {
+            Self::I32(0)
         }
     }
 }
