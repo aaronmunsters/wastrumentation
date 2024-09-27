@@ -24,6 +24,7 @@ use analysis::ProcessedAnalysis;
 
 pub use stack_library::ModuleLinkedStackHooks;
 
+#[derive(Clone)]
 pub struct Wastrumenter<
     InstrumentationLanguage,
     InstrumentationLanguageCompiler,

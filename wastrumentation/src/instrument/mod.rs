@@ -16,7 +16,7 @@ use crate::parse_nesting::HighLevelBody;
 use crate::parse_nesting::LowLevelBody;
 
 use self::block_loop::Target::{BlockPost, BlockPre, LoopPost, LoopPre, Select};
-use self::branch_if::Target::{BrIf, BrTable, IfThen, IfThenElse};
+use self::branch_if::Target::{Br, BrIf, BrTable, IfThen, IfThenElse};
 use self::function_application::INSTRUMENTATION_ANALYSIS_MODULE;
 use self::function_call::TargetCall;
 use self::function_call_indirect::Target::{CallIndirectPost, CallIndirectPre};
@@ -45,6 +45,7 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
         generic_interface,
         if_then_else_trap,
         if_then_trap,
+        br_trap,
         br_if_trap,
         pre_trap_call,
         post_trap_call,
@@ -157,6 +158,7 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
         (post_trap_call_indirect, (|i| Box::new(CallIndirectPost(i)))),
         (if_then_trap, (|i| Box::new(IfThen(i)))),
         (if_then_else_trap, (|i| Box::new(IfThenElse(i)))),
+        (br_trap, (|i| Box::new(Br(i)))),
         (br_if_trap, (|i| Box::new(BrIf(i)))),
         (br_table_trap, (|i| Box::new(BrTable(i)))),
         (drop_trap, (|i| Box::new(Drop(i)))),
@@ -218,7 +220,7 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
         (f64_load, (|i| Box::new(F64Load(i)))),
         (i32_load, (|i| Box::new(I32Load(i)))),
         (i64_load, (|i| Box::new(I64Load(i)))),
-    ] as [(&Option<WasmExport>, TFn); 70]
+    ] as [(&Option<WasmExport>, TFn); 71]
     {
         export
             .as_ref()
@@ -239,6 +241,18 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
                     generic_export,
                 )
             });
+
+    if f32_load.is_some() || f64_load.is_some() || i32_load.is_some() || i64_load.is_some() {
+        memory::inject_memory_loads(&mut module)
+    }
+
+    if f32_store.is_some() || f64_store.is_some() || i32_store.is_some() || i64_store.is_some() {
+        memory::inject_memory_stores(&mut module)
+    }
+
+    if memory_grow.is_some() {
+        memory::inject_memory_grow(&mut module)
+    }
 
     InstrumentationResult {
         module: module.to_bytes().unwrap(),

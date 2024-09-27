@@ -1,10 +1,14 @@
+use core::panic;
+
 use super::TransformationStrategy;
 use crate::parse_nesting::{
     BodyInner, HighLevelBody, HighLevelInstr as Instr, TypedHighLevelInstr,
 };
 
 use wasabi_wasm::types::InferredInstructionType;
-use wasabi_wasm::{Function, GlobalOp, Idx, LoadOp, LocalOp, Memarg, StoreOp, Val, ValType};
+use wasabi_wasm::{
+    Function, FunctionType, GlobalOp, Idx, LoadOp, LocalOp, Memarg, Module, StoreOp, Val, ValType,
+};
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum Target {
@@ -65,23 +69,23 @@ fn transform(body: &BodyInner, target: Target) -> BodyInner {
         match (target, instr) {
             (Target::MemorySize(trap_idx), Instr::MemorySize(idx)) => {
                 result.extend_from_slice(&[
-                    // Perform operation
+                    // []                   // Perform operation
                     typed_instr.place_original(instr.clone()),
-                    // Push memory index on stack
+                    // [size:I32]           // Push memory index on stack
                     typed_instr.instrument_with(Instr::Const(Val::I64(idx.to_u32().into()))),
-                    // Call trap
+                    // [size:I32,index:I64] // Call trap
                     typed_instr.instrument_with(Instr::Call(trap_idx)),
+                    // [size:I32]
                 ]);
                 continue;
             }
             (Target::MemoryGrow(trap_idx), Instr::MemoryGrow(idx)) => {
                 result.extend_from_slice(&[
-                    // Perform operation
-                    typed_instr.place_original(instr.clone()),
-                    // Push memory index on stack
+                    // [amount:I32]                   // Push memory index on stack
                     typed_instr.instrument_with(Instr::Const(Val::I64(idx.to_u32().into()))),
-                    // Call trap
+                    // [amount:I32,index:I64]         // Call to instrumentation
                     typed_instr.instrument_with(Instr::Call(trap_idx)),
+                    // [previous-size-or-neg-one:I32]
                 ]);
                 continue;
             }
@@ -99,44 +103,83 @@ fn transform(body: &BodyInner, target: Target) -> BodyInner {
                 InferredInstructionType::Reachable(type_) => {
                     let (params, results) = (type_.inputs(), type_.results());
                     match (target, &typed_instr.instr, params, results) {
-                        (LocalGetI32(trap_idx), Local(LGet, _), &[], &[I32])
-                        | (GlobalGetI32(trap_idx), Global(GGet, _), &[], &[I32])
-                        | (LocalGetF32(trap_idx), Local(LGet, _), &[], &[F32])
-                        | (LocalGetI64(trap_idx), Local(LGet, _), &[], &[I64])
-                        | (LocalGetF64(trap_idx), Local(LGet, _), &[], &[F64])
-                        | (GlobalGetF32(trap_idx), Global(GGet, _), &[], &[F32])
-                        | (GlobalGetI64(trap_idx), Global(GGet, _), &[], &[I64])
-                        | (GlobalGetF64(trap_idx), Global(GGet, _), &[], &[F64]) => {
+                        (LocalGetI32(trap_idx), Local(LGet, get_idx), &[], &[I32])
+                        | (LocalGetF32(trap_idx), Local(LGet, get_idx), &[], &[F32])
+                        | (LocalGetI64(trap_idx), Local(LGet, get_idx), &[], &[I64])
+                        | (LocalGetF64(trap_idx), Local(LGet, get_idx), &[], &[F64]) => {
                             result.extend_from_slice(&[
                                 // Perform operation
                                 typed_instr.place_original(instr.clone()),
-                                // [value-to-write] // Call trap (in value -> out value)
+                                // Push get-index
+                                typed_instr.instrument_with(
+                                    Instr::Const(Val::I64(i64::from((get_idx).to_u32()))).clone(),
+                                ),
+                                // [value-to-write] // Call trap (in value, get-index -> out value)
                                 typed_instr.instrument_with(Instr::Call(trap_idx)),
                             ]);
                             continue;
                         }
-                        (LocalSetI32(trap_idx), Local(LSet, _), &[I32], &[])
-                        | (GlobalSetI32(trap_idx), Global(GSet, _), &[I32], &[])
-                        | (LocalSetF32(trap_idx), Local(LSet, _), &[F32], &[])
-                        | (GlobalSetF32(trap_idx), Global(GSet, _), &[F32], &[])
-                        | (LocalSetI64(trap_idx), Local(LSet, _), &[I64], &[])
-                        | (GlobalSetI64(trap_idx), Global(GSet, _), &[I64], &[])
-                        | (LocalSetF64(trap_idx), Local(LSet, _), &[F64], &[])
-                        | (GlobalSetF64(trap_idx), Global(GSet, _), &[F64], &[]) => {
+                        (GlobalGetI32(trap_idx), Global(GGet, get_idx), &[], &[I32])
+                        | (GlobalGetF32(trap_idx), Global(GGet, get_idx), &[], &[F32])
+                        | (GlobalGetI64(trap_idx), Global(GGet, get_idx), &[], &[I64])
+                        | (GlobalGetF64(trap_idx), Global(GGet, get_idx), &[], &[F64]) => {
                             result.extend_from_slice(&[
-                                // [value-to-write] // Call trap (in value -> out value)
+                                // Perform operation
+                                typed_instr.place_original(instr.clone()),
+                                // Push get-index
+                                typed_instr.instrument_with(
+                                    Instr::Const(Val::I64(i64::from((get_idx).to_u32()))).clone(),
+                                ),
+                                // [value-to-write] // Call trap (in value, get-index -> out value)
+                                typed_instr.instrument_with(Instr::Call(trap_idx)),
+                            ]);
+                            continue;
+                        }
+                        (LocalSetI32(trap_idx), Local(LSet, set_idx), &[I32], &[])
+                        | (LocalSetF32(trap_idx), Local(LSet, set_idx), &[F32], &[])
+                        | (LocalSetI64(trap_idx), Local(LSet, set_idx), &[I64], &[])
+                        | (LocalSetF64(trap_idx), Local(LSet, set_idx), &[F64], &[]) => {
+                            result.extend_from_slice(&[
+                                // [value-to-write]
+                                typed_instr.instrument_with(
+                                    // Push set-index
+                                    Instr::Const(Val::I64(i64::from((set_idx).to_u32()))).clone(),
+                                ),
+                                // [value-to-write, set-index] // Call trap (in value, set-index -> out value)
                                 typed_instr.instrument_with(Instr::Call(trap_idx)),
                                 // Perform operation
                                 typed_instr.place_original(instr.clone()),
                             ]);
                             continue;
                         }
-                        (LocalTeeI32(trap_idx), Local(Tee, _), &[I32], &[I32])
-                        | (LocalTeeF32(trap_idx), Local(Tee, _), &[F32], &[F32])
-                        | (LocalTeeI64(trap_idx), Local(Tee, _), &[I64], &[I64])
-                        | (LocalTeeF64(trap_idx), Local(Tee, _), &[F64], &[F64]) => {
+                        (GlobalSetI32(trap_idx), Global(GSet, set_idx), &[I32], &[])
+                        | (GlobalSetF32(trap_idx), Global(GSet, set_idx), &[F32], &[])
+                        | (GlobalSetI64(trap_idx), Global(GSet, set_idx), &[I64], &[])
+                        | (GlobalSetF64(trap_idx), Global(GSet, set_idx), &[F64], &[]) => {
                             result.extend_from_slice(&[
-                                // [value-to-write] // Call trap (in value -> out value)
+                                // [value-to-write]
+                                typed_instr.instrument_with(
+                                    // Push set-index
+                                    Instr::Const(Val::I64(i64::from((set_idx).to_u32()))).clone(),
+                                ),
+                                // [value-to-write, set-index] // Call trap (in value, set-index -> out value)
+                                typed_instr.instrument_with(Instr::Call(trap_idx)),
+                                // Perform operation
+                                typed_instr.place_original(instr.clone()),
+                            ]);
+                            continue;
+                        }
+                        (LocalTeeI32(trap_idx), Local(Tee, tee_idx), &[I32], &[I32])
+                        | (LocalTeeF32(trap_idx), Local(Tee, tee_idx), &[F32], &[F32])
+                        | (LocalTeeI64(trap_idx), Local(Tee, tee_idx), &[I64], &[I64])
+                        | (LocalTeeF64(trap_idx), Local(Tee, tee_idx), &[F64], &[F64]) => {
+                            result.extend_from_slice(&[
+                                // [value-to-write]
+                                typed_instr.instrument_with(
+                                    // Push tee-index
+                                    Instr::Const(Val::I64(i64::from((tee_idx).to_u32()))).clone(),
+                                ),
+                                // [value-to-write, tee-index] // Call trap (in value, tee-index -> out value)
                                 typed_instr.instrument_with(Instr::Call(trap_idx)),
                                 // Perform operation
                                 typed_instr.place_original(instr.clone()),
@@ -312,4 +355,101 @@ impl Serialize for LoadOp {
             LoadOp::I64Load32U => 14,
         }
     }
+}
+
+pub fn inject_memory_loads(module: &mut Module) {
+    use wasabi_wasm::Instr::{Binary, End, Load, Local};
+
+    for (name, load_type) in [
+        ("instrumented_base_load_i32", ValType::I32),
+        ("instrumented_base_load_f32", ValType::F32),
+        ("instrumented_base_load_i64", ValType::I64),
+        ("instrumented_base_load_f64", ValType::F64),
+    ] {
+        let load_op = match load_type {
+            ValType::I32 => LoadOp::I32Load,
+            ValType::I64 => LoadOp::I64Load,
+            ValType::F32 => LoadOp::F32Load,
+            ValType::F64 => LoadOp::F64Load,
+            ValType::Ref(_) => panic!("Unreachable statement"),
+        };
+        let function_type = FunctionType::new(&[ValType::I32, ValType::I32], &[load_type]);
+        let body = vec![
+            // []
+            Local(LocalOp::Get, 0_u32.into()),
+            // [ptr]
+            Local(LocalOp::Get, 1_u32.into()),
+            // [ptr, offset]
+            Binary(wasabi_wasm::BinaryOp::I32Add),
+            // [ptr + offset]
+            Load(load_op, Memarg::default(load_op)),
+            // [value]
+            End,
+        ];
+
+        let memory_function_idx = module.add_function(function_type, vec![], body);
+        module
+            .function_mut(memory_function_idx)
+            .export
+            .push(name.to_string());
+    }
+}
+
+pub fn inject_memory_stores(module: &mut Module) {
+    use wasabi_wasm::Instr::{Binary, End, Local, Store};
+    for (name, load_type) in [
+        ("instrumented_base_store_i32", ValType::I32),
+        ("instrumented_base_store_f32", ValType::F32),
+        ("instrumented_base_store_i64", ValType::I64),
+        ("instrumented_base_store_f64", ValType::F64),
+    ] {
+        let store_op = match load_type {
+            ValType::I32 => StoreOp::I32Store,
+            ValType::I64 => StoreOp::I64Store,
+            ValType::F32 => StoreOp::F32Store,
+            ValType::F64 => StoreOp::F64Store,
+            ValType::Ref(_) => panic!("Unreachable statement"),
+        };
+        let function_type = FunctionType::new(&[ValType::I32, load_type, ValType::I32], &[]);
+        let body = vec![
+            // []
+            Local(LocalOp::Get, 0_u32.into()),
+            // [ptr]
+            Local(LocalOp::Get, 2_u32.into()),
+            // [ptr, offset]
+            Binary(wasabi_wasm::BinaryOp::I32Add),
+            // [ptr + offset]
+            Local(LocalOp::Get, 1_u32.into()),
+            // [ptr + offset, value]
+            Store(store_op, Memarg::default(store_op)),
+            // []
+            End,
+        ];
+
+        let memory_function_idx: Idx<Function> = module.add_function(function_type, vec![], body);
+        module
+            .function_mut(memory_function_idx)
+            .export
+            .push(name.to_string());
+    }
+}
+
+pub fn inject_memory_grow(module: &mut Module) {
+    use wasabi_wasm::Instr::{End, Local, MemoryGrow};
+
+    let function_type = FunctionType::new(&[ValType::I32, ValType::I32], &[ValType::I32]);
+    let body = vec![
+        // []
+        Local(LocalOp::Get, 0_u32.into()),
+        // [amount:i32]
+        MemoryGrow(0_u32.into()),
+        // [delta_or_neg_1:i32]
+        End,
+    ];
+
+    let memory_function_idx: Idx<Function> = module.add_function(function_type, vec![], body);
+    module
+        .function_mut(memory_function_idx)
+        .export
+        .push("instrumented_memory_grow".to_string());
 }

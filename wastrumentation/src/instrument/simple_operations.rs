@@ -254,7 +254,17 @@ fn transform(body: &BodyInner, target: Target) -> BodyInner {
     for typed_instr @ TypedHighLevelInstr { instr, .. } in body {
         if let (Target::Return(trap_idx), Instr::Return) = (target, instr) {
             result.extend_from_slice(&[
-                // Inject call after
+                // Inject call
+                typed_instr.instrument_with(Instr::Call(trap_idx)),
+                // Inject original instruction after
+                typed_instr.place_original(instr.clone()),
+            ]);
+            continue;
+        }
+
+        if let (Target::Drop(trap_idx), Instr::Drop) = (target, instr) {
+            result.extend_from_slice(&[
+                // Inject call
                 typed_instr.instrument_with(Instr::Call(trap_idx)),
                 // Inject original instruction after
                 typed_instr.place_original(instr.clone()),

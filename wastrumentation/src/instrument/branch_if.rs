@@ -9,6 +9,7 @@ use super::TransformationStrategy;
 pub enum Target {
     IfThen(Idx<Function>),
     IfThenElse(Idx<Function>),
+    Br(Idx<Function>),
     BrIf(Idx<Function>),
     BrTable(Idx<Function>),
 }
@@ -46,6 +47,16 @@ fn transform(body: &BodyInner, target: Target) -> BodyInner {
 
     for typed_instr @ TypedHighLevelInstr { instr, .. } in body {
         match (target, instr) {
+            (Target::Br(br_trap_idx), Instr::Br(label)) => {
+                result.extend_from_slice(&[
+                    // STACK: []
+                    typed_instr.instrument_with(Instr::Const(Val::I64(label.to_u32().into()))),
+                    // STACK: [label]
+                    typed_instr.instrument_with(Instr::Call(br_trap_idx)),
+                    // STACK: [table_target_index]
+                    typed_instr.place_original(instr.clone()),
+                ]);
+            }
             (Target::BrTable(br_table_trap_idx), Instr::BrTable { table: _, default }) => {
                 result.extend_from_slice(&[
                     // STACK: [table_target_index]

@@ -20,3 +20,4 @@ rayon = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 wat = { workspace = true }
+wasmtime-wasi = "25.0"

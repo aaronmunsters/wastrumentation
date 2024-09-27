@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 wee_alloc = "0.4.5"
+libm = "0.2.8"
 
 [features]
 default = []
