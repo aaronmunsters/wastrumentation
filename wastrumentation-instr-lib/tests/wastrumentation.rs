@@ -55,15 +55,17 @@ fn example_instrumentation_rust() {
 
     let input_program = as_compiler.compile(&as_compiler_options).unwrap();
 
-    let wasp_analysis_spec: WaspAnalysisSpec = WaspAnalysisSpec {
+    let wasp_analysis_spec = (&WaspAnalysisSpec {
         wasp_source: SOURCE_CODE_WASP.into(),
-    };
+    })
+        .try_into()
+        .unwrap();
 
     let rust_compiler = RustCompiler::setup_compiler().unwrap();
     let instrumented_input = Wastrumenter::new(Box::new(rust_compiler), Box::new(as_compiler))
         .wastrument(
             &input_program,
-            &wasp_analysis_spec,
+            wasp_analysis_spec,
             &Configuration::default(),
         )
         .unwrap();
@@ -103,9 +105,11 @@ fn example_instrumentation_wasp() {
         .compile(&assemblyscript_compiler_options)
         .unwrap();
 
-    let wasp_analysis_spec: WaspAnalysisSpec = WaspAnalysisSpec {
+    let wasp_analysis_spec = (&WaspAnalysisSpec {
         wasp_source: SOURCE_CODE_WASP.into(),
-    };
+    })
+        .try_into()
+        .unwrap();
 
     let instrumented_input = Wastrumenter::new(
         Box::new(assemblyscript_compiler1),
@@ -113,7 +117,7 @@ fn example_instrumentation_wasp() {
     )
     .wastrument(
         &input_program,
-        &wasp_analysis_spec,
+        wasp_analysis_spec,
         &Configuration::default(),
     )
     .unwrap();

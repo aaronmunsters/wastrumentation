@@ -5,8 +5,11 @@ use joinpoints::JoinPoints;
 use pest::Parser;
 
 pub mod ast;
+pub mod error;
 pub mod joinpoints;
 pub mod wasp_interface;
+
+pub use error::Error;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct CompilationResult {
@@ -16,9 +19,10 @@ pub struct CompilationResult {
 
 /// # Errors
 /// Whenever compilation would fail due to parsing or compiling the code.
-pub fn compile(wasp: &str) -> anyhow::Result<CompilationResult> {
-    let mut pest_parse = WaspParser::parse(Rule::wasp_input, wasp)?;
-    let wasp_input = WaspInput::from_pest(&mut pest_parse)?;
+pub fn compile(wasp: &str) -> Result<CompilationResult, Error> {
+    let mut pest_parse =
+        WaspParser::parse(Rule::wasp_input, wasp).map_err(|e| Error::PestError(e.to_string()))?;
+    let wasp_input = WaspInput::from_pest(&mut pest_parse).map_err(Error::ConversionError)?;
     let wasp_root = Root::try_from(wasp_input)?;
     let join_points: JoinPoints = wasp_root.join_points();
 
@@ -100,7 +104,7 @@ mod tests {
             .unwrap_err()
             .to_string()
             .as_str(),
-            "Parameters must be unique, got: a, a, a."
+            r#"Parameters must be unique, got: ["a", "a", "a"]"#
         );
     }
 

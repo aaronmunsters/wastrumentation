@@ -254,16 +254,12 @@ impl Analysis {
                 let full_analysis_path = PathBuf::from(TEST_RELATIVE_PATH).join(analysis_path);
                 let wasp_source = read_to_string(full_analysis_path)
                     .unwrap_or_else(|_| panic!("Could not open {analysis_path:?}"));
-                let wasp_analysis_spec = WaspAnalysisSpec { wasp_source };
+                let wasp_analysis_spec = (&WaspAnalysisSpec { wasp_source }).try_into().unwrap();
 
                 let as_compiler = Box::new(ASCompiler::setup_compiler().unwrap());
 
                 Wastrumenter::new(rs_compiler, as_compiler)
-                    .wastrument(
-                        input_program,
-                        &wasp_analysis_spec,
-                        &Configuration::default(),
-                    )
+                    .wastrument(input_program, wasp_analysis_spec, &Configuration::default())
                     .unwrap()
             }
             Analysis::Rust(AnalysisRust {
@@ -276,7 +272,8 @@ impl Analysis {
                         absolute(manifest_path).unwrap(),
                     ),
                     hooks: hooks.clone().into_iter().collect(),
-                };
+                }
+                .into();
 
                 let second_rs_compiler = Box::new(RSCompiler::setup_compiler().unwrap());
 

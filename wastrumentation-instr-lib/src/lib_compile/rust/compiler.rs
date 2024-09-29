@@ -1,4 +1,4 @@
-use rust_to_wasm_compiler::{Profile, RustToWasmCompiler};
+use rust_to_wasm_compiler::{CompilerSetupError, Profile, RustToWasmCompiler};
 use wastrumentation::compiler::{
     CompilationError, CompilationResult, Compiles, DefaultCompilerOptions,
 };
@@ -23,8 +23,9 @@ impl DefaultCompilerOptions<Rust> for CompilerOptions {
 
 impl Compiles<Rust> for Compiler {
     type CompilerOptions = CompilerOptions;
+    type CompilerSetupError = CompilerSetupError;
 
-    fn setup_compiler() -> anyhow::Result<Self> {
+    fn setup_compiler() -> Result<Self, Self::CompilerSetupError> {
         Ok(Self {
             compiler: RustToWasmCompiler::new()?,
         })

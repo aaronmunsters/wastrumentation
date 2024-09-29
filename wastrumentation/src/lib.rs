@@ -1,28 +1,24 @@
 pub mod analysis;
 pub mod compiler;
+pub mod error;
 mod instrument;
 pub mod parse_nesting;
 mod stack_library;
 pub mod wasm_constructs;
 
-use std::{
-    fmt::{Debug, Display},
-    marker::PhantomData,
-};
+use std::fmt::Debug;
+use std::marker::PhantomData;
 
 use crate::instrument::InstrumentationResult;
-use compiler::{Compiles, DefaultCompilerOptions, LibGeneratable, SourceCodeBound, WasmModule};
-use instrument::function_application::{
-    INSTRUMENTATION_ANALYSIS_MODULE, INSTRUMENTATION_INSTRUMENTED_MODULE,
-    INSTRUMENTATION_STACK_MODULE,
-};
-use wasm_merge::{InputModule, MergeError, MergeOptions};
-
-use anyhow::{anyhow, Result};
-
 use analysis::ProcessedAnalysis;
-
+use compiler::{Compiles, DefaultCompilerOptions, LibGeneratable, SourceCodeBound, WasmModule};
+use instrument::function_application::INSTRUMENTATION_ANALYSIS_MODULE;
+use instrument::function_application::INSTRUMENTATION_INSTRUMENTED_MODULE;
+use instrument::function_application::INSTRUMENTATION_STACK_MODULE;
 pub use stack_library::ModuleLinkedStackHooks;
+use wasm_merge::{InputModule, MergeOptions};
+
+use crate::error::Error;
 
 #[derive(Clone)]
 pub struct Wastrumenter<
@@ -87,16 +83,12 @@ where
 
     /// # Errors
     /// Errors upon failing to compile, instrument or merge.
-    pub fn wastrument<Error>(
+    pub fn wastrument(
         &self,
         input_program: &WasmModule,
-        analysis: impl TryInto<ProcessedAnalysis<AnalysisLanguage>, Error = Error>,
+        analysis: ProcessedAnalysis<AnalysisLanguage>,
         configuration: &Configuration,
-    ) -> Result<WasmModule>
-    where
-        Error: Display,
-        Error: Debug,
-    {
+    ) -> Result<WasmModule, Error<AnalysisLanguage, InstrumentationLanguage>> {
         let Configuration {
             target_indices,
             primary_selection,
@@ -105,13 +97,13 @@ where
         let ProcessedAnalysis {
             analysis_library,
             analysis_interface,
-        } = analysis.try_into().map_err(|err| anyhow!("{err:?}"))?;
+        } = analysis;
         let analysis_compiler_options =
             AnalysisLanguageCompiler::CompilerOptions::default_for(analysis_library);
         let analysis_wasm = self
             .analysis_language_compiler
             .compile(&analysis_compiler_options)
-            .map_err(|err| anyhow!(err.reason().to_string()))?;
+            .map_err(Error::CompilationErrorAnalysis)?;
         // 2. Instrument the input program
         let InstrumentationResult {
             module: instrumented_input,
@@ -128,7 +120,7 @@ where
             Some(
                 self.instrumentation_language_compiler
                     .compile(&instrumentation_compiler_options)
-                    .map_err(|err| anyhow!(err.reason().to_string()))?,
+                    .map_err(Error::CompilationErrorInstrumentation)?,
             )
         } else {
             None
@@ -151,7 +143,7 @@ where
         instrumented_input: WasmModule,
         compiled_analysis: WasmModule,
         compiled_instrumentation_lib: Option<WasmModule>,
-    ) -> Result<WasmModule> {
+    ) -> Result<WasmModule, Error<AnalysisLanguage, InstrumentationLanguage>> {
         let input_analysis = move || {
             Some(InputModule {
                 module: compiled_analysis,
@@ -199,7 +191,6 @@ where
             primary,
             input_modules,
         };
-        wasm_merge::merge(&merge_options)
-            .map_err(|MergeError(reason)| anyhow!("MergeError: {}", reason))
+        wasm_merge::merge(&merge_options).map_err(Error::MergeError)
     }
 }

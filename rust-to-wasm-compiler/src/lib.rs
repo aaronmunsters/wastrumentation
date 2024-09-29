@@ -1,17 +1,13 @@
-use anyhow::{anyhow, bail};
-use cargo::{
-    core::{
-        compiler::{CompileKind, CompileTarget},
-        Workspace,
-    },
-    ops::{compile, CompileOptions},
-    GlobalContext,
-};
-use std::{
-    fs::{self, create_dir, File},
-    io::Write,
-    path::Path,
-};
+use cargo::core::compiler::{CompileKind, CompileTarget};
+use cargo::core::Workspace;
+use cargo::ops::{compile, CompileOptions};
+use cargo::GlobalContext;
+
+use std::fs::{self, create_dir, File};
+use std::{io::Write, path::Path};
+
+mod error;
+pub use error::{CompilationError, CompilerSetupError};
 
 pub struct RustToWasmCompiler {
     gctx: GlobalContext,
@@ -34,8 +30,8 @@ pub enum WasiSupport {
 impl RustToWasmCompiler {
     /// # Errors
     /// When creating a default global context fails
-    pub fn new() -> anyhow::Result<Self> {
-        let gctx = GlobalContext::default()?;
+    pub fn new() -> Result<Self, CompilerSetupError> {
+        let gctx = GlobalContext::default().map_err(CompilerSetupError::from)?;
         Ok(Self { gctx })
     }
 
@@ -46,19 +42,26 @@ impl RustToWasmCompiler {
         wasi_support: WasiSupport,
         manifest_path: &Path,
         profile: Profile,
-    ) -> anyhow::Result<Vec<u8>> {
+    ) -> Result<Vec<u8>, CompilationError> {
         // Create new workspace, inheriting from global context
-        let workspace = Workspace::new(manifest_path, &self.gctx)?;
+        let workspace = Workspace::new(manifest_path, &self.gctx)
+            .map_err(Into::into)
+            .map_err(CompilationError::WorkspaceCreationFailed)?;
 
         // Start with default compile options, orienting for a build mode
         let mut compile_options =
-            CompileOptions::new(&self.gctx, cargo::core::compiler::CompileMode::Build)?;
+            CompileOptions::new(&self.gctx, cargo::core::compiler::CompileMode::Build)
+                .map_err(Into::into)
+                .map_err(CompilationError::CompileOptionsCreationFailed)?;
 
         // Set target to wasm32-unknown-unknown
         let target = CompileTarget::new(match wasi_support {
             WasiSupport::Enabled => "wasm32-wasip1",
             WasiSupport::Disabled => "wasm32-unknown-unknown",
-        })?;
+        })
+        .map_err(Into::into)
+        .map_err(CompilationError::TargetCreationFailed)?;
+
         let compile_kind = CompileKind::Target(target);
         compile_options.build_config.requested_kinds = vec![compile_kind];
         compile_options.build_config.requested_profile = match profile {
@@ -70,17 +73,24 @@ impl RustToWasmCompiler {
         .into();
 
         // Perform the compilation
-        let compilation_result = compile(&workspace, &compile_options)?;
+        let compilation_result = compile(&workspace, &compile_options)
+            .map_err(Into::into)
+            .map_err(CompilationError::CompilationFailed)?;
 
-        if compilation_result.cdylibs.len() != 1 {
-            bail!("Compilation result after compiling has no first value")
-        }
+        compilation_result
+            .cdylibs
+            .len()
+            .le(&1)
+            .then_some(())
+            .ok_or(CompilationError::ExpectedSingleCompilationResult)?;
 
-        let Some(compiled_wasm) = compilation_result.cdylibs.first() else {
-            bail!("Compilation result after compiling has no first value")
-        };
+        let compiled_wasm = compilation_result
+            .cdylibs
+            .first()
+            .ok_or(CompilationError::SingleCompilationResultNotPresent)?;
 
-        fs::read(compiled_wasm.path.clone()).map_err(|err| anyhow!(err))
+        fs::read(compiled_wasm.path.clone())
+            .map_err(CompilationError::CompilationResultOutputNotAccessible)
     }
 
     /// # Errors
@@ -91,20 +101,27 @@ impl RustToWasmCompiler {
         manifest: &str,
         lib: &str,
         profile: Profile,
-    ) -> anyhow::Result<Vec<u8>> {
-        // -/
-        let working_dir = tempfile::TempDir::new()?;
+    ) -> Result<Vec<u8>, CompilationError> {
+        // temp/
+        let working_dir =
+            tempfile::TempDir::new().map_err(CompilationError::CreateTempWorkingDir)?;
 
-        // -/Cargo.toml
+        // temp/Cargo.toml
         let manifest_path = working_dir.path().join("Cargo.toml");
-        let mut manifest_file = File::create_new(&manifest_path)?;
-        manifest_file.write_all(manifest.as_bytes())?;
+        let mut manifest_file =
+            File::create_new(&manifest_path).map_err(CompilationError::CreateTempCargoManifest)?;
+        manifest_file
+            .write_all(manifest.as_bytes())
+            .map_err(CompilationError::WriteTempCargoManifest)?;
 
-        // -/src/lib.rs
+        // temp/src/lib.rs
         let src_path = working_dir.path().join("src");
-        create_dir(&src_path)?;
-        let mut lib_file = File::create_new(src_path.join("lib.rs"))?;
-        lib_file.write_all(lib.as_bytes())?;
+        create_dir(&src_path).map_err(CompilationError::CreateTempSourceDirectory)?;
+        let mut lib_file = File::create_new(src_path.join("lib.rs"))
+            .map_err(CompilationError::CreateTempLibraryFile)?;
+        lib_file
+            .write_all(lib.as_bytes())
+            .map_err(CompilationError::WriteTempLibraryFile)?;
 
         self.compile(wasi_support, &manifest_path, profile)
     }

@@ -1,10 +1,9 @@
-use std::{
-    io::{Read, Write},
-    process::Command,
-};
+use std::io::{Read, Write};
+use std::process::Command;
 use tempfile::NamedTempFile;
 
-pub type MergeResult = Result<Vec<u8>, MergeError>;
+mod error;
+pub use error::Error;
 
 /*
 # DOCUMENTATION
@@ -25,9 +24,6 @@ pub type MergeResult = Result<Vec<u8>, MergeError>;
 #
 # TODO: Shift to self-implemented merge
 */
-
-#[derive(Debug)]
-pub struct MergeError(pub String);
 
 #[derive(Debug)]
 pub struct MergeOptions {
@@ -53,7 +49,7 @@ pub struct InputModule {
 ///
 /// # Panics
 /// When accessing resources are failing to be acquired.
-pub fn merge(merge_options: &MergeOptions) -> MergeResult {
+pub fn merge(merge_options: &MergeOptions) -> Result<Vec<u8>, Error> {
     let MergeOptions {
         primary,
         input_modules,
@@ -65,15 +61,15 @@ pub fn merge(merge_options: &MergeOptions) -> MergeResult {
         .iter()
         .chain(input_modules.iter().collect::<Vec<&InputModule>>().iter())
         .map(|im @ InputModule { module, .. }| {
-            let mut input_module = NamedTempFile::new()
-                .map_err(|e| MergeError(format!("Could not create temp output file: {e}")))?;
+            let mut input_module =
+                NamedTempFile::new().map_err(Error::TempInputFileCreationFailed)?;
             input_module
                 .write_all(module)
-                .map_err(|e| MergeError(format!("Could not write module to temp file: {e}")))?;
+                .map_err(Error::TempInputFileWriteFailed)?;
             let input_module_path = input_module.path().to_string_lossy().to_string();
             Ok((*im, input_module_path, input_module))
         })
-        .collect::<Result<Vec<(&InputModule, String, NamedTempFile)>, MergeError>>()?;
+        .collect::<Result<Vec<(&InputModule, String, NamedTempFile)>, Error>>()?;
 
     let merge_name_combinations = merges
         .iter()
@@ -83,8 +79,7 @@ pub fn merge(merge_options: &MergeOptions) -> MergeResult {
         .collect::<Vec<String>>()
         .join(" ");
 
-    let mut output_file = NamedTempFile::new()
-        .map_err(|e| MergeError(format!("Could not create temp output file: {e}")))?;
+    let mut output_file = NamedTempFile::new().map_err(Error::TempOutputFileCreationFailed)?;
     let output_file_path = output_file.path().to_string_lossy().to_string();
 
     // FIXME: move this to separate file, splitting up functionality
@@ -129,19 +124,18 @@ pub fn merge(merge_options: &MergeOptions) -> MergeResult {
     // Kick off command, i.e. merge
     let result = command_merge
         .output()
-        .map_err(|e| MergeError(format!("Could not execute compilation command: {e}")))?;
+        .map_err(Error::MergeExecutionFailed)?;
 
     (result.stderr.is_empty() && result.stdout.is_empty())
         .then_some(true)
-        .ok_or(MergeError(format!(
-            "{:?}",
-            String::from_utf8_lossy(&result.stderr)
-        )))?;
+        .ok_or_else(|| {
+            Error::MergeExecutionReasonFailed(String::from_utf8_lossy(&result.stderr).to_string())
+        })?;
 
     let mut result = Vec::new();
     output_file
         .read_to_end(&mut result)
-        .map_err(|e| MergeError(format!("Could not read result from written output: {e}")))?;
+        .map_err(Error::ReadFromOutputFileFailed)?;
 
     Ok(result)
 }
@@ -246,13 +240,12 @@ mod tests {
             ],
         };
 
-        let MergeError(reason) = merge(&merge_options).unwrap_err();
-        assert!(reason.contains("Fatal"));
+        let merge_error = merge(&merge_options).unwrap_err();
+        assert!(merge_error.to_string().contains("Fatal"));
     }
 
     #[test]
     fn test_debug() {
-        let merge_error = MergeError("reason".into());
         let merge_options = MergeOptions {
             no_validate: false,
             rename_export_conflicts: false,
@@ -264,8 +257,6 @@ mod tests {
             module: vec![],
             namespace: "namespace".into(),
         };
-
-        assert_eq!(format!("{merge_error:?}"), "MergeError(\"reason\")",);
 
         assert_eq!(
             format!("{merge_options:?}"),

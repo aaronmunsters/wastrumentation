@@ -8,7 +8,6 @@ edition = "2021"
 [dependencies]
 wasabi_wasm = { git = "https://github.com/aaronmunsters/wasabi.git", branch = "candidate" }
 wasm-merge = { workspace = true }
-anyhow = { workspace = true }
 indoc = { workspace = true }
 thiserror = { workspace = true }
 

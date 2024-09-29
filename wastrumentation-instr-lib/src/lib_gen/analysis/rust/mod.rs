@@ -1,10 +1,8 @@
 use std::collections::HashSet;
 
-use anyhow::Result;
+use crate::lib_compile::rust::{options::RustSource, Rust};
 use serde::Deserialize;
 use wastrumentation::analysis::{AnalysisInterface, ProcessedAnalysis};
-
-use crate::lib_compile::rust::{options::RustSource, Rust};
 
 #[derive(Clone)]
 pub struct RustAnalysisSpec {
@@ -12,18 +10,15 @@ pub struct RustAnalysisSpec {
     pub hooks: HashSet<Hook>,
 }
 
-impl TryInto<ProcessedAnalysis<Rust>> for RustAnalysisSpec {
-    type Error = anyhow::Error;
+impl From<RustAnalysisSpec> for ProcessedAnalysis<Rust> {
+    fn from(value: RustAnalysisSpec) -> Self {
+        let RustAnalysisSpec { ref hooks, source } = value;
+        let analysis_interface: AnalysisInterface = interface_from(hooks);
 
-    fn try_into(self) -> std::result::Result<ProcessedAnalysis<Rust>, Self::Error> {
-        let RustAnalysisSpec { ref hooks, source } = self;
-
-        let analysis_interface: AnalysisInterface = interface_from(hooks)?;
-
-        Ok(ProcessedAnalysis {
+        ProcessedAnalysis {
             analysis_interface,
             analysis_library: source,
-        })
+        }
     }
 }
 
@@ -53,7 +48,7 @@ pub enum Hook {
     MemoryGrow,
 }
 
-pub fn interface_from(hooks: &HashSet<Hook>) -> Result<AnalysisInterface> {
+pub fn interface_from(hooks: &HashSet<Hook>) -> AnalysisInterface {
     let mut interface = AnalysisInterface::default();
     for hook in hooks {
         match hook {
@@ -170,5 +165,5 @@ pub fn interface_from(hooks: &HashSet<Hook>) -> Result<AnalysisInterface> {
             }
         }
     }
-    Ok(interface)
+    interface
 }

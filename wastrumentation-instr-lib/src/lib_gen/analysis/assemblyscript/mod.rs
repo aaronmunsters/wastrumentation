@@ -9,7 +9,6 @@ use util::Alphabetical;
 
 use crate::lib_compile::assemblyscript::AssemblyScript;
 use crate::lib_gen::analysis::assemblyscript::wasp::WaspRoot;
-use anyhow::Error;
 use wasp_compiler::CompilationResult as WaspCompilerResult;
 use wastrumentation::analysis::{AnalysisInterface, ProcessedAnalysis};
 
@@ -41,7 +40,7 @@ pub struct WaspAnalysisSpec {
 }
 
 impl TryInto<ProcessedAnalysis<AssemblyScript>> for &WaspAnalysisSpec {
-    type Error = Error;
+    type Error = wasp_compiler::Error;
 
     fn try_into(self) -> std::result::Result<ProcessedAnalysis<AssemblyScript>, Self::Error> {
         let WaspCompilerResult {

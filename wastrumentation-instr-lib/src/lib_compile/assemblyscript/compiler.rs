@@ -1,16 +1,15 @@
-use anyhow::Result;
-
 use super::AssemblyScript;
 
 pub use assemblyscript_compiler::compiler::Compiler;
-use assemblyscript_compiler::options::CompilerOptions;
+use assemblyscript_compiler::{error::CompilerSetupError, options::CompilerOptions};
 
 use wastrumentation::compiler::{CompilationError, CompilationResult, Compiles};
 
 impl Compiles<AssemblyScript> for Compiler {
     type CompilerOptions = CompilerOptions;
+    type CompilerSetupError = CompilerSetupError;
 
-    fn setup_compiler() -> Result<Self> {
+    fn setup_compiler() -> std::result::Result<Self, Self::CompilerSetupError> {
         Self::new()
     }
 

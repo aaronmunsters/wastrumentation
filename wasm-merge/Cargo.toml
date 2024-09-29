@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 tempfile = { workspace = true }
+thiserror = { workspace = true }
 
 [dev-dependencies]
 wabt = "0.10.0"

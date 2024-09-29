@@ -51,8 +51,9 @@ where
     Self: Sized,
 {
     type CompilerOptions: DefaultCompilerOptions<Language>;
+    type CompilerSetupError;
 
-    fn setup_compiler() -> anyhow::Result<Self>;
+    fn setup_compiler() -> Result<Self, Self::CompilerSetupError>;
 
     fn compile(&self, compiler_options: &Self::CompilerOptions) -> CompilationResult<Language>;
 }

@@ -1,11 +1,14 @@
-use crate::ast::pest::{
-    self as pest_ast, ApplyFormalArgument, ApplyFormalResult, ApplyFormalWasmF, ApplySpeInter,
-    ApplySpeIntro,
-};
-use anyhow::anyhow;
+use super::pest::CallQualifier;
 use std::{collections::HashSet, fmt::Display};
 
-use super::pest::CallQualifier;
+use crate::error::Error;
+
+use crate::ast::pest as pest_ast;
+use crate::ast::pest::ApplyFormalArgument;
+use crate::ast::pest::ApplyFormalResult;
+use crate::ast::pest::ApplyFormalWasmF;
+use crate::ast::pest::ApplySpeInter;
+use crate::ast::pest::ApplySpeIntro;
 
 const ARGS_HIGHLEVEL: &str = "Args";
 const ARGS_DYNAMIC: &str = "DynArgs";
@@ -271,7 +274,7 @@ impl Root {
 }
 
 impl TryFrom<pest_ast::WaspInput> for Root {
-    type Error = anyhow::Error;
+    type Error = crate::Error;
 
     fn try_from(pest_wasp_input: pest_ast::WaspInput) -> Result<Self, Self::Error> {
         // TODO: determine what should happen if a specialization is defined more than once?
@@ -289,7 +292,7 @@ impl TryFrom<pest_ast::WaspInput> for Root {
 }
 
 impl TryFrom<pest_ast::AdviceDefinition> for AdviceDefinition {
-    type Error = anyhow::Error;
+    type Error = crate::Error;
 
     fn try_from(pest_advice_definition: pest_ast::AdviceDefinition) -> Result<Self, Self::Error> {
         match pest_advice_definition {
@@ -304,7 +307,7 @@ impl TryFrom<pest_ast::AdviceDefinition> for AdviceDefinition {
 }
 
 impl TryFrom<pest_ast::TrapSignature> for TrapSignature {
-    type Error = anyhow::Error;
+    type Error = crate::Error;
 
     fn try_from(pest_trap_signature: pest_ast::TrapSignature) -> Result<Self, Self::Error> {
         match pest_trap_signature {
@@ -452,7 +455,7 @@ impl From<pest_ast::SelectFormalCondition> for SelectFormalCondition {
 }
 
 impl TryFrom<pest_ast::ApplyHookSignature> for ApplyHookSignature {
-    type Error = anyhow::Error;
+    type Error = crate::Error;
 
     fn try_from(
         pest_apply_hook_signature: pest_ast::ApplyHookSignature,
@@ -472,7 +475,7 @@ impl TryFrom<pest_ast::ApplyHookSignature> for ApplyHookSignature {
 }
 
 impl TryFrom<pest_ast::ApplyGen> for ApplyGen {
-    type Error = anyhow::Error;
+    type Error = crate::Error;
 
     fn try_from(pest_apply_gen: pest_ast::ApplyGen) -> Result<Self, Self::Error> {
         let pest_ast::ApplyGen {
@@ -483,45 +486,44 @@ impl TryFrom<pest_ast::ApplyGen> for ApplyGen {
         let ApplyFormalArgument(formal_argument) = apply_formal_argument;
         let ApplyFormalResult(formal_result) = apply_formal_result;
         let generic_means: GenericTarget = match (
-                    formal_argument.type_identifier.as_str(),
-                    formal_result.type_identifier.as_str(),
-                ) {
-                    (ARGS_HIGHLEVEL, RESS_HIGHLEVEL) => GenericTarget::HighLevel,
-                    (ARGS_DYNAMIC, RESS_DYNAMIC) => GenericTarget::Dynamic,
-                    (ARGS_DYNAMIC_MUT, RESS_DYNAMIC_MUT) => GenericTarget::MutableDynamic,
-                    (args, ress) => return Err(
-                        anyhow!(
-                            "Formal parameters must both be either high-level, dynamic or mutably dynamic (got: args {}, for ress {}).",
-                            args,
-                            ress
-                        )
-                    ),
-                };
+            formal_argument.type_identifier.as_str(),
+            formal_result.type_identifier.as_str(),
+        ) {
+            (ARGS_HIGHLEVEL, RESS_HIGHLEVEL) => GenericTarget::HighLevel,
+            (ARGS_DYNAMIC, RESS_DYNAMIC) => GenericTarget::Dynamic,
+            (ARGS_DYNAMIC_MUT, RESS_DYNAMIC_MUT) => GenericTarget::MutableDynamic,
+            (args, ress) => {
+                return Err(Error::IncorrectArgsRessType(
+                    args.to_string(),
+                    ress.to_string(),
+                ))
+            }
+        };
 
         let mut parameters = HashSet::with_capacity(3);
         parameters.insert(&parameter_apply);
         parameters.insert(&formal_argument.identifier);
         parameters.insert(&formal_result.identifier);
-        if parameters.len() != 3 {
-            return Err(anyhow!(
-                "Parameters must be unique, got: {}, {}, {}.",
-                &parameter_apply,
-                &formal_argument.identifier,
-                &formal_result.identifier
-            ));
-        }
 
-        Ok(ApplyGen {
-            generic_means,
-            parameter_function: parameter_apply,
-            parameter_arguments: formal_argument.identifier,
-            parameter_results: formal_result.identifier,
-        })
+        if parameters.len() == 3 {
+            Ok(ApplyGen {
+                generic_means,
+                parameter_function: parameter_apply,
+                parameter_arguments: formal_argument.identifier,
+                parameter_results: formal_result.identifier,
+            })
+        } else {
+            Err(Error::NonUniqueParameters(vec![
+                parameter_apply,
+                formal_argument.identifier,
+                formal_result.identifier,
+            ]))
+        }
     }
 }
 
 impl TryFrom<pest_ast::ApplySpeInter> for ApplySpe {
-    type Error = anyhow::Error;
+    type Error = crate::Error;
 
     fn try_from(pest_apply_spe_inter: pest_ast::ApplySpeInter) -> Result<Self, Self::Error> {
         let ApplySpeInter {
@@ -544,7 +546,7 @@ impl TryFrom<pest_ast::ApplySpeInter> for ApplySpe {
 }
 
 impl TryFrom<pest_ast::ApplySpeIntro> for ApplySpe {
-    type Error = anyhow::Error;
+    type Error = crate::Error;
 
     fn try_from(pest_apply_spe_intro: pest_ast::ApplySpeIntro) -> Result<Self, Self::Error> {
         let ApplySpeIntro {
@@ -571,13 +573,12 @@ impl WasmParameterVec {
     fn distinct_arguments(
         parameters_1: &[WasmParameter],
         parameters_2: &[WasmParameter],
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), crate::Error> {
         let mut parameters: HashSet<String> = HashSet::with_capacity(parameters_1.len() - 1);
         for parameter in parameters_1.iter().chain(parameters_2.iter()) {
             if parameters.contains(parameter.identifier.as_str()) {
-                return Err(anyhow!(
-                    "Duplicate paramater accross arguments and results: {}.",
-                    parameter.identifier
+                return Err(Error::DuplicateArgsRessParameter(
+                    parameter.identifier.to_string(),
                 ));
             }
             parameters.insert(parameter.identifier.to_string());
@@ -587,7 +588,7 @@ impl WasmParameterVec {
 }
 
 impl TryFrom<Vec<pest_ast::TypedArgument>> for WasmParameterVec {
-    type Error = anyhow::Error;
+    type Error = crate::Error;
 
     fn try_from(pest_typed_arguments: Vec<pest_ast::TypedArgument>) -> Result<Self, Self::Error> {
         let mut wasm_type_vec: Vec<WasmParameter> = Vec::with_capacity(pest_typed_arguments.len());
@@ -604,18 +605,19 @@ impl TryFrom<Vec<pest_ast::TypedArgument>> for WasmParameterVec {
                 I64_STR => WasmType::I64,
                 F64_STR => WasmType::F64,
                 unsupported_type => {
-                    return Err(anyhow!(
-                    "Provided type {} unsupported, use one of following instead: {}, {}, {} & {}.",
-                    unsupported_type,
-                    I32_STR,
-                    F32_STR,
-                    I64_STR,
-                    F64_STR
-                ))
+                    return Err(Error::UnsupportedIdentifierType {
+                        unsupported: unsupported_type.to_string(),
+                        supported: vec![
+                            I32_STR.into(),
+                            F32_STR.into(),
+                            I64_STR.into(),
+                            F64_STR.into(),
+                        ],
+                    })
                 }
             };
             if arguments_identifiers.contains(&identifier) {
-                return Err(anyhow!("Duplicate parameter found: {}", &identifier));
+                return Err(Error::DuplicateParameter(identifier.to_string()));
             }
             arguments_identifiers.insert(identifier.clone());
             wasm_type_vec.push(WasmParameter {
@@ -628,7 +630,7 @@ impl TryFrom<Vec<pest_ast::TypedArgument>> for WasmParameterVec {
 }
 
 impl TryFrom<Vec<pest_ast::ApplyFormalArgument>> for WasmParameterVec {
-    type Error = anyhow::Error;
+    type Error = crate::Error;
 
     fn try_from(
         pest_apply_formal_arguments: Vec<pest_ast::ApplyFormalArgument>,
@@ -642,7 +644,7 @@ impl TryFrom<Vec<pest_ast::ApplyFormalArgument>> for WasmParameterVec {
 }
 
 impl TryFrom<Vec<pest_ast::ApplyFormalResult>> for WasmParameterVec {
-    type Error = anyhow::Error;
+    type Error = crate::Error;
 
     fn try_from(
         pest_apply_formal_results: Vec<pest_ast::ApplyFormalResult>,
@@ -709,7 +711,7 @@ mod tests {
                     (table FunctionTable)
                 >>>GUEST>>>👀🏄<<<GUEST<<<))"#;
 
-    fn program_to_wasp_root(program: &str) -> anyhow::Result<Root> {
+    fn program_to_wasp_root(program: &str) -> Result<Root, Error> {
         let mut pest_parse = WaspParser::parse(Rule::wasp_input, program).unwrap();
         let wasp_input = ast::pest::WaspInput::from_pest(&mut pest_parse).unwrap();
         let wasp_root = Root::try_from(wasp_input)?;
@@ -868,13 +870,13 @@ mod tests {
     fn test_errors_incorrect_parameters() {
         let outcomes = [
             ("(args Args          )", "(results DynResults )", "Formal parameters must both be either high-level, dynamic or mutably dynamic (got: args Args, for ress DynResults)."),
-            ("(    (a FOO)        )", "(    (b I32)        )", "Provided type FOO unsupported, use one of following instead: I32, F32, I64 & F64."),
-            ("(    (a I32) (a I32))", "(    (c I32)        )", "Duplicate parameter found: a"),
-            ("(    (a I32)        )", "(    (c I32) (c I32))", "Duplicate parameter found: c"),
-            ("(    (a I32)        )", "(    (a I32)        )", "Duplicate paramater accross arguments and results: a."),
-            ("(Mut (a I32) (a I32))", "(Mut (c I32)        )", "Duplicate parameter found: a"),
-            ("(Mut (a I32)        )", "(Mut (c I32) (c I64))", "Duplicate parameter found: c"),
-            ("(Mut (a I32)        )", "(Mut (a I32)        )", "Duplicate paramater accross arguments and results: a."),
+            ("(    (a FOO)        )", "(    (b I32)        )", r#"Provided type FOO unsupported, supported here: ["I32", "F32", "I64", "F64"]"#),
+            ("(    (a I32) (a I32))", "(    (c I32)        )", "Duplicate parameter: a."),
+            ("(    (a I32)        )", "(    (c I32) (c I32))", "Duplicate parameter: c."),
+            ("(    (a I32)        )", "(    (a I32)        )", "Duplicate parameter accross arguments and results: a."),
+            ("(Mut (a I32) (a I32))", "(Mut (c I32)        )", "Duplicate parameter: a."),
+            ("(Mut (a I32)        )", "(Mut (c I32) (c I64))", "Duplicate parameter: c."),
+            ("(Mut (a I32)        )", "(Mut (a I32)        )", "Duplicate parameter accross arguments and results: a."),
         ];
 
         for (parameter_arguments, parameter_results, message) in outcomes {
@@ -893,6 +895,7 @@ mod tests {
             );
         }
     }
+
     #[test]
     fn test_errors_incorrect_parameters_duplicate() {
         let program: String =
@@ -902,7 +905,7 @@ mod tests {
                 .unwrap_err()
                 .to_string()
                 .as_str(),
-            "Parameters must be unique, got: a, a, a."
+            r#"Parameters must be unique, got: ["a", "a", "a"]"#
         );
     }
 

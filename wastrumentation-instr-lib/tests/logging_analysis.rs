@@ -238,7 +238,7 @@ fn test_analysis() {
         Hook::MemoryGrow,
     ]);
 
-    let analysis = RustAnalysisSpec { source, hooks };
+    let analysis = RustAnalysisSpec { source, hooks }.into();
 
     let configuration = Configuration {
         target_indices: None,

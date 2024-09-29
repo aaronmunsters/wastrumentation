@@ -20,7 +20,6 @@ wastrumentation-instr-lib = { path = "./wastrumentation-instr-lib" }
 wasp-compiler = { path = "./wasp-compiler" }
 wasm-merge = { path = "./wasm-merge" }
 
-anyhow = "1.0"
 wasmtime = "25.0"
 indoc = "2"
 tempfile = "3.12"

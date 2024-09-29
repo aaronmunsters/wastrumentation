@@ -1,8 +1,8 @@
-use std::fs::File;
-use std::io::{Read, Write};
+use std::io::Write;
 use std::process::Command;
+use std::{fs::File, io::Read};
 
-use anyhow::{anyhow, Context, Result};
+use crate::error::{CompilationError, CompilerSetupError};
 use tempfile::{tempdir, TempDir};
 
 use crate::options::CompilerOptions;
@@ -14,52 +14,52 @@ pub struct Compiler {
 impl Compiler {
     /// # Errors
     /// When setup of a temporary directory fails.
-    pub fn new() -> Result<Self> {
+    pub fn new() -> Result<Self, CompilerSetupError> {
         let working_dir = tempdir().expect("Could not create temp dir");
 
         let custom_abort_path = &working_dir.path().join("custom_abort_source_file.ts");
-        let mut custom_abort_file = File::create(custom_abort_path)
-            .with_context(|| format!("Create custom abort file failed: {custom_abort_path:?}"))?;
+        let mut custom_abort_file =
+            File::create(custom_abort_path).map_err(CompilerSetupError::CustomAbortFileCreation)?;
         custom_abort_file
             .write_all(include_str!("./custom_abort_lib.ts").as_bytes())
-            .with_context(|| format!("Write custom abort file failed: {custom_abort_path:?}"))?;
+            .map_err(CompilerSetupError::CustomAbortFileWrite)?;
 
         Command::new("npm")
             .args(["init", "-y"])
             .current_dir(&working_dir)
             .output()
-            .context("Npm init failed")?;
+            .map_err(CompilerSetupError::NpmInitFailed)?;
 
         Command::new("npm")
             .args(["install", "assemblyscript"])
             .current_dir(&working_dir)
             .output()
-            .context("Npm install failed")?;
+            .map_err(CompilerSetupError::NpmInstallFailed)?;
 
         Ok(Self { working_dir })
     }
 
     /// # Errors
     /// When the compilation failes.
-    pub fn compile(&self, compiler_options: &CompilerOptions) -> Result<Vec<u8>> {
+    pub fn compile(&self, compiler_options: &CompilerOptions) -> Result<Vec<u8>, CompilationError> {
         let mut source_file = tempfile::Builder::new()
             .prefix("source_file")
             .suffix(".ts")
             .tempfile()
-            .context("Could not create temp input file")?;
+            .map_err(CompilationError::CreateTempInputFile)?;
 
         source_file
             .write_all(compiler_options.source.as_bytes())
-            .context("Could not write source code to temp imput file")?;
+            .map_err(CompilationError::WriteSourceCodeToTempInputFile)?;
         source_file
             .flush()
-            .context("Could not flush source code to temp imput file")?;
+            .map_err(CompilationError::FlushSourceCodeToTempInputFile)?;
 
         let mut output_file = tempfile::Builder::new()
             .prefix("output_file")
             .suffix(".ts")
             .tempfile()
-            .context("Could not create temp output file")?;
+            .map_err(CompilationError::CreateTempOutputFile)?;
 
         let source_file_path = source_file.path();
         let output_file_path = output_file.path();
@@ -73,19 +73,20 @@ impl Compiler {
         // Kick off command, i.e. compile
         let result = command_compile_lib
             .output()
-            .context("Could not execute compilation command")?;
+            .map_err(CompilationError::ExecuteCompilationCommand)?;
 
-        result.status.success().then_some(true).ok_or(anyhow!(
-            "AssemblyScript compilation failed: {:?}",
-            String::from_utf8_lossy(&result.stderr)
-        ))?;
+        result.status.success().then_some(true).ok_or(
+            CompilationError::AssemblyScriptCompilationFailed(
+                String::from_utf8_lossy(&result.stderr).to_string(),
+            ),
+        )?;
 
         drop(source_file);
 
         let mut result = Vec::new();
         output_file
             .read_to_end(&mut result)
-            .context("Could not read result from compiled output")?;
+            .map_err(CompilationError::ReadResultFromCompiledOutput)?;
 
         Ok(result)
     }
@@ -146,8 +147,6 @@ mod tests {
         let compiler = Compiler::new().unwrap();
         let compiler_options =
             CompilerOptions::default_for("this is not valid assemblyscript code");
-
-        println!("{}", compiler.compile(&compiler_options).unwrap_err());
 
         assert!(compiler
             .compile(&compiler_options)

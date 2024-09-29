@@ -10,5 +10,5 @@ wastrumentation = { workspace = true }
 wastrumentation-instr-lib = { workspace = true }
 rust-to-wasm-compiler = { workspace = true }
 serde = { version = "1.0", features = ["derive"] }
-anyhow = { workspace = true }
+anyhow = "1.0"
 assemblyscript-compiler = { workspace = true }

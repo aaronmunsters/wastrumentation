@@ -76,7 +76,8 @@ fn main() -> anyhow::Result<()> {
             WasiSupport::Disabled,
             rust_analysis_toml_path.path().to_path_buf(),
         ),
-    };
+    }
+    .into();
 
     let instrumentation_language_compiler = AssemblyScriptCompiler::setup_compiler()?;
     let analysis_language_compiler = RustCompiler::setup_compiler()?;
