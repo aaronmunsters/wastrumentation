@@ -216,7 +216,6 @@ pub struct WasmFunction {
 impl std::fmt::Debug for WasmFunction {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("WasmFunction")
-            .field("base_apply_idx", &self.f_apply)
             .field("uninstr_idx", &self.instr_f_idx)
             .field("sig_pointer", &self.sigv)
             .finish()
