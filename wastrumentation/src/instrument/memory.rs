@@ -1,5 +1,3 @@
-use core::panic;
-
 use super::TransformationStrategy;
 use crate::parse_nesting::{
     BodyInner, HighLevelBody, HighLevelInstr as Instr, TypedHighLevelInstr,
@@ -358,34 +356,62 @@ impl Serialize for LoadOp {
 }
 
 pub fn inject_memory_loads(module: &mut Module) {
-    use wasabi_wasm::Instr::{Binary, End, Load, Local};
+    use wasabi_wasm::Instr::{Binary, Const, End, Load, Local};
+    use wasabi_wasm::LoadOp::{F32Load, F64Load, I32Load, I64Load}; // Regular
+    use wasabi_wasm::LoadOp::{I32Load16S, I32Load16U, I32Load8S, I32Load8U}; // I32 Specialized
+    use wasabi_wasm::LoadOp::{
+        // I64 Specialized
+        I64Load16S,
+        I64Load16U,
+        I64Load32S,
+        I64Load32U,
+        I64Load8S,
+        I64Load8U,
+    };
 
-    for (name, load_type) in [
-        ("instrumented_base_load_i32", ValType::I32),
-        ("instrumented_base_load_f32", ValType::F32),
-        ("instrumented_base_load_i64", ValType::I64),
-        ("instrumented_base_load_f64", ValType::F64),
+    assert!(module.memories.len() <= 1);
+
+    for (name, load_op, load_type) in [
+        // Regular
+        ("instrumented_base_load_i32", I32Load, ValType::I32),
+        ("instrumented_base_load_i64", I64Load, ValType::I64),
+        ("instrumented_base_load_f32", F32Load, ValType::F32),
+        ("instrumented_base_load_f64", F64Load, ValType::F64),
+        // I32 Specialized
+        ("instrumented_base_load_i32_8S", I32Load8S, ValType::I32),
+        ("instrumented_base_load_i32_8U", I32Load8U, ValType::I32),
+        ("instrumented_base_load_i32_16S", I32Load16S, ValType::I32),
+        ("instrumented_base_load_i32_16U", I32Load16U, ValType::I32),
+        // I64 Specialized
+        ("instrumented_base_load_i64_8S", I64Load8S, ValType::I64),
+        ("instrumented_base_load_i64_8U", I64Load8U, ValType::I64),
+        ("instrumented_base_load_i64_16S", I64Load16S, ValType::I64),
+        ("instrumented_base_load_i64_16U", I64Load16U, ValType::I64),
+        ("instrumented_base_load_i64_32S", I64Load32S, ValType::I64),
+        ("instrumented_base_load_i64_32U", I64Load32U, ValType::I64),
     ] {
-        let load_op = match load_type {
-            ValType::I32 => LoadOp::I32Load,
-            ValType::I64 => LoadOp::I64Load,
-            ValType::F32 => LoadOp::F32Load,
-            ValType::F64 => LoadOp::F64Load,
-            ValType::Ref(_) => panic!("Unreachable statement"),
-        };
         let function_type = FunctionType::new(&[ValType::I32, ValType::I32], &[load_type]);
-        let body = vec![
-            // []
-            Local(LocalOp::Get, 0_u32.into()),
-            // [ptr]
-            Local(LocalOp::Get, 1_u32.into()),
-            // [ptr, offset]
-            Binary(wasabi_wasm::BinaryOp::I32Add),
-            // [ptr + offset]
-            Load(load_op, Memarg::default(load_op)),
-            // [value]
-            End,
-        ];
+        let body = if module.memories.is_empty() {
+            vec![
+                // []
+                Const(load_type.zero()),
+                // [value]
+                End,
+            ]
+        } else {
+            vec![
+                // []
+                Local(LocalOp::Get, 0_u32.into()),
+                // [ptr]
+                Local(LocalOp::Get, 1_u32.into()),
+                // [ptr, offset]
+                Binary(wasabi_wasm::BinaryOp::I32Add),
+                // [ptr + offset]
+                Load(load_op, Memarg::default(load_op)),
+                // [value]
+                End,
+            ]
+        };
 
         let memory_function_idx = module.add_function(function_type, vec![], body);
         module
@@ -397,34 +423,45 @@ pub fn inject_memory_loads(module: &mut Module) {
 
 pub fn inject_memory_stores(module: &mut Module) {
     use wasabi_wasm::Instr::{Binary, End, Local, Store};
-    for (name, load_type) in [
-        ("instrumented_base_store_i32", ValType::I32),
-        ("instrumented_base_store_f32", ValType::F32),
-        ("instrumented_base_store_i64", ValType::I64),
-        ("instrumented_base_store_f64", ValType::F64),
+    use wasabi_wasm::StoreOp::{F32Store, F64Store, I32Store, I64Store}; // Regular
+    use wasabi_wasm::StoreOp::{I32Store16, I32Store8}; // I32 Specialized
+    use wasabi_wasm::StoreOp::{I64Store16, I64Store32, I64Store8}; // I64 Specialized
+
+    assert!(module.memories.len() <= 1);
+
+    for (name, store_op, store_type) in [
+        // Regular
+        ("instrumented_base_store_i32", I32Store, ValType::I32),
+        ("instrumented_base_store_i64", I64Store, ValType::I64),
+        ("instrumented_base_store_f32", F32Store, ValType::F32),
+        ("instrumented_base_store_f64", F64Store, ValType::F64),
+        // I32 Specialized
+        ("instrumented_base_store_i32_8", I32Store8, ValType::I32),
+        ("instrumented_base_store_i32_16", I32Store16, ValType::I32),
+        // I64 Specialized
+        ("instrumented_base_store_i64_8", I64Store8, ValType::I64),
+        ("instrumented_base_store_i64_16", I64Store16, ValType::I64),
+        ("instrumented_base_store_i64_32", I64Store32, ValType::I64),
     ] {
-        let store_op = match load_type {
-            ValType::I32 => StoreOp::I32Store,
-            ValType::I64 => StoreOp::I64Store,
-            ValType::F32 => StoreOp::F32Store,
-            ValType::F64 => StoreOp::F64Store,
-            ValType::Ref(_) => panic!("Unreachable statement"),
+        let function_type = FunctionType::new(&[ValType::I32, store_type, ValType::I32], &[]);
+        let body = if module.memories.is_empty() {
+            vec![End]
+        } else {
+            vec![
+                // []
+                Local(LocalOp::Get, 0_u32.into()),
+                // [ptr]
+                Local(LocalOp::Get, 2_u32.into()),
+                // [ptr, offset]
+                Binary(wasabi_wasm::BinaryOp::I32Add),
+                // [ptr + offset]
+                Local(LocalOp::Get, 1_u32.into()),
+                // [ptr + offset, value]
+                Store(store_op, Memarg::default(store_op)),
+                // []
+                End,
+            ]
         };
-        let function_type = FunctionType::new(&[ValType::I32, load_type, ValType::I32], &[]);
-        let body = vec![
-            // []
-            Local(LocalOp::Get, 0_u32.into()),
-            // [ptr]
-            Local(LocalOp::Get, 2_u32.into()),
-            // [ptr, offset]
-            Binary(wasabi_wasm::BinaryOp::I32Add),
-            // [ptr + offset]
-            Local(LocalOp::Get, 1_u32.into()),
-            // [ptr + offset, value]
-            Store(store_op, Memarg::default(store_op)),
-            // []
-            End,
-        ];
 
         let memory_function_idx: Idx<Function> = module.add_function(function_type, vec![], body);
         module
@@ -435,17 +472,27 @@ pub fn inject_memory_stores(module: &mut Module) {
 }
 
 pub fn inject_memory_grow(module: &mut Module) {
-    use wasabi_wasm::Instr::{End, Local, MemoryGrow};
+    use wasabi_wasm::Instr::{Const, End, Local, MemoryGrow};
+    assert!(module.memories.len() <= 1);
 
     let function_type = FunctionType::new(&[ValType::I32, ValType::I32], &[ValType::I32]);
-    let body = vec![
-        // []
-        Local(LocalOp::Get, 0_u32.into()),
-        // [amount:i32]
-        MemoryGrow(0_u32.into()),
-        // [delta_or_neg_1:i32]
-        End,
-    ];
+    let body = if module.memories.is_empty() {
+        vec![
+            // []
+            Const(Val::I32(-1)),
+            // [value]
+            End,
+        ]
+    } else {
+        vec![
+            // []
+            Local(LocalOp::Get, 0_u32.into()),
+            // [amount:i32]
+            MemoryGrow(0_u32.into()),
+            // [delta_or_neg_1:i32]
+            End,
+        ]
+    };
 
     let memory_function_idx: Idx<Function> = module.add_function(function_type, vec![], body);
     module

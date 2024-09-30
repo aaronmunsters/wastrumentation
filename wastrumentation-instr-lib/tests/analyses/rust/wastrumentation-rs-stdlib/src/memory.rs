@@ -1,7 +1,32 @@
+use crate::WasmValue;
 use crate::{
-    instrumented_base_load_f32, instrumented_base_load_f64, instrumented_base_load_i32,
-    instrumented_base_load_i64, instrumented_base_store_f32, instrumented_base_store_f64,
-    instrumented_base_store_i32, instrumented_base_store_i64, WasmValue,
+    // load
+    instrumented_base_load_f32,
+    instrumented_base_load_f64,
+    instrumented_base_load_i32,
+    instrumented_base_load_i32_16S,
+    instrumented_base_load_i32_16U,
+    instrumented_base_load_i32_8S,
+    instrumented_base_load_i32_8U,
+    instrumented_base_load_i64,
+    instrumented_base_load_i64_16S,
+    instrumented_base_load_i64_16U,
+    instrumented_base_load_i64_32S,
+    instrumented_base_load_i64_32U,
+    instrumented_base_load_i64_8S,
+    instrumented_base_load_i64_8U,
+};
+use crate::{
+    // store
+    instrumented_base_store_f32,
+    instrumented_base_store_f64,
+    instrumented_base_store_i32,
+    instrumented_base_store_i32_16,
+    instrumented_base_store_i32_8,
+    instrumented_base_store_i64,
+    instrumented_base_store_i64_16,
+    instrumented_base_store_i64_32,
+    instrumented_base_store_i64_8,
 };
 
 macro_rules! generate_wrapper {
@@ -86,45 +111,63 @@ impl Deserialize for StoreOperation {
 
 impl StoreOperation {
     pub fn perform(&self, store_index: &StoreIndex, value: &WasmValue, offset: &StoreOffset) {
-        use StoreOperation::F32Store;
-        use StoreOperation::F64Store;
-        use StoreOperation::{I32Store, I32Store16, I32Store8};
-        use StoreOperation::{I64Store, I64Store16, I64Store32, I64Store8};
+        // Regular
+        use StoreOperation::{F32Store, F64Store, I32Store, I64Store};
+        // I32 Load
+        use StoreOperation::{I32Store16, I32Store8};
+        // I64 Load
+        use StoreOperation::{I64Store16, I64Store32, I64Store8};
 
         let ptr = *store_index.value();
         let offset = (*offset.value()).try_into().unwrap();
 
         match self {
+            // Regular
             F32Store => unsafe { instrumented_base_store_f32(ptr, value.as_f32(), offset) },
             F64Store => unsafe { instrumented_base_store_f64(ptr, value.as_f64(), offset) },
-            I32Store | I32Store8 | I32Store16 => unsafe {
-                instrumented_base_store_i32(ptr, value.as_i32(), offset)
-            },
-            I64Store | I64Store16 | I64Store32 | I64Store8 => unsafe {
-                instrumented_base_store_i64(ptr, value.as_i64(), offset)
-            },
+            I32Store => unsafe { instrumented_base_store_i32(ptr, value.as_i32(), offset) },
+            I64Store => unsafe { instrumented_base_store_i64(ptr, value.as_i64(), offset) },
+            // I32 Load
+            I32Store16 => unsafe { instrumented_base_store_i32_16(ptr, value.as_i32(), offset) },
+            I32Store8 => unsafe { instrumented_base_store_i32_8(ptr, value.as_i32(), offset) },
+            // I64 Load
+            I64Store16 => unsafe { instrumented_base_store_i64_16(ptr, value.as_i64(), offset) },
+            I64Store32 => unsafe { instrumented_base_store_i64_32(ptr, value.as_i64(), offset) },
+            I64Store8 => unsafe { instrumented_base_store_i64_8(ptr, value.as_i64(), offset) },
         }
     }
 }
 
 impl LoadOperation {
     pub fn perform(&self, load_index: &LoadIndex, offset: &LoadOffset) -> WasmValue {
-        use LoadOperation::{I32Load, I32Load16S, I32Load16U, I32Load8S, I32Load8U};
-        use LoadOperation::{I64Load, I64Load16S, I64Load32S, I64Load8S};
-        use LoadOperation::{I64Load16U, I64Load32U, I64Load8U};
+        // Regular
+        use LoadOperation::{F32Load, F64Load, I32Load, I64Load};
+        // I32 Load
+        use LoadOperation::{I32Load16S, I32Load16U, I32Load8S, I32Load8U};
+        // I64 Load
+        use LoadOperation::{I64Load16S, I64Load16U, I64Load32S, I64Load32U, I64Load8S, I64Load8U};
 
         let ptr = *load_index.value();
         let offset = (*offset.value()).try_into().unwrap();
 
         match self {
-            LoadOperation::F32Load => unsafe { instrumented_base_load_f32(ptr, offset).into() },
-            LoadOperation::F64Load => unsafe { instrumented_base_load_f64(ptr, offset).into() },
-            I32Load | I32Load8S | I32Load8U | I32Load16S | I32Load16U => unsafe {
-                instrumented_base_load_i32(ptr, offset).into()
-            },
-            I64Load | I64Load8S | I64Load8U | I64Load16S | I64Load16U | I64Load32S | I64Load32U => unsafe {
-                instrumented_base_load_i64(ptr, offset).into()
-            },
+            // Regular
+            F32Load => unsafe { instrumented_base_load_f32(ptr, offset).into() },
+            F64Load => unsafe { instrumented_base_load_f64(ptr, offset).into() },
+            I32Load => unsafe { instrumented_base_load_i32(ptr, offset).into() },
+            I64Load => unsafe { instrumented_base_load_i64(ptr, offset).into() },
+            // I32 Load
+            I32Load16S => unsafe { instrumented_base_load_i32_16S(ptr, offset).into() },
+            I32Load16U => unsafe { instrumented_base_load_i32_16U(ptr, offset).into() },
+            I32Load8S => unsafe { instrumented_base_load_i32_8S(ptr, offset).into() },
+            I32Load8U => unsafe { instrumented_base_load_i32_8U(ptr, offset).into() },
+            // I64 Load
+            I64Load16S => unsafe { instrumented_base_load_i64_16S(ptr, offset).into() },
+            I64Load16U => unsafe { instrumented_base_load_i64_16U(ptr, offset).into() },
+            I64Load32S => unsafe { instrumented_base_load_i64_32S(ptr, offset).into() },
+            I64Load32U => unsafe { instrumented_base_load_i64_32U(ptr, offset).into() },
+            I64Load8S => unsafe { instrumented_base_load_i64_8S(ptr, offset).into() },
+            I64Load8U => unsafe { instrumented_base_load_i64_8U(ptr, offset).into() },
         }
     }
 }

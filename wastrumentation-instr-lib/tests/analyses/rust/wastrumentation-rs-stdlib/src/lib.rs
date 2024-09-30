@@ -29,15 +29,34 @@ fn panic(_panic: &core::panic::PanicInfo<'_>) -> ! {
 
 #[link(wasm_import_module = "instrumented_input")]
 extern "C" {
+    // Base apply
     fn call_base(f_apply: i32, sigv: i32) -> ();
+    // Base load
     fn instrumented_base_load_i32(ptr: i32, offset: i32) -> i32;
-    fn instrumented_base_load_f32(ptr: i32, offset: i32) -> f32;
     fn instrumented_base_load_i64(ptr: i32, offset: i32) -> i64;
+    fn instrumented_base_load_f32(ptr: i32, offset: i32) -> f32;
     fn instrumented_base_load_f64(ptr: i32, offset: i32) -> f64;
+    fn instrumented_base_load_i32_8S(ptr: i32, offset: i32) -> i32;
+    fn instrumented_base_load_i32_8U(ptr: i32, offset: i32) -> i32;
+    fn instrumented_base_load_i32_16S(ptr: i32, offset: i32) -> i32;
+    fn instrumented_base_load_i32_16U(ptr: i32, offset: i32) -> i32;
+    fn instrumented_base_load_i64_8S(ptr: i32, offset: i32) -> i64;
+    fn instrumented_base_load_i64_8U(ptr: i32, offset: i32) -> i64;
+    fn instrumented_base_load_i64_16S(ptr: i32, offset: i32) -> i64;
+    fn instrumented_base_load_i64_16U(ptr: i32, offset: i32) -> i64;
+    fn instrumented_base_load_i64_32S(ptr: i32, offset: i32) -> i64;
+    fn instrumented_base_load_i64_32U(ptr: i32, offset: i32) -> i64;
+    // Base store
     fn instrumented_base_store_i32(ptr: i32, value: i32, offset: i32) -> ();
-    fn instrumented_base_store_f32(ptr: i32, value: f32, offset: i32) -> ();
     fn instrumented_base_store_i64(ptr: i32, value: i64, offset: i32) -> ();
+    fn instrumented_base_store_f32(ptr: i32, value: f32, offset: i32) -> ();
     fn instrumented_base_store_f64(ptr: i32, value: f64, offset: i32) -> ();
+    fn instrumented_base_store_i32_8(ptr: i32, value: i32, offset: i32) -> ();
+    fn instrumented_base_store_i32_16(ptr: i32, value: i32, offset: i32) -> ();
+    fn instrumented_base_store_i64_8(ptr: i32, value: i64, offset: i32) -> ();
+    fn instrumented_base_store_i64_16(ptr: i32, value: i64, offset: i32) -> ();
+    fn instrumented_base_store_i64_32(ptr: i32, value: i64, offset: i32) -> ();
+    // Base memory grow
     fn instrumented_memory_grow(amount: i32, idx: i32) -> i32;
 }
 
