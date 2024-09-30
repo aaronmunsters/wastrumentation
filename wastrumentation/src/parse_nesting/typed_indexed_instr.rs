@@ -38,3 +38,36 @@ pub fn type_inference_index_function(
         })
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use wasabi_wasm::Module;
+
+    // FIXME: This is a bug in Wasabi :(
+
+    #[test]
+    fn test_generation() {
+        const WAT: &str = r#"
+          (module
+            (func (export "meet-bottom")
+              (block (result f64)
+                (block (result f32)
+                  (unreachable)
+                  (br_table 0 1 1 (i32.const 1))
+                )
+                (drop)
+                (f64.const 0)
+              )
+              (drop)
+            )
+          )
+        "#;
+        let wat = wat::parse_str(WAT).unwrap();
+        let (module, _, _) = Module::from_bytes(&wat).unwrap();
+        let meet_bottom = module.functions.first().unwrap();
+        let meet_bottom_code = meet_bottom.code().unwrap();
+        let err = type_inference_index_function(meet_bottom, meet_bottom_code, &module);
+        assert!(matches!(err, Err(TypeError(_))))
+    }
+}
