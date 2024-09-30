@@ -288,8 +288,8 @@ fn transform(body: &BodyInner, target: Target) -> BodyInner {
             UnaryI32ToI32 for Unary instr UnaryOp::{I32Clz | I32Ctz | I32Popcnt}
             UnaryI64ToI64 for Unary instr UnaryOp::{I64Clz | I64Ctz | I64Popcnt}
 
-            UnaryF32ToF32 for Unary instr UnaryOp::{F32Abs | F32Neg | F32Ceil | F32Floor | F32Trunc | F32Nearest | F32Sqrt}
-            UnaryF64ToF64 for Unary instr UnaryOp::{F64Abs | F64Neg | F64Ceil | F64Floor | F64Trunc | F64Nearest | F64Sqrt}
+            UnaryF32ToF32 for Unary instr UnaryOp::{F32Abs | F32Neg | F32Ceil | F32Floor | F32Trunc /* | F32Nearest */ | F32Sqrt}
+            UnaryF64ToF64 for Unary instr UnaryOp::{F64Abs | F64Neg | F64Ceil | F64Floor | F64Trunc /* | F64Nearest */ | F64Sqrt}
 
             UnaryI64ToI32 for Unary instr UnaryOp::{I32WrapI64}
             UnaryF32ToI32 for Unary instr UnaryOp::{I32TruncF32S | I32TruncF32U | I32TruncSatF32S | I32TruncSatF32U}
