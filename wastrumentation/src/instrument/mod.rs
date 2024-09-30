@@ -7,11 +7,11 @@ use wasabi_wasm::Module;
 use wasabi_wasm::ValType;
 
 use crate::compiler::{LibGeneratable, Library};
-use crate::parse_nesting::LowToHighError;
 use wasabi_wasm::Function;
 use wasabi_wasm::Idx;
 
 use crate::analysis::{AnalysisInterface, WasmExport, WasmImport, WasmType};
+use crate::error::InstrumentationError;
 use crate::parse_nesting::HighLevelBody;
 use crate::parse_nesting::LowLevelBody;
 
@@ -31,7 +31,7 @@ pub mod function_call_indirect;
 pub mod memory;
 pub mod simple_operations;
 
-pub struct InstrumentationResult<InstrumentationLanguage: LibGeneratable> {
+pub struct Instrumented<InstrumentationLanguage: LibGeneratable> {
     pub module: Vec<u8>,
     pub instrumentation_library: Option<Library<InstrumentationLanguage>>,
 }
@@ -40,7 +40,7 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
     module: &[u8],
     analysis_interface: &AnalysisInterface,
     target_indices: &Option<Vec<u32>>,
-) -> InstrumentationResult<InstrumentationLanguage> {
+) -> Result<Instrumented<InstrumentationLanguage>, InstrumentationError> {
     let AnalysisInterface {
         generic_interface,
         if_then_else_trap,
@@ -118,7 +118,8 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
         i64_load,
     } = analysis_interface;
 
-    let (mut module, _offsets, _issue) = Module::from_bytes(module).unwrap();
+    let (mut module, _offsets, _issue) =
+        Module::from_bytes(module).map_err(InstrumentationError::ParseModuleError)?;
 
     let target_indices: HashSet<Idx<Function>> = module
         .functions()
@@ -143,9 +144,7 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
         },
     };
 
-    target_call
-        .instrument(&mut module, &target_indices)
-        .unwrap();
+    target_call.instrument(&mut module, &target_indices)?;
 
     type TFn = fn(Idx<Function>) -> Box<dyn TransformationStrategy>;
     for (export, target) in [
@@ -222,12 +221,13 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
         (i64_load, (|i| Box::new(I64Load(i)))),
     ] as [(&Option<WasmExport>, TFn); 71]
     {
-        export
+        if let Some(Err(err)) = export
             .as_ref()
             .map(|export| module.install(export))
-            .map(|index| {
-                module.instrument_function_bodies(&target_indices, target(index).as_ref())
-            });
+            .map(|index| module.instrument_function_bodies(&target_indices, target(index).as_ref()))
+        {
+            return Err(err);
+        }
     }
 
     let instrumentation_library =
@@ -242,22 +242,16 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
                 )
             });
 
-    if f32_load.is_some() || f64_load.is_some() || i32_load.is_some() || i64_load.is_some() {
-        memory::inject_memory_loads(&mut module)
-    }
+    memory::inject_memory_loads(&mut module);
+    memory::inject_memory_stores(&mut module);
+    memory::inject_memory_grow(&mut module);
 
-    if f32_store.is_some() || f64_store.is_some() || i32_store.is_some() || i64_store.is_some() {
-        memory::inject_memory_stores(&mut module)
-    }
-
-    if memory_grow.is_some() {
-        memory::inject_memory_grow(&mut module)
-    }
-
-    InstrumentationResult {
-        module: module.to_bytes().unwrap(),
+    Ok(Instrumented {
+        module: module
+            .to_bytes()
+            .map_err(InstrumentationError::EncodeError)?,
         instrumentation_library,
-    }
+    })
 }
 
 fn uses_reference_types(f: &Function) -> bool {
@@ -283,14 +277,6 @@ trait Instrumentable {
         target_functions: &HashSet<Idx<Function>>,
         instrumentation_strategy: &dyn TransformationStrategy,
     ) -> Result<(), InstrumentationError>;
-}
-
-#[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
-pub enum InstrumentationError {
-    #[error("attempt to instrument an `import` function")]
-    AttemptInstrumentImport,
-    #[error("low to high failed {low_to_high_err}")]
-    LowToHighError { low_to_high_err: LowToHighError },
 }
 
 impl Instrumentable for Module {

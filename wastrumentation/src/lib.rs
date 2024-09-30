@@ -9,7 +9,7 @@ pub mod wasm_constructs;
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
-use crate::instrument::InstrumentationResult;
+use crate::instrument::Instrumented;
 use analysis::ProcessedAnalysis;
 use compiler::{Compiles, DefaultCompilerOptions, LibGeneratable, SourceCodeBound, WasmModule};
 use instrument::function_application::INSTRUMENTATION_ANALYSIS_MODULE;
@@ -105,14 +105,15 @@ where
             .compile(&analysis_compiler_options)
             .map_err(Error::CompilationErrorAnalysis)?;
         // 2. Instrument the input program
-        let InstrumentationResult {
+        let Instrumented {
             module: instrumented_input,
             instrumentation_library,
         } = instrument::instrument::<InstrumentationLanguage>(
             input_program,
             &analysis_interface,
             target_indices,
-        );
+        )
+        .map_err(Error::InstrumentationError)?;
         // 3. Compile the instrumentation lib
         let compiled_instrumentation_lib = if let Some(library) = instrumentation_library {
             let instrumentation_compiler_options =

@@ -381,13 +381,15 @@ mod tests {
         let (mut wasm_module, _, _) = wasabi_wasm::Module::from_bytes(&wasm_bytes).unwrap();
 
         // Instrument
-        assert_eq!(
-            Err(InstrumentationError::AttemptInstrumentImport),
-            wasm_module.instrument_function_bodies(
-                &HashSet::from_iter(vec![0_usize.into()]),
-                &Target::IfThenElse(0_usize.into())
-            )
-        );
+        assert!(matches!(
+            wasm_module
+                .instrument_function_bodies(
+                    &HashSet::from_iter(vec![0_usize.into()]),
+                    &Target::IfThenElse(0_usize.into())
+                )
+                .unwrap_err(),
+            InstrumentationError::AttemptInstrumentImport,
+        ));
     }
 
     fn nested_ifs_body() -> Module {
