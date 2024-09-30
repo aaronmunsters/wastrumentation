@@ -48,6 +48,36 @@ pub enum Hook {
     MemoryGrow,
 }
 
+impl Hook {
+    pub fn all_hooks() -> HashSet<Self> {
+        use Hook::*;
+        HashSet::from([
+            GenericApply,
+            CallPre,
+            CallPost,
+            CallIndirectPre,
+            CallIndirectPost,
+            IfThen,
+            IfThenElse,
+            Branch,
+            BranchIf,
+            BranchTable,
+            Select,
+            Unary,
+            Binary,
+            Drop,
+            Return,
+            Const,
+            Local,
+            Global,
+            Store,
+            Load,
+            MemorySize,
+            MemoryGrow,
+        ])
+    }
+}
+
 pub fn interface_from(hooks: &HashSet<Hook>) -> AnalysisInterface {
     let mut interface = AnalysisInterface::default();
     for hook in hooks {
