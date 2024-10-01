@@ -46,6 +46,10 @@ pub enum Hook {
     Load,
     MemorySize,
     MemoryGrow,
+    BlockPre,
+    BlockPost,
+    LoopPre,
+    LoopPost,
 }
 
 impl Hook {
@@ -74,6 +78,10 @@ impl Hook {
             Load,
             MemorySize,
             MemoryGrow,
+            BlockPre,
+            BlockPost,
+            LoopPre,
+            LoopPost,
         ])
     }
 }
@@ -192,6 +200,18 @@ pub fn interface_from(hooks: &HashSet<Hook>) -> AnalysisInterface {
             }
             Hook::MemoryGrow => {
                 interface.memory_grow = Some(AnalysisInterface::interface_memory_grow())
+            }
+            Hook::BlockPre => {
+                interface.pre_block = Some(AnalysisInterface::interface_pre_block());
+            }
+            Hook::BlockPost => {
+                interface.post_block = Some(AnalysisInterface::interface_post_block());
+            }
+            Hook::LoopPre => {
+                interface.pre_loop = Some(AnalysisInterface::interface_pre_loop());
+            }
+            Hook::LoopPost => {
+                interface.post_loop = Some(AnalysisInterface::interface_post_loop());
             }
         }
     }

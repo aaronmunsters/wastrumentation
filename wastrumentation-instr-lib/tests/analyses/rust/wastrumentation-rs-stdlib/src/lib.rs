@@ -77,7 +77,7 @@ const TYPE_F32: i32 = 1;
 const TYPE_I64: i32 = 2;
 const TYPE_F64: i32 = 3;
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone, Copy)]
 pub enum WasmType {
     I32,
     F32,
@@ -85,6 +85,7 @@ pub enum WasmType {
     F64,
 }
 
+// TODO: can I wrap this i32 into MaterializedWasmType to ensure type safety?
 impl From<&i32> for WasmType {
     fn from(serialized_type: &i32) -> Self {
         match serialized_type {
@@ -995,6 +996,22 @@ macro_rules! advice {
             let delta_or_neg_1: WasmValue = $body;
             delta_or_neg_1.as_i32()
         }
+    };
+    (block pre () $body:block) => {
+        #[no_mangle]
+        extern "C" fn trap_block_pre() -> () $body
+    };
+    (block post () $body:block) => {
+        #[no_mangle]
+        extern "C" fn trap_block_post() -> () $body
+    };
+    (loop_ pre () $body:block) => {
+        #[no_mangle]
+        extern "C" fn trap_loop_pre() -> () $body
+    };
+    (loop_ post () $body:block) => {
+        #[no_mangle]
+        extern "C" fn trap_loop_post() -> () $body
     };
 }
 

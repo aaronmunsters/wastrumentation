@@ -1,5 +1,5 @@
 // Rust STD
-use std::{collections::HashSet, path::absolute};
+use std::path::absolute;
 
 // Wastrumentation imports
 use wastrumentation::{compiler::Compiles, Configuration, PrimaryTarget, Wastrumenter};
@@ -66,19 +66,18 @@ const EXPECTED_ANALYSIS_STDOUT: &str = indoc::indoc! { r#"
         4,
     ],
 })
+[ANALYSIS:] block pre
 [ANALYSIS:] local generic I32(
     123,
 ) @ LocalIndex(
     0,
 ) : Get
-[ANALYSIS:] const_ generic I32(
-    0,
-)
 [ANALYSIS:] br_if ParameterBrIfCondition(
     123,
 ) to ParameterBrIfLabel(
     0,
 )
+[ANALYSIS:] block post
 [ANALYSIS:] const_ generic I32(
     0,
 )
@@ -211,31 +210,7 @@ fn test_analysis() {
         absolute("./tests/analyses/rust/logging/Cargo.toml").unwrap(),
     );
 
-    let hooks = HashSet::from_iter(vec![
-        Hook::GenericApply,
-        Hook::CallPre,
-        Hook::CallPost,
-        Hook::CallIndirectPre,
-        Hook::CallIndirectPost,
-        Hook::IfThen,
-        Hook::IfThenElse,
-        Hook::Branch,
-        Hook::BranchIf,
-        Hook::BranchTable,
-        Hook::Select,
-        Hook::Unary,
-        Hook::Binary,
-        Hook::Drop,
-        Hook::Return,
-        Hook::Const,
-        Hook::Local,
-        Hook::Global,
-        Hook::Store,
-        Hook::Load,
-        Hook::MemorySize,
-        Hook::MemoryGrow,
-    ]);
-
+    let hooks = Hook::all_hooks();
     let analysis = RustAnalysisSpec { source, hooks }.into();
 
     let configuration = Configuration {

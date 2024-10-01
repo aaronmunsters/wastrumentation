@@ -82,6 +82,11 @@ pub const TRAP_NAME_I64_LOAD: &str = "trap_i64_load";
 pub const TRAP_NAME_MEMORY_SIZE: &str = "trap_memory_size";
 pub const TRAP_NAME_MEMORY_GROW: &str = "trap_memory_grow";
 
+pub const TRAP_NAME_PRE_BLOCK: &str = "trap_block_pre";
+pub const TRAP_NAME_POST_BLOCK: &str = "trap_block_post";
+pub const TRAP_NAME_PRE_LOOP: &str = "trap_loop_pre";
+pub const TRAP_NAME_POST_LOOP: &str = "trap_loop_post";
+
 const SER_OPRTR_TYP: WasmType = I32;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -316,4 +321,8 @@ simple_interfaces! {
     interface_i64_load              TRAP_NAME_I64_LOAD                           :               /*load_idx:*/ I32 /*offs:*/ I64 /*op:*/ SER_OPRTR_TYP =>            /*res:*/ I64,
     interface_memory_size           TRAP_NAME_MEMORY_SIZE                        :                                          /*size:*/ I32 /*idx:*/ I64 =>           /*size:*/ I32,
     interface_memory_grow           TRAP_NAME_MEMORY_GROW                        :                                        /*amount:*/ I32 /*idx:*/ I64 => /*delta-or-neg-1:*/ I32,
+    interface_pre_block             TRAP_NAME_PRE_BLOCK                          :                                                          /* void */ =>              /* void */,
+    interface_post_block            TRAP_NAME_POST_BLOCK                         :                                                          /* void */ =>              /* void */,
+    interface_pre_loop              TRAP_NAME_PRE_LOOP                           :                                                          /* void */ =>              /* void */,
+    interface_post_loop             TRAP_NAME_POST_LOOP                          :                                                          /* void */ =>              /* void */,
 }

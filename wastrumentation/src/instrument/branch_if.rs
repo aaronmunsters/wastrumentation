@@ -145,6 +145,7 @@ mod tests {
 
     use std::collections::HashSet;
 
+    use wasabi_wasm::types::InferredInstructionType;
     use wasabi_wasm::{FunctionType, Module, ValType};
 
     use crate::instrument::Instrumentable;
@@ -152,6 +153,18 @@ mod tests {
     use crate::parse_nesting::LowToHighError;
 
     use super::*;
+
+    fn new_typed_high_level(
+        index: usize,
+        type_: FunctionType,
+        instr: super::Instr,
+    ) -> TypedHighLevelInstr {
+        TypedHighLevelInstr::new_uninstrumented(
+            index,
+            InferredInstructionType::Reachable(type_),
+            instr,
+        )
+    }
 
     struct BranchExpectation {
         input: i32,
@@ -451,69 +464,69 @@ mod tests {
                 use wasabi_wasm::{BinaryOp::*, LocalOp::*, UnaryOp::*, Val::*};
 
                 HighLevelBody(vec![
-                    TypedHighLevelInstr::new(0, typ_void_to_i32(), Local(Get, 0_usize.into())),
-                    TypedHighLevelInstr::new(1, typ_i32_to_i32(), Unary(I32Eqz)),
-                    TypedHighLevelInstr::new(
+                    new_typed_high_level(0, typ_void_to_i32(), Local(Get, 0_usize.into())),
+                    new_typed_high_level(1, typ_i32_to_i32(), Unary(I32Eqz)),
+                    new_typed_high_level(
                         2,
                         typ_void_to_i32(),
                         If(
                             typ_void_to_i32(),
-                            vec![TypedHighLevelInstr::new(
+                            vec![new_typed_high_level(
                                 3,
                                 typ_void_to_i32(),
                                 Block(
                                     typ_void_to_i32(),
                                     vec![
-                                        TypedHighLevelInstr::new(
+                                        new_typed_high_level(
                                             4,
                                             typ_void_to_i32(),
                                             Local(Get, 0_usize.into()),
                                         ),
-                                        TypedHighLevelInstr::new(5, typ_void_to_i32(), Const(I32(1))),
-                                        TypedHighLevelInstr::new(6, typ_i32_i32_to_i32(), Binary(I32Eq)),
-                                        TypedHighLevelInstr::new(
+                                        new_typed_high_level(5, typ_void_to_i32(), Const(I32(1))),
+                                        new_typed_high_level(6, typ_i32_i32_to_i32(), Binary(I32Eq)),
+                                        new_typed_high_level(
                                             7,
                                             typ_void_to_i32(),
                                             If(
                                                 typ_void_to_i32(),
-                                                vec![TypedHighLevelInstr::new(
+                                                vec![new_typed_high_level(
                                                     8,
                                                     typ_void_to_i32(),
                                                     Block(
                                                         typ_void_to_i32(),
                                                         vec![
-                                                            TypedHighLevelInstr::new(
+                                                            new_typed_high_level(
                                                                 9,
                                                                 typ_void_to_i32(),
                                                                 Local(Get, 0_usize.into()),
                                                             ),
-                                                            TypedHighLevelInstr::new(
+                                                            new_typed_high_level(
                                                                 10,
                                                                 typ_void_to_i32(),
                                                                 Const(I32(2)),
                                                             ),
-                                                            TypedHighLevelInstr::new(
+                                                            new_typed_high_level(
                                                                 11,
                                                                 typ_i32_i32_to_i32(),
                                                                 Binary(I32Eq),
                                                             ),
-                                                            TypedHighLevelInstr::new(
+                                                            new_typed_high_level(
                                                                 12,
                                                                 typ_void_to_i32(),
                                                                 If(
                                                                     typ_void_to_i32(),
-                                                                    vec![TypedHighLevelInstr::new(
+                                                                    vec![new_typed_high_level(
                                                                         13,
                                                                         typ_void_to_i32(),
                                                                         Block(
                                                                             typ_void_to_i32(),
-                                                                            vec![TypedHighLevelInstr::new(
+                                                                            vec![new_typed_high_level(
                                                                                 14, typ_void_to_i32(),
                                                                                 Const(I32(42)),
                                                                             )],
                                                                         ),
                                                                     )],
-                                                                    Some(vec![TypedHighLevelInstr::new(
+                                                                    Some(vec![new_typed_high_level(
                                                                         17,typ_void_to_i32(),
                                                                         Const(I32(21)),
                                                                     )]),
@@ -522,13 +535,13 @@ mod tests {
                                                         ],
                                                     ),
                                                 )],
-                                                Some(vec![TypedHighLevelInstr::new(21, typ_void_to_i32(), Const(I32(10)))]),
+                                                Some(vec![new_typed_high_level(21, typ_void_to_i32(), Const(I32(10)))]),
                                             ),
                                         ),
                                     ],
                                 ),
                             )],
-                            Some(vec![TypedHighLevelInstr::new(25, typ_void_to_i32(),Const(I32(5)))]),
+                            Some(vec![new_typed_high_level(25, typ_void_to_i32(),Const(I32(5)))]),
                         ),
                     ),
                 ])

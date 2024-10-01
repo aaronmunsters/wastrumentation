@@ -137,3 +137,16 @@ advice! { memory_grow (amount: WasmValue, index: MemoryIndex) {
         index.grow(amount)
     }
 }
+
+advice! { block pre () {
+        println!("[ANALYSIS:] block pre");
+} }
+advice! { block post () {
+        println!("[ANALYSIS:] block post");
+} }
+advice! { loop_ pre () {
+        println!("[ANALYSIS:] loop_ pre");
+} }
+advice! { loop_ post () {
+        println!("[ANALYSIS:] loop_ post");
+} }

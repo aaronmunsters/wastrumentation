@@ -23,10 +23,10 @@ pub struct TypedHighLevelInstr {
 }
 
 impl TypedHighLevelInstr {
-    pub fn new(index: usize, type_: FunctionType, instr: Instr) -> Self {
+    pub fn new_uninstrumented(index: usize, type_: InferredInstructionType, instr: Instr) -> Self {
         Self {
             index,
-            type_: InferredInstructionType::Reachable(type_),
+            type_,
             instr,
             instrumentation_instruction: false,
         }
@@ -294,21 +294,17 @@ impl TryFrom<(&Module, &Function, &Code)> for Body {
                         } => (index, Instr::if_then_else(type_, then_body, ended_body)),
                     };
                     current_body = body_stack.pop().ok_or(LowToHighError::EndWithoutParent)?;
-                    current_body.push(TypedHighLevelInstr {
-                        index: begin_idx, // prefer the begin-index over the end-index!
-                        type_: type_.clone(),
-                        instr: instruction,
-
-                        instrumentation_instruction: false,
-                    });
+                    current_body.push(TypedHighLevelInstr::new_uninstrumented(
+                        begin_idx, // prefer the begin-index over the end-index!
+                        type_.clone(),
+                        instruction,
+                    ));
                 }
-                instruction => current_body.push(TypedHighLevelInstr {
-                    index: *index,
-                    type_: type_.clone(),
-                    instr: instruction.clone().try_into()?,
-
-                    instrumentation_instruction: false,
-                }),
+                instruction => current_body.push(TypedHighLevelInstr::new_uninstrumented(
+                    *index,
+                    type_.clone(),
+                    instruction.clone().try_into()?,
+                )),
             };
         }
 
