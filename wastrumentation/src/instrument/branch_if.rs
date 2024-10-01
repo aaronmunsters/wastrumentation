@@ -42,10 +42,15 @@ impl TransformationStrategy for Target {
 /// # Panics
 /// When the index cannot be cast from u32 to i32
 fn transform(body: &BodyInner, target: Target) -> BodyInner {
-    let mut result =
+    let mut result: Vec<TypedHighLevelInstr> =
         Vec::with_capacity(body.iter().map(delta_to_instrument_instr).sum::<usize>() + body.len());
 
     for typed_instr @ TypedHighLevelInstr { instr, .. } in body {
+        if typed_instr.is_uninstrumented() {
+            result.push(typed_instr.clone());
+            continue;
+        }
+
         match (target, instr) {
             (Target::Br(br_trap_idx), Instr::Br(label)) => {
                 result.extend_from_slice(&[
@@ -143,14 +148,10 @@ mod tests {
     const THEN_KONTN: i32 = 1;
     const ELSE_KONTN: i32 = 0;
 
-    use std::collections::HashSet;
-
     use wasabi_wasm::types::InferredInstructionType;
     use wasabi_wasm::{FunctionType, Module, ValType};
 
-    use crate::instrument::Instrumentable;
-    use crate::instrument::InstrumentationError;
-    use crate::parse_nesting::LowToHighError;
+    use crate::parse_nesting::{LowLevelBody, LowToHighError};
 
     use super::*;
 
@@ -316,7 +317,7 @@ mod tests {
         let wasm_bytes = wat::parse_str(branch_program_wasm).unwrap();
         let (mut wasm_module, _, _) = wasabi_wasm::Module::from_bytes(&wasm_bytes).unwrap();
 
-        let assert_outcome = |module: &wasabi_wasm::Module, assertions| {
+        let assert_outcome = |module: &wasabi_wasm::Module, assertions, instrumentation_body| {
             let engine = Engine::default();
             let mut store = Store::new(&engine, ());
             let module = Module::new(&engine, module.to_bytes().unwrap()).unwrap();
@@ -326,29 +327,44 @@ mod tests {
                 .unwrap();
 
             for &BranchExpectation { input, output } in assertions {
-                assert_eq!(main.call(&mut store, input).unwrap(), output);
+                assert_eq!(
+                    main.call(&mut store, input).unwrap(),
+                    output,
+                    "With input {input} the result (l) does not match the expection (r) for instrumentation: {instrumentation_body:?}"
+                );
             }
         };
 
         // Execute uninstrumented:
-        assert_outcome(&wasm_module, uninstrumented_assertions);
+        assert_outcome(
+            &wasm_module,
+            uninstrumented_assertions,
+            &instrumentation_body,
+        );
 
         // Instrument
         let if_then_else_trap_idx = wasm_module.add_function(
             FunctionType::new(&[ValType::I32], &[ValType::I32]),
             vec![],
-            instrumentation_body,
+            instrumentation_body.clone(),
         );
 
+        let function = wasm_module.function(0_u32.into());
+        let code = function.code().unwrap();
+        let high_level_body: HighLevelBody = (&wasm_module, function, code).try_into().unwrap();
+        let transformed = Target::IfThenElse(if_then_else_trap_idx).transform(&high_level_body);
+
+        let LowLevelBody(low_level_body) = LowLevelBody::from(transformed);
         wasm_module
-            .instrument_function_bodies(
-                &HashSet::from_iter(vec![0_usize.into()]),
-                &Target::IfThenElse(if_then_else_trap_idx),
-            )
-            .unwrap();
+            .function_mut(0_u32.into())
+            .code_mut()
+            .unwrap()
+            .body = low_level_body;
+
+        dbg!(&wasm_module);
 
         // Execute instrumented:
-        assert_outcome(&wasm_module, instrumented_assertions);
+        assert_outcome(&wasm_module, instrumented_assertions, &instrumentation_body);
     }
 
     #[test]
@@ -373,36 +389,13 @@ mod tests {
             .body
             .push(wasabi_wasm::Instr::Call(0_usize.into()));
 
+        let function = wasm_module.function(0_u32.into());
+        let code = function.code().unwrap();
+
         assert!(matches!(
-            wasm_module.instrument_function_bodies(
-                &HashSet::from_iter(vec![0_usize.into()]),
-                &Target::IfThenElse(0_usize.into())
-            ),
-            Err(InstrumentationError::LowToHighError {
-                low_to_high_err: LowToHighError::TypeInference { .. }
-            }),
+            HighLevelBody::try_from((&wasm_module, function, code)),
+            Err(LowToHighError::TypeInference { .. }),
         ))
-    }
-
-    #[test]
-    fn test_faulty_import_instrumentation() {
-        const MINI_PROGRAM: &str = r#"
-        (module
-          (func $foo (import "bar" "foo")))"#;
-
-        let wasm_bytes = wat::parse_str(MINI_PROGRAM).unwrap();
-        let (mut wasm_module, _, _) = wasabi_wasm::Module::from_bytes(&wasm_bytes).unwrap();
-
-        // Instrument
-        assert!(matches!(
-            wasm_module
-                .instrument_function_bodies(
-                    &HashSet::from_iter(vec![0_usize.into()]),
-                    &Target::IfThenElse(0_usize.into())
-                )
-                .unwrap_err(),
-            InstrumentationError::AttemptInstrumentImport,
-        ));
     }
 
     fn nested_ifs_body() -> Module {

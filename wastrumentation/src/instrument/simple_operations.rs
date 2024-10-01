@@ -252,6 +252,11 @@ fn transform(body: &BodyInner, target: Target) -> BodyInner {
     let mut result = Vec::new();
 
     for typed_instr @ TypedHighLevelInstr { instr, .. } in body {
+        if typed_instr.is_uninstrumented() {
+            result.push(typed_instr.clone());
+            continue;
+        }
+
         if let (Target::Return(trap_idx), Instr::Return) = (target, instr) {
             result.extend_from_slice(&[
                 // Inject call

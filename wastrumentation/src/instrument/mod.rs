@@ -146,8 +146,23 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
 
     target_call.instrument(&mut module, &target_indices)?;
 
+    // For each function, generate high-level typed AST
+    let target_high_level_functions: Vec<HighLevelBody> = target_indices
+        .iter()
+        .map(|target_function_idx| {
+            let target_function = module.function(*target_function_idx);
+            let code = target_function
+                .code()
+                .ok_or(InstrumentationError::AttemptInstrumentImport)?;
+            ((&module), target_function, code)
+                .try_into()
+                .map_err(|e| InstrumentationError::LowToHighError { low_to_high_err: e })
+        })
+        .collect::<Result<Vec<HighLevelBody>, InstrumentationError>>()?;
+
+    //  Install all tarps
     type TFn = fn(Idx<Function>) -> Box<dyn TransformationStrategy>;
-    for (export, target) in [
+    let traps_target_generators = [
         (pre_block, (|i| Box::new(BlockPre(i)))),
         (post_block, (|i| Box::new(BlockPost(i)))),
         (pre_loop, (|i| Box::new(LoopPre(i)))),
@@ -219,15 +234,39 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
         (f64_load, (|i| Box::new(F64Load(i)))),
         (i32_load, (|i| Box::new(I32Load(i)))),
         (i64_load, (|i| Box::new(I64Load(i)))),
-    ] as [(&Option<WasmExport>, TFn); 71]
-    {
-        if let Some(Err(err)) = export
-            .as_ref()
-            .map(|export| module.install(export))
-            .map(|index| module.instrument_function_bodies(&target_indices, target(index).as_ref()))
-        {
-            return Err(err);
-        }
+    ] as [(&Option<WasmExport>, TFn); 71];
+
+    let targets: Vec<Box<dyn TransformationStrategy>> = traps_target_generators
+        .into_iter()
+        .filter_map(|(export, target_gen)| {
+            export
+                .as_ref()
+                .map(|export| module.install(export))
+                .map(target_gen)
+        })
+        .collect();
+
+    let transformed_bodies: Vec<HighLevelBody> = target_high_level_functions
+        .into_iter()
+        .map(|high_level_body| {
+            targets.iter().fold(high_level_body, |transformed, target| {
+                target.transform(&transformed)
+            })
+        })
+        .collect();
+
+    for (target_function_idx, transformed_body) in target_indices.iter().zip(transformed_bodies) {
+        let LowLevelBody(transformed_low_level_body) = transformed_body.into();
+        let locals = module
+            .function(*target_function_idx)
+            .code()
+            .ok_or(InstrumentationError::AttemptInstrumentImport)?
+            .locals
+            .clone();
+        module.function_mut(*target_function_idx).code = ImportOrPresent::Present(Code {
+            body: transformed_low_level_body,
+            locals,
+        });
     }
 
     let instrumentation_library =
@@ -272,11 +311,6 @@ fn uses_reference_types(f: &Function) -> bool {
 
 trait Instrumentable {
     fn install(&mut self, export: &WasmExport) -> Idx<Function>;
-    fn instrument_function_bodies(
-        &mut self,
-        target_functions: &HashSet<Idx<Function>>,
-        instrumentation_strategy: &dyn TransformationStrategy,
-    ) -> Result<(), InstrumentationError>;
 }
 
 impl Instrumentable for Module {
@@ -286,35 +320,6 @@ impl Instrumentable for Module {
             INSTRUMENTATION_ANALYSIS_MODULE.to_string(),
             export.name.to_string(),
         )
-    }
-
-    fn instrument_function_bodies(
-        &mut self,
-        target_functions: &HashSet<Idx<Function>>,
-        instrumentation_strategy: &dyn TransformationStrategy,
-    ) -> Result<(), InstrumentationError> {
-        for target_function_idx in target_functions {
-            let target_function = self.function(*target_function_idx);
-            let code = target_function.code();
-            match code {
-                None => return Err(InstrumentationError::AttemptInstrumentImport),
-                Some(code) => {
-                    let high_level_body: HighLevelBody = ((&*self), target_function, code)
-                        .try_into()
-                        .map_err(|e| InstrumentationError::LowToHighError { low_to_high_err: e })?;
-                    let high_level_body_transformed: HighLevelBody =
-                        high_level_body.transform_for(instrumentation_strategy);
-                    let LowLevelBody(transformed_low_level_body) =
-                        high_level_body_transformed.into();
-
-                    self.function_mut(*target_function_idx).code = ImportOrPresent::Present(Code {
-                        body: transformed_low_level_body,
-                        locals: code.locals.clone(),
-                    });
-                }
-            }
-        }
-        Ok(())
     }
 }
 

@@ -72,6 +72,10 @@ impl TypedHighLevelInstr {
             instrumentation_instruction: self.instrumentation_instruction,
         }
     }
+
+    pub fn is_uninstrumented(&self) -> bool {
+        self.instrumentation_instruction
+    }
 }
 
 /// Equal to `wasabi_wasm::Instr` minus `Else` and `End` instruction
