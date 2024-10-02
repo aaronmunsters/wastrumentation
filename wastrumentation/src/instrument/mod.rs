@@ -18,15 +18,16 @@ use crate::parse_nesting::LowLevelBody;
 use self::block_loop::Target::{BlockPost, BlockPre, LoopPost, LoopPre, Select};
 use self::branch_if::Target::{Br, BrIf, BrTable, IfThen, IfThenElse};
 use self::function_application::INSTRUMENTATION_ANALYSIS_MODULE;
-use self::function_call::TargetCall;
-use self::function_call_indirect::Target::{CallIndirectPost, CallIndirectPre};
+use self::function_call_indirect::Target::{
+    IndirectPost as CallIndirectPost, IndirectPre as CallIndirectPre, Post as CallPost,
+    Pre as CallPre,
+};
 use self::memory::Target::*;
 use self::simple_operations::Target::*;
 
 pub mod block_loop;
 pub mod branch_if;
 pub mod function_application;
-pub mod function_call;
 pub mod function_call_indirect;
 pub mod memory;
 pub mod simple_operations;
@@ -133,19 +134,6 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
         })
         .collect();
 
-    // Instrument call / call_indirect first, to prevent new call instructions to be instrumented too.
-    let target_call = match (pre_trap_call, post_trap_call) {
-        (None, None) => TargetCall::None,
-        (Some(pre_call_trap), None) => TargetCall::Pre(pre_call_trap),
-        (None, Some(post_call_trap)) => TargetCall::Post(post_call_trap),
-        (Some(pre_call_trap), Some(post_call_trap)) => TargetCall::Both {
-            pre_call_trap,
-            post_call_trap,
-        },
-    };
-
-    target_call.instrument(&mut module, &target_indices)?;
-
     // For each function, generate high-level typed AST
     let target_high_level_functions: Vec<HighLevelBody> = target_indices
         .iter()
@@ -168,6 +156,8 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
         (pre_loop, (|i| Box::new(LoopPre(i)))),
         (post_loop, (|i| Box::new(LoopPost(i)))),
         (select, (|i| Box::new(Select(i)))),
+        (pre_trap_call, (|i| Box::new(CallPre(i)))),
+        (post_trap_call, (|i| Box::new(CallPost(i)))),
         (pre_trap_call_indirect, (|i| Box::new(CallIndirectPre(i)))),
         (post_trap_call_indirect, (|i| Box::new(CallIndirectPost(i)))),
         (if_then_trap, (|i| Box::new(IfThen(i)))),
@@ -234,7 +224,7 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
         (f64_load, (|i| Box::new(F64Load(i)))),
         (i32_load, (|i| Box::new(I32Load(i)))),
         (i64_load, (|i| Box::new(I64Load(i)))),
-    ] as [(&Option<WasmExport>, TFn); 71];
+    ] as [(&Option<WasmExport>, TFn); 73];
 
     let targets: Vec<Box<dyn TransformationStrategy>> = traps_target_generators
         .into_iter()

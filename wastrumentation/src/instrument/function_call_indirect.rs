@@ -7,8 +7,10 @@ use super::TransformationStrategy;
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum Target {
-    CallIndirectPre(Idx<Function>),
-    CallIndirectPost(Idx<Function>),
+    Pre(Idx<Function>),
+    Post(Idx<Function>),
+    IndirectPre(Idx<Function>),
+    IndirectPost(Idx<Function>),
 }
 
 impl TransformationStrategy for Target {
@@ -36,8 +38,34 @@ fn transform(body: &BodyInner, target: Target) -> BodyInner {
         }
 
         match (target, instr) {
+            (Target::Pre(call_pre_idx), Instr::Call(index)) => {
+                result.extend_from_slice(&[
+                    // STACK: [type_in]
+                    typed_instr.instrument_with(Instr::Const(Val::I32(
+                        i32::try_from(index.to_u32()).unwrap(),
+                    ))),
+                    // STACK: [type_in, f_idx]
+                    typed_instr.instrument_with(Instr::Call(call_pre_idx)),
+                    // STACK: [type_in]
+                    typed_instr.place_original(instr.clone()),
+                    // STACK: [type_out]
+                ]);
+            }
+            (Target::Post(call_post_idx), Instr::Call(index)) => {
+                result.extend_from_slice(&[
+                    // STACK: [type_in]
+                    typed_instr.place_original(instr.clone()),
+                    // STACK: [type_out]
+                    typed_instr.instrument_with(Instr::Const(Val::I32(
+                        i32::try_from(index.to_u32()).unwrap(),
+                    ))),
+                    // STACK: [type_out, f_idx]
+                    typed_instr.instrument_with(Instr::Call(call_post_idx)),
+                    // STACK: [type_out]
+                ]);
+            }
             (
-                Target::CallIndirectPre(call_pre_idx),
+                Target::IndirectPre(call_pre_idx),
                 Instr::CallIndirect(_function_type, table_index),
             ) => {
                 result.extend_from_slice(&[
@@ -53,7 +81,7 @@ fn transform(body: &BodyInner, target: Target) -> BodyInner {
                 ]);
             }
             (
-                Target::CallIndirectPost(call_post_idx),
+                Target::IndirectPost(call_post_idx),
                 Instr::CallIndirect(_function_type, table_index),
             ) => {
                 result.extend_from_slice(&[
