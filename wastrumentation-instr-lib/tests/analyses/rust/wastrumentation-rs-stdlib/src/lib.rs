@@ -573,7 +573,7 @@ macro_rules! advice {
     ) => {
         #[no_mangle]
         pub extern "C"
-        fn specialized_if_then_k (
+        fn specialized_if_then_else_k (
             path_continuation: i32,
         ) -> i32 {
             let $path_continuation = PathContinuation(path_continuation);
@@ -587,7 +587,7 @@ macro_rules! advice {
         ) $body:block) => {
         #[no_mangle]
         pub extern "C"
-        fn specialized_if_then_else_k (
+        fn specialized_if_then_k (
             path_continuation: i32,
         ) -> i32 {
             let $path_continuation = PathContinuation(path_continuation);
