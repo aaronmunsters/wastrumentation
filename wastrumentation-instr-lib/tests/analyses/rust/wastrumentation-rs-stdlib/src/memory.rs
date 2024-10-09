@@ -136,6 +136,30 @@ impl StoreOperation {
             I64Store8 => unsafe { instrumented_base_store_i64_8(ptr, value.as_i64(), offset) },
         }
     }
+
+    pub fn target_value_size(&self) -> usize {
+        // Regular
+        use StoreOperation::{F32Store, F64Store, I32Store, I64Store};
+        // I32 Load
+        use StoreOperation::{I32Store16, I32Store8};
+        // I64 Load
+        use StoreOperation::{I64Store16, I64Store32, I64Store8};
+
+        match self {
+            // Regular
+            F32Store => size_of::<f32>(),
+            F64Store => size_of::<f64>(),
+            I32Store => size_of::<i32>(),
+            I64Store => size_of::<i64>(),
+            // I32 Load
+            I32Store16 => size_of::<i32>(),
+            I32Store8 => size_of::<i32>(),
+            // I64 Load
+            I64Store16 => size_of::<i64>(),
+            I64Store32 => size_of::<i64>(),
+            I64Store8 => size_of::<i64>(),
+        }
+    }
 }
 
 impl LoadOperation {
@@ -168,6 +192,35 @@ impl LoadOperation {
             I64Load32U => unsafe { instrumented_base_load_i64_32U(ptr, offset).into() },
             I64Load8S => unsafe { instrumented_base_load_i64_8S(ptr, offset).into() },
             I64Load8U => unsafe { instrumented_base_load_i64_8U(ptr, offset).into() },
+        }
+    }
+
+    pub fn target_value_size(&self) -> usize {
+        // Regular
+        use LoadOperation::{F32Load, F64Load, I32Load, I64Load};
+        // I32 Load
+        use LoadOperation::{I32Load16S, I32Load16U, I32Load8S, I32Load8U};
+        // I64 Load
+        use LoadOperation::{I64Load16S, I64Load16U, I64Load32S, I64Load32U, I64Load8S, I64Load8U};
+
+        match self {
+            // Regular
+            F32Load => size_of::<f32>(),
+            F64Load => size_of::<f64>(),
+            I32Load => size_of::<i32>(),
+            I64Load => size_of::<i64>(),
+            // I32 Load
+            I32Load16S => size_of::<i32>(),
+            I32Load16U => size_of::<i32>(),
+            I32Load8S => size_of::<i32>(),
+            I32Load8U => size_of::<i32>(),
+            // I64 Load
+            I64Load16S => size_of::<i64>(),
+            I64Load16U => size_of::<i64>(),
+            I64Load32S => size_of::<i64>(),
+            I64Load32U => size_of::<i64>(),
+            I64Load8S => size_of::<i64>(),
+            I64Load8U => size_of::<i64>(),
         }
     }
 }

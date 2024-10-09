@@ -66,7 +66,7 @@ const EXPECTED_ANALYSIS_STDOUT: &str = indoc::indoc! { r#"
         4,
     ],
 })
-[ANALYSIS:] block pre
+[ANALYSIS:] block pre [block_input_count: BlockInputCount(0), block_arity: BlockArity(0)]
 [ANALYSIS:] local generic I32(
     123,
 ) @ LocalIndex(
@@ -77,7 +77,6 @@ const EXPECTED_ANALYSIS_STDOUT: &str = indoc::indoc! { r#"
 ) to ParameterBrIfLabel(
     0,
 )
-[ANALYSIS:] block post
 [ANALYSIS:] const_ generic I32(
     0,
 )

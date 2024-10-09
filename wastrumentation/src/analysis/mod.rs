@@ -14,6 +14,8 @@ pub const FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_POST: &str = "specialized_call
 pub const FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_PRE: &str = "specialized_call_indirect_pre";
 pub const FUNCTION_NAME_SPECIALIZED_IF_THEN: &str = "specialized_if_then_k";
 pub const FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE: &str = "specialized_if_then_else_k";
+pub const FUNCTION_NAME_SPECIALIZED_IF_THEN_POST: &str = "trap_if_then_post";
+pub const FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE_POST: &str = "trap_if_then_else_post";
 pub const NAMESPACE_TRANSFORMED_INPUT: &str = "transformed_input";
 
 pub const TRAP_NAME_UNARY_I32_TO_I32: &str = "unary_i32_to_i32";
@@ -121,7 +123,9 @@ pub struct WasmExport {
 pub struct AnalysisInterface {
     pub generic_interface: Option<(WasmExport, WasmImport)>,
     pub if_then_trap: Option<WasmExport>,
+    pub if_then_post_trap: Option<WasmExport>,
     pub if_then_else_trap: Option<WasmExport>,
+    pub if_then_else_post_trap: Option<WasmExport>,
     pub br_trap: Option<WasmExport>,
     pub br_if_trap: Option<WasmExport>,
     pub br_table_trap: Option<WasmExport>,
@@ -210,8 +214,8 @@ impl AnalysisInterface {
         (
             WasmExport {
                 name: FUNCTION_NAME_GENERIC_APPLY.into(),
-                // f_apply, instr_f_idx, argc, resc, sigv, sigtypv
-                args: vec![I32, I32, I32, I32, I32, I32],
+                // f_apply, instr_f_idx, argc, resc, sigv, sigtypv, code_present_serialized
+                args: vec![I32, I32, I32, I32, I32, I32, I32],
                 results: vec![],
             },
             WasmImport {
@@ -248,11 +252,13 @@ macro_rules! simple_interface {
 }
 
 simple_interfaces! {
-    interface_if_then               FUNCTION_NAME_SPECIALIZED_IF_THEN            :                                                       /*cndt:*/ I32 =>           /*cont:*/ I32,
-    interface_if_then_else          FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE       :                                                       /*cndt:*/ I32 =>           /*cont:*/ I32,
+    interface_if_then               FUNCTION_NAME_SPECIALIZED_IF_THEN            :              /*cndt:*/ I32 /*inputs-len:*/ I32 /*results-len:*/ I32 =>           /*cont:*/ I32,
+    interface_if_then_post          FUNCTION_NAME_SPECIALIZED_IF_THEN_POST       :                                                            /*void*/ =>                /*void*/,
+    interface_if_then_else          FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE       :              /*cndt:*/ I32 /*inputs-len:*/ I32 /*results-len:*/ I32 =>           /*cont:*/ I32,
+    interface_if_then_else_post     FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE_POST  :                                                            /*void*/ =>                /*void*/,
     interface_br                    FUNCTION_NAME_SPECIALIZED_BR                 :                                                        /*lbl:*/ I64 =>                /*void*/,
     interface_br_if                 FUNCTION_NAME_SPECIALIZED_BR_IF              :                                          /*cndt:*/ I32 /*lbl:*/ I32 =>           /*cont:*/ I32,
-    interface_br_table              FUNCTION_NAME_SPECIALIZED_BR_TABLE           :                           /*br_tbl_tgt_idx:*/ I32 /*dflt_idx:*/ I32 => /*br_tbl_tgt_idx:*/ I32,
+    interface_br_table              FUNCTION_NAME_SPECIALIZED_BR_TABLE           :    /*br_tbl_tgt_idx:*/ I32 /*runtime_label:*/ I32 /*dflt_idx:*/ I32 => /*br_tbl_tgt_idx:*/ I32,
     interface_call_pre              FUNCTION_NAME_SPECIALIZED_CALL_PRE           :                                                      /*f_tgt:*/ I32 =>                /*void*/,
     interface_call_post             FUNCTION_NAME_SPECIALIZED_CALL_POST          :                                                      /*f_tgt:*/ I32 =>                /*void*/,
     interface_call_indirect_pre     FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_PRE  :                                 /*fn_tbl_idx:*/ I32 /*fn_tbl:*/ I32 =>    /*fn_tbl_idx:*/ I32 ,
@@ -321,8 +327,8 @@ simple_interfaces! {
     interface_i64_load              TRAP_NAME_I64_LOAD                           :               /*load_idx:*/ I32 /*offs:*/ I64 /*op:*/ SER_OPRTR_TYP =>            /*res:*/ I64,
     interface_memory_size           TRAP_NAME_MEMORY_SIZE                        :                                          /*size:*/ I32 /*idx:*/ I64 =>           /*size:*/ I32,
     interface_memory_grow           TRAP_NAME_MEMORY_GROW                        :                                        /*amount:*/ I32 /*idx:*/ I64 => /*delta-or-neg-1:*/ I32,
-    interface_pre_block             TRAP_NAME_PRE_BLOCK                          :                                                          /* void */ =>              /* void */,
+    interface_pre_block             TRAP_NAME_PRE_BLOCK                          :                                       /*input_c*/ I32 /*arity*/ I32 =>              /* void */,
     interface_post_block            TRAP_NAME_POST_BLOCK                         :                                                          /* void */ =>              /* void */,
-    interface_pre_loop              TRAP_NAME_PRE_LOOP                           :                                                          /* void */ =>              /* void */,
+    interface_pre_loop              TRAP_NAME_PRE_LOOP                           :                                       /*input_c*/ I32 /*arity*/ I32 =>              /* void */,
     interface_post_loop             TRAP_NAME_POST_LOOP                          :                                                          /* void */ =>              /* void */,
 }

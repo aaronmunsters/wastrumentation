@@ -30,7 +30,9 @@ pub enum Hook {
     CallIndirectPre,
     CallIndirectPost,
     IfThen,
+    IfThenPost,
     IfThenElse,
+    IfThenElsePost,
     Branch,
     BranchIf,
     BranchTable,
@@ -62,7 +64,9 @@ impl Hook {
             CallIndirectPre,
             CallIndirectPost,
             IfThen,
+            IfThenPost,
             IfThenElse,
+            IfThenElsePost,
             Branch,
             BranchIf,
             BranchTable,
@@ -108,8 +112,15 @@ pub fn interface_from(hooks: &HashSet<Hook>) -> AnalysisInterface {
                     Some(AnalysisInterface::interface_call_indirect_post())
             }
             Hook::IfThen => interface.if_then_trap = Some(AnalysisInterface::interface_if_then()),
+            Hook::IfThenPost => {
+                interface.if_then_post_trap = Some(AnalysisInterface::interface_if_then_post())
+            }
             Hook::IfThenElse => {
                 interface.if_then_else_trap = Some(AnalysisInterface::interface_if_then_else())
+            }
+            Hook::IfThenElsePost => {
+                interface.if_then_else_post_trap =
+                    Some(AnalysisInterface::interface_if_then_else_post())
             }
             Hook::Branch => interface.br_trap = Some(AnalysisInterface::interface_br()),
             Hook::BranchIf => interface.br_if_trap = Some(AnalysisInterface::interface_br_if()),

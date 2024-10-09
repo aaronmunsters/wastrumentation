@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-#[derive(Hash, PartialEq, Eq)]
+#[derive(Debug, Hash, PartialEq, Eq)]
 pub enum WasmType {
     I32,
     F32,
@@ -9,7 +9,7 @@ pub enum WasmType {
     Ref(RefType),
 }
 
-#[derive(Hash, PartialEq, Eq)]
+#[derive(Debug, Hash, PartialEq, Eq)]
 pub enum RefType {
     FuncRef,
     ExternRef,
@@ -45,7 +45,7 @@ impl Display for WasmType {
     }
 }
 
-#[derive(Hash, PartialEq, Eq)]
+#[derive(Debug, Hash, PartialEq, Eq)]
 pub struct Signature {
     pub return_types: Vec<WasmType>,
     pub argument_types: Vec<WasmType>,

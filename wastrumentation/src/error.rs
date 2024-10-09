@@ -20,8 +20,8 @@ pub enum Error<AnalysisLangauge, InstrumentationLanguage> {
 pub enum InstrumentationError {
     #[error("attempt to instrument an `import` function")]
     ParseModuleError(ParseError),
-    #[error("attempt to instrument an `import` function")]
-    AttemptInstrumentImport,
+    #[error("attempt to instrument inner code of an `import` function")]
+    AttemptInnerInstrumentImport,
     #[error("low to high failed {low_to_high_err}")]
     LowToHighError { low_to_high_err: LowToHighError },
     #[error("Instrumentation Encode Error: {0}")]

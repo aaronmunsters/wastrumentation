@@ -1,10 +1,4 @@
-use wastrumentation_rs_stdlib::{
-    advice, BinaryOperator, BranchTableDefault, BranchTableTarget, BranchTargetLabel, Deserialize,
-    FunctionIndex, FunctionTable, FunctionTableIndex, GlobalIndex, GlobalOp, LoadIndex, LoadOffset,
-    LoadOperation, LocalIndex, LocalOp, MemoryIndex, MutDynArgs, MutDynResults,
-    ParameterBrIfCondition, ParameterBrIfLabel, PathContinuation, StoreIndex, StoreOffset,
-    StoreOperation, UnaryOperator, WasmFunction, WasmValue,
-};
+use wastrumentation_rs_stdlib::*;
 
 /////
 // START ADVICE SPECIFICATION //
@@ -17,15 +11,33 @@ advice! { apply (function : WasmFunction, args : MutDynArgs, ress : MutDynResult
     }
 }
 
-advice! { if_ (path_continuation: PathContinuation) {
-        println!("[ANALYSIS:] if_ {path_continuation:#?}");
+advice! { if_ (
+        path_continuation: PathContinuation,
+        if_then_else_input_c: IfThenElseInputCount,
+        if_then_else_arity: IfThenElseArity
+    ) {
+        println!("[ANALYSIS:] if_ {path_continuation:#?} [if_then_else_input_c: {if_then_else_input_c:?}, if_then_else_arity: {if_then_else_arity:?}]");
         path_continuation
     }
 }
 
-advice! { if_then (path_continuation: PathContinuation) {
-        println!("[ANALYSIS:] if_then {path_continuation:#?}");
+advice! { if_post () {
+    println!("if_post ()");
+}
+}
+
+advice! { if_then (
+    path_continuation: PathContinuation,
+    if_then_input_c: IfThenInputCount,
+    if_then_arity: IfThenArity
+    ) {
+        println!("[ANALYSIS:] if_then {path_continuation:#?} [if_then_input_c: {if_then_input_c:?}, if_then_arity: {if_then_arity:?}]");
         path_continuation
+    }
+}
+
+advice! { if_then_post () {
+        println!("if_then_post ()");
     }
 }
 
@@ -40,8 +52,12 @@ advice! { br_if (path_continuation : ParameterBrIfCondition, target_label : Para
     }
 }
 
-advice! { br_table (branch_table_target: BranchTableTarget, branch_table_default: BranchTableDefault) {
-        println!("[ANALYSIS:] br_table {branch_table_target:#?} (default: {branch_table_default:#?})");
+advice! { br_table (
+        branch_table_target: BranchTableTarget,
+        branch_table_effective: BranchTableEffective,
+        branch_table_default: BranchTableDefault
+    ) {
+        println!("[ANALYSIS:] br_table {branch_table_target:#?} (effective: {branch_table_effective:#?}) (default: {branch_table_default:#?})");
         branch_table_target
     }
 }
@@ -138,15 +154,22 @@ advice! { memory_grow (amount: WasmValue, index: MemoryIndex) {
     }
 }
 
-advice! { block pre () {
-        println!("[ANALYSIS:] block pre");
-} }
+advice! { block pre (block_input_count: BlockInputCount, block_arity: BlockArity) {
+        println!("[ANALYSIS:] block pre [block_input_count: {block_input_count:?}, block_arity: {block_arity:?}]");
+    }
+}
+
 advice! { block post () {
         println!("[ANALYSIS:] block post");
-} }
-advice! { loop_ pre () {
-        println!("[ANALYSIS:] loop_ pre");
-} }
+    }
+}
+
+advice! { loop_ pre (loop_input_count: LoopInputCount, loop_arity: LoopArity) {
+        println!("[ANALYSIS:] loop_ pre [loop_input_count: {loop_input_count:?}, loop_arity: {loop_arity:?}]");
+    }
+}
+
 advice! { loop_ post () {
         println!("[ANALYSIS:] loop_ post");
-} }
+    }
+}

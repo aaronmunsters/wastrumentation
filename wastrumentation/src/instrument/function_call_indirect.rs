@@ -1,7 +1,7 @@
 use crate::parse_nesting::{
     BodyInner, HighLevelBody, HighLevelInstr as Instr, TypedHighLevelInstr,
 };
-use wasabi_wasm::{Function, Idx, Val};
+use wasabi_wasm::{Function, Idx, Module, Val};
 
 use super::TransformationStrategy;
 
@@ -14,7 +14,7 @@ pub enum Target {
 }
 
 impl TransformationStrategy for Target {
-    fn transform(&self, high_level_body: &HighLevelBody) -> HighLevelBody {
+    fn transform(&self, high_level_body: &HighLevelBody, _: &mut Module) -> HighLevelBody {
         high_level_body.transform_call_indirect(*self)
     }
 }
@@ -33,70 +33,74 @@ fn transform(body: &BodyInner, target: Target) -> BodyInner {
 
     for typed_instr @ TypedHighLevelInstr { instr, .. } in body {
         if typed_instr.is_uninstrumented() {
-            result.push(typed_instr.clone());
-            continue;
+            match (target, instr) {
+                (Target::Pre(call_pre_idx), Instr::Call(index)) => {
+                    result.extend_from_slice(&[
+                        // STACK: [type_in]
+                        typed_instr.instrument_with(Instr::Const(Val::I32(
+                            i32::try_from(index.to_u32()).unwrap(),
+                        ))),
+                        // STACK: [type_in, f_idx]
+                        typed_instr.instrument_with(Instr::Call(call_pre_idx)),
+                        // STACK: [type_in]
+                        typed_instr.place_original(instr.clone()),
+                        // STACK: [type_out]
+                    ]);
+                    continue;
+                }
+                (Target::Post(call_post_idx), Instr::Call(index)) => {
+                    result.extend_from_slice(&[
+                        // STACK: [type_in]
+                        typed_instr.place_original(instr.clone()),
+                        // STACK: [type_out]
+                        typed_instr.instrument_with(Instr::Const(Val::I32(
+                            i32::try_from(index.to_u32()).unwrap(),
+                        ))),
+                        // STACK: [type_out, f_idx]
+                        typed_instr.instrument_with(Instr::Call(call_post_idx)),
+                        // STACK: [type_out]
+                    ]);
+                    continue;
+                }
+                (
+                    Target::IndirectPre(call_pre_idx),
+                    Instr::CallIndirect(_function_type, table_index),
+                ) => {
+                    result.extend_from_slice(&[
+                        // STACK: [type_in, table_function_index]
+                        typed_instr.instrument_with(Instr::Const(Val::I32(
+                            i32::try_from(table_index.to_u32()).unwrap(),
+                        ))),
+                        // STACK: [type_in, table_function_index, table_index]
+                        typed_instr.instrument_with(Instr::Call(call_pre_idx)),
+                        // STACK: [type_in, table_function_index]
+                        typed_instr.place_original(instr.clone()),
+                        // STACK: [type_out]
+                    ]);
+                    continue;
+                }
+                (
+                    Target::IndirectPost(call_post_idx),
+                    Instr::CallIndirect(_function_type, table_index),
+                ) => {
+                    result.extend_from_slice(&[
+                        // STACK: [type_in, table_function_index]
+                        typed_instr.place_original(instr.clone()),
+                        // STACK: [type_out]
+                        typed_instr.instrument_with(Instr::Const(Val::I32(
+                            i32::try_from(table_index.to_u32()).unwrap(),
+                        ))),
+                        // STACK: [type_out, table_index]
+                        typed_instr.instrument_with(Instr::Call(call_post_idx)),
+                        // STACK: [type_out]
+                    ]);
+                    continue;
+                }
+                _ => {}
+            }
         }
 
         match (target, instr) {
-            (Target::Pre(call_pre_idx), Instr::Call(index)) => {
-                result.extend_from_slice(&[
-                    // STACK: [type_in]
-                    typed_instr.instrument_with(Instr::Const(Val::I32(
-                        i32::try_from(index.to_u32()).unwrap(),
-                    ))),
-                    // STACK: [type_in, f_idx]
-                    typed_instr.instrument_with(Instr::Call(call_pre_idx)),
-                    // STACK: [type_in]
-                    typed_instr.place_original(instr.clone()),
-                    // STACK: [type_out]
-                ]);
-            }
-            (Target::Post(call_post_idx), Instr::Call(index)) => {
-                result.extend_from_slice(&[
-                    // STACK: [type_in]
-                    typed_instr.place_original(instr.clone()),
-                    // STACK: [type_out]
-                    typed_instr.instrument_with(Instr::Const(Val::I32(
-                        i32::try_from(index.to_u32()).unwrap(),
-                    ))),
-                    // STACK: [type_out, f_idx]
-                    typed_instr.instrument_with(Instr::Call(call_post_idx)),
-                    // STACK: [type_out]
-                ]);
-            }
-            (
-                Target::IndirectPre(call_pre_idx),
-                Instr::CallIndirect(_function_type, table_index),
-            ) => {
-                result.extend_from_slice(&[
-                    // STACK: [type_in, table_function_index]
-                    typed_instr.instrument_with(Instr::Const(Val::I32(
-                        i32::try_from(table_index.to_u32()).unwrap(),
-                    ))),
-                    // STACK: [type_in, table_function_index, table_index]
-                    typed_instr.instrument_with(Instr::Call(call_pre_idx)),
-                    // STACK: [type_in, table_function_index]
-                    typed_instr.place_original(instr.clone()),
-                    // STACK: [type_out]
-                ]);
-            }
-            (
-                Target::IndirectPost(call_post_idx),
-                Instr::CallIndirect(_function_type, table_index),
-            ) => {
-                result.extend_from_slice(&[
-                    // STACK: [type_in, table_function_index]
-                    typed_instr.place_original(instr.clone()),
-                    // STACK: [type_out]
-                    typed_instr.instrument_with(Instr::Const(Val::I32(
-                        i32::try_from(table_index.to_u32()).unwrap(),
-                    ))),
-                    // STACK: [type_out, table_index]
-                    typed_instr.instrument_with(Instr::Call(call_post_idx)),
-                    // STACK: [type_out]
-                ]);
-            }
-
             // DEFAULT TRAVERSAL
             (target, Instr::If(type_, then, None)) => {
                 result.push(typed_instr.place_untouched(Instr::If(

@@ -74,7 +74,7 @@ impl TypedHighLevelInstr {
     }
 
     pub fn is_uninstrumented(&self) -> bool {
-        self.instrumentation_instruction
+        !self.instrumentation_instruction
     }
 }
 
@@ -400,4 +400,56 @@ fn from_recurse(instructions: BodyInner) -> Vec<wasabi_wasm::Instr> {
         }
     }
     result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Body;
+    use wasabi_wasm::{
+        types::InferredInstructionType, Code, Function, FunctionType, Module, ValType,
+    };
+
+    const EVEN_ODD_PROGRAM: &str = r#"
+    (module
+      (func $even (export "even") (param $n i32) (result i32)
+        (if (result i32) (i32.eq (local.get $n) (i32.const 0))
+          (then (i32.const 1))
+          (else (call $odd (i32.sub (local.get $n) (i32.const 1))))
+        )
+      )
+
+      (func $odd (export "odd") (param $n i32) (result i32)
+        (if (result i32) (i32.eq (local.get $n) (i32.const 0))
+          (then (i32.const 0))
+          (else (call $even (i32.sub (local.get $n) (i32.const 1))))
+        )
+      )
+    )
+    "#;
+
+    #[test]
+    fn test_if_then_else() {
+        let if_then_else_program = wat::parse_str(EVEN_ODD_PROGRAM).unwrap();
+        let (module, _, _) = Module::from_bytes(&if_then_else_program).unwrap();
+
+        let get_high_level_body = |module: &Module, index: usize| {
+            let (func, code): (&Function, &Code) = (
+                module.function(index.into()),
+                module.function(index.into()).code().unwrap(),
+            );
+            Body::try_from((module, func, code)).unwrap()
+        };
+
+        // Expected type of the first statement for both functions even and odd
+        let expected_type = FunctionType::new(&[], &[ValType::I32]);
+        let expected_type = InferredInstructionType::Reachable(expected_type);
+
+        let body_even = get_high_level_body(&module, 0);
+        let Body(body_even) = body_even;
+        assert_eq!(expected_type, body_even.first().unwrap().type_);
+
+        let body_odd = get_high_level_body(&module, 1);
+        let Body(body_odd) = body_odd;
+        assert_eq!(expected_type, body_odd.first().unwrap().type_);
+    }
 }

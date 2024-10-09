@@ -179,6 +179,7 @@ impl Display for ASApplyGen<'_> {
                 resc: i32,
                 sigv: i32,
                 sigtypv: i32,
+                code_present_serialized: i32,
             ): void {{
                 let {parameter_function} = new WasmFunction(f_apply, instr_f_idx, sigv);
                 let argsResults = new MutDynArgsResults(
@@ -409,6 +410,8 @@ impl Display for ASTrapIfThen<'_> {
             indoc! { r#"
             export function {FUNCTION_NAME_SPECIALIZED_IF_THEN}(
                 path_kontinuation: i32,
+                if_then_input_c: i32,
+                if_then_arity: i32,
             ): i32 {{
                 let {parameter_condition} = new ParameterIfThenCondition(path_kontinuation);
                 {body}
@@ -436,6 +439,8 @@ impl Display for ASTrapIfThenElse<'_> {
             indoc! { r#"
             export function {FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE}(
                 path_kontinuation: i32,
+                if_then_else_input_c: i32,
+                if_then_else_arity: i32,
             ): i32 {{
                 let {parameter_condition} = new ParameterIfThenElseCondition(path_kontinuation);
                 {body}
@@ -495,6 +500,7 @@ impl Display for ASTrapBrTable<'_> {
             indoc! { r#"
             export function {FUNCTION_NAME_SPECIALIZED_BR_TABLE}(
                 br_table_target: i32,
+                effective_label: i32,
                 br_table_default: i32,
             ): i32 {{
                 let {parameter_target} = new ParameterBrTableTarget(br_table_target);
@@ -810,6 +816,7 @@ mod tests {
                 resc: i32,
                 sigv: i32,
                 sigtypv: i32,
+                code_present_serialized: i32,
             ): void {
                 let func = new WasmFunction(f_apply, instr_f_idx, sigv);
                 let argsResults = new MutDynArgsResults(
@@ -837,6 +844,8 @@ mod tests {
         let expected = indoc! { r#"
         export function specialized_if_then_k(
             path_kontinuation: i32,
+            if_then_input_c: i32,
+            if_then_arity: i32,
         ): i32 {
             let cond = new ParameterIfThenCondition(path_kontinuation);
             console.log('it');
@@ -858,6 +867,8 @@ mod tests {
         let expected = indoc! { r#"
         export function specialized_if_then_else_k(
             path_kontinuation: i32,
+            if_then_else_input_c: i32,
+            if_then_else_arity: i32,
         ): i32 {
             let cond = new ParameterIfThenElseCondition(path_kontinuation);
             console.log('ite');

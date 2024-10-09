@@ -1,14 +1,19 @@
 use crate::parse_nesting::{
     BodyInner, HighLevelBody, HighLevelInstr as Instr, TypedHighLevelInstr,
 };
-use wasabi_wasm::{Function, Idx, Val};
+use generate_branch_table::{BrTable, Reified};
+use wasabi_wasm::{Function, FunctionType, Idx, Module, Val, ValType};
 
 use super::TransformationStrategy;
+
+mod generate_branch_table;
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum Target {
     IfThen(Idx<Function>),
+    IfThenPost(Idx<Function>),
     IfThenElse(Idx<Function>),
+    IfThenElsePost(Idx<Function>),
     Br(Idx<Function>),
     BrIf(Idx<Function>),
     BrTable(Idx<Function>),
@@ -32,108 +37,208 @@ fn delta_to_instrument_instr(index_instr: &TypedHighLevelInstr) -> usize {
 // TODO: room for optimization - compute delta_to_instrument_body
 
 impl TransformationStrategy for Target {
-    fn transform(&self, high_level_body: &HighLevelBody) -> HighLevelBody {
+    fn transform(&self, high_level_body: &HighLevelBody, module: &mut Module) -> HighLevelBody {
         let HighLevelBody(body) = high_level_body;
-        let transformed_body = transform(body, *self);
+        let transformed_body = transform(body, *self, module);
         HighLevelBody(transformed_body)
     }
 }
 
 /// # Panics
 /// When the index cannot be cast from u32 to i32
-fn transform(body: &BodyInner, target: Target) -> BodyInner {
+fn transform(body: &BodyInner, target: Target, module: &mut Module) -> BodyInner {
     let mut result: Vec<TypedHighLevelInstr> =
         Vec::with_capacity(body.iter().map(delta_to_instrument_instr).sum::<usize>() + body.len());
 
     for typed_instr @ TypedHighLevelInstr { instr, .. } in body {
         if typed_instr.is_uninstrumented() {
-            result.push(typed_instr.clone());
-            continue;
+            match (target, instr) {
+                (Target::Br(br_trap_idx), Instr::Br(label)) => {
+                    result.extend_from_slice(&[
+                        // STACK: []
+                        typed_instr.instrument_with(Instr::Const(Val::I64(label.to_u32().into()))),
+                        // STACK: [label]
+                        typed_instr.instrument_with(Instr::Call(br_trap_idx)),
+                        // STACK: [table_target_index]
+                        typed_instr.place_original(instr.clone()),
+                    ]);
+                    continue;
+                }
+                (Target::BrTable(br_table_trap_idx), Instr::BrTable { table, default }) => {
+                    let reified_branch_table = BrTable {
+                        table: table.to_vec(),
+                        default: *default,
+                    }
+                    .reify();
+                    let index_to_index_and_effective_target = module.add_function(
+                        FunctionType::new(&[ValType::I32], &[ValType::I32, ValType::I32]),
+                        reified_branch_table
+                            .locals
+                            .iter()
+                            .map(|l| l.type_)
+                            .collect(),
+                        reified_branch_table.body,
+                    );
+                    result.extend_from_slice(&[
+                        // STACK: [table_target_index]
+                        typed_instr
+                            .instrument_with(Instr::Call(index_to_index_and_effective_target)),
+                        // STACK: [table_target_index, runtime_label]
+                        typed_instr.instrument_with(Instr::Const(Val::I32(
+                            i32::try_from(default.to_u32()).expect("i32->u32"),
+                        ))),
+                        // STACK: [table_target_index, runtime_label, default]
+                        typed_instr.instrument_with(Instr::Call(br_table_trap_idx)),
+                        // STACK: [table_target_index]
+                        typed_instr.place_original(instr.clone()),
+                    ]);
+                    continue;
+                }
+                (Target::IfThen(if_then_trap_idx), Instr::If(type_, then, None)) => {
+                    result.extend_from_slice(&[
+                        // STACK: [type_in, condition]
+                        typed_instr.instrument_with(Instr::Const(Val::I32(
+                            type_.inputs().len().try_into().unwrap(),
+                        ))),
+                        // STACK: [type_in, condition, inputs-len:i32]
+                        typed_instr.instrument_with(Instr::Const(Val::I32(
+                            type_.results().len().try_into().unwrap(),
+                        ))),
+                        // STACK: [type_in, condition, inputs-len:i32, results-len:i32]
+                        typed_instr.instrument_with(Instr::Call(if_then_trap_idx)),
+                        // STACK: [type_in, kontinuation]
+                        typed_instr.place_original(Instr::if_then(
+                            *type_,
+                            transform(then, target, module),
+                        )),
+                        // STACK: [type_out]
+                    ]);
+                    continue;
+                }
+                (Target::IfThenPost(if_then_post_trap_idx), Instr::If(type_, then, None)) => {
+                    // STACK: [type_in, continuation]
+                    let mut injected_then_body = transform(then, target, module);
+                    // append to rest of body
+                    injected_then_body
+                        .push(typed_instr.instrument_with(Instr::Call(if_then_post_trap_idx)));
+                    // STACK: [type_in, continuation]
+                    let injected_else_body =
+                        vec![typed_instr.instrument_with(Instr::Call(if_then_post_trap_idx))];
+                    // original instruction
+                    result.extend_from_slice(&[
+                        // STACK: [type_in, continuation]
+                        // FIXME: this is DANGEROUS!
+                        //        reason: this implicitly requires the `if_then` to be instrumented
+                        //        before the `if_then_post`, since the `if_then` keeps the uninstrumented instruction
+                        //        but the `if_then_post` replaces the instruction after which the `if_then` could not
+                        //        find its target instruction anymore ...
+                        typed_instr.instrument_with(Instr::if_then_else(
+                            *type_,
+                            injected_then_body,
+                            injected_else_body,
+                        )),
+                        // STACK: [type_out]
+                    ]);
+                    continue;
+                }
+                (
+                    Target::IfThenElse(if_then_else_trap_idx),
+                    Instr::If(type_, then, Some(else_)),
+                ) => {
+                    result.extend_from_slice(&[
+                        // STACK: [type_in, condition]
+                        typed_instr.instrument_with(Instr::Const(Val::I32(
+                            type_.inputs().len().try_into().unwrap(),
+                        ))),
+                        // STACK: [type_in, condition, inputs-len:i32]
+                        typed_instr.instrument_with(Instr::Const(Val::I32(
+                            type_.results().len().try_into().unwrap(),
+                        ))),
+                        // STACK: [type_in, condition, inputs-len:i32, results-len:i32]
+                        typed_instr.instrument_with(Instr::Call(if_then_else_trap_idx)),
+                        // STACK: [type_in, kontinuation]
+                        typed_instr.place_original(Instr::if_then_else(
+                            *type_,
+                            // STACK: [type_in]
+                            transform(then, target, module),
+                            // STACK: [type_in]
+                            transform(else_, target, module),
+                        )),
+                        // STACK: [type_out]
+                    ]);
+                    continue;
+                }
+                (
+                    Target::IfThenElsePost(if_then_else_post_trap_idx),
+                    Instr::If(type_, then, Some(else_)),
+                ) => {
+                    // Inject into then-body
+                    let mut injected_then_body = transform(then, target, module);
+                    // append to rest of body
+                    injected_then_body
+                        .push(typed_instr.instrument_with(Instr::Call(if_then_else_post_trap_idx)));
+                    // Inject into else-body
+                    let mut injected_else_body = transform(else_, target, module);
+                    // append to rest of body
+                    injected_else_body
+                        .push(typed_instr.instrument_with(Instr::Call(if_then_else_post_trap_idx)));
+
+                    // Original body
+                    result.extend_from_slice(&[
+                        // STACK: [type_in, continuation]
+                        typed_instr.place_original(Instr::if_then_else(
+                            *type_,
+                            injected_then_body,
+                            injected_else_body,
+                        )),
+                        // STACK: [type_out]
+                    ]);
+                    continue;
+                }
+                (Target::BrIf(br_if_trap_idx), Instr::BrIf(label)) => {
+                    result.extend_from_slice(&[
+                        // STACK: [condition]
+                        typed_instr.instrument_with(Instr::Const(Val::I32(
+                            i32::try_from(label.to_u32()).unwrap(),
+                        ))),
+                        // STACK: [condition, label]
+                        typed_instr.instrument_with(Instr::Call(br_if_trap_idx)),
+                        // STACK: [kontinuation]
+                        typed_instr.place_original(instr.clone()),
+                        // STACK: []
+                    ]);
+                    continue;
+                }
+                _ => (),
+            }
         }
 
+        // DEFAULT TRAVERSAL
         match (target, instr) {
-            (Target::Br(br_trap_idx), Instr::Br(label)) => {
-                result.extend_from_slice(&[
-                    // STACK: []
-                    typed_instr.instrument_with(Instr::Const(Val::I64(label.to_u32().into()))),
-                    // STACK: [label]
-                    typed_instr.instrument_with(Instr::Call(br_trap_idx)),
-                    // STACK: [table_target_index]
-                    typed_instr.place_original(instr.clone()),
-                ]);
-            }
-            (Target::BrTable(br_table_trap_idx), Instr::BrTable { table: _, default }) => {
-                result.extend_from_slice(&[
-                    // STACK: [table_target_index]
-                    typed_instr.instrument_with(Instr::Const(Val::I32(
-                        i32::try_from(default.to_u32()).expect("i32->u32"),
-                    ))),
-                    // STACK: [table_target_index, default]
-                    typed_instr.instrument_with(Instr::Call(br_table_trap_idx)),
-                    // STACK: [table_target_index]
-                    typed_instr.place_original(instr.clone()),
-                ]);
-            }
-            (Target::IfThen(if_then_trap_idx), Instr::If(type_, then, None)) => result
-                .extend_from_slice(&[
-                    // STACK: [type_in, condition]
-                    typed_instr.instrument_with(Instr::Call(if_then_trap_idx)),
-                    // STACK: [type_in, kontinuation]
-                    typed_instr.place_original(Instr::if_then(*type_, transform(then, target))),
-                    // STACK: [type_out]
-                ]),
-            (Target::IfThenElse(if_then_else_trap_idx), Instr::If(type_, then, Some(else_))) => {
-                result.extend_from_slice(&[
-                    // STACK: [type_in, condition]
-                    typed_instr.instrument_with(Instr::Call(if_then_else_trap_idx)),
-                    // STACK: [type_in, kontinuation]
-                    typed_instr.place_original(Instr::if_then_else(
-                        *type_,
-                        // STACK: [type_in]
-                        transform(then, target),
-                        // STACK: [type_in]
-                        transform(else_, target),
-                    )),
-                    // STACK: [type_out]
-                ]);
-            }
-            (Target::BrIf(br_if_trap_idx), Instr::BrIf(label)) => {
-                result.extend_from_slice(&[
-                    // STACK: [condition]
-                    typed_instr.instrument_with(Instr::Const(Val::I32(
-                        i32::try_from(label.to_u32()).unwrap(),
-                    ))),
-                    // STACK: [condition, label]
-                    typed_instr.instrument_with(Instr::Call(br_if_trap_idx)),
-                    // STACK: [kontinuation]
-                    typed_instr.place_original(instr.clone()),
-                    // STACK: []
-                ]);
-            }
-
-            // DEFAULT TRAVERSAL
             (target, Instr::If(type_, then, None)) => {
                 result.push(typed_instr.place_untouched(Instr::If(
                     *type_,
-                    transform(then, target),
+                    transform(then, target, module),
                     None,
                 )));
             }
             (target, Instr::If(type_, then, Some(else_))) => {
                 result.push(typed_instr.place_untouched(Instr::If(
                     *type_,
-                    transform(then, target),
-                    Some(transform(else_, target)),
+                    transform(then, target, module),
+                    Some(transform(else_, target, module)),
                 )))
             }
             (target, Instr::Loop(type_, body)) => {
                 result.push(
-                    typed_instr.place_untouched(Instr::Loop(*type_, transform(body, target))),
+                    typed_instr
+                        .place_untouched(Instr::Loop(*type_, transform(body, target, module))),
                 );
             }
             (target, Instr::Block(type_, body)) => {
                 result.push(
-                    typed_instr.place_untouched(Instr::Block(*type_, transform(body, target))),
+                    typed_instr
+                        .place_untouched(Instr::Block(*type_, transform(body, target, module))),
                 );
             }
             (_, instr) => result.push(typed_instr.place_untouched(instr.clone())),
@@ -151,6 +256,7 @@ mod tests {
     use wasabi_wasm::types::InferredInstructionType;
     use wasabi_wasm::{FunctionType, Module, ValType};
 
+    use crate::analysis::{AnalysisInterface, WasmExport};
     use crate::parse_nesting::{LowLevelBody, LowToHighError};
 
     use super::*;
@@ -342,9 +448,22 @@ mod tests {
             &instrumentation_body,
         );
 
+        fn to_wasm_type(valtype: crate::analysis::WasmType) -> ValType {
+            match valtype {
+                crate::analysis::WasmType::F32 => ValType::F32,
+                crate::analysis::WasmType::I32 => ValType::I32,
+                crate::analysis::WasmType::F64 => ValType::F64,
+                crate::analysis::WasmType::I64 => ValType::I64,
+            }
+        }
+
+        let WasmExport { args, results, .. } = AnalysisInterface::interface_if_then_else();
+        let args: Vec<ValType> = args.into_iter().map(to_wasm_type).collect();
+        let results: Vec<ValType> = results.into_iter().map(to_wasm_type).collect();
+
         // Instrument
         let if_then_else_trap_idx = wasm_module.add_function(
-            FunctionType::new(&[ValType::I32], &[ValType::I32]),
+            FunctionType::new(&args, &results),
             vec![],
             instrumentation_body.clone(),
         );
@@ -352,7 +471,8 @@ mod tests {
         let function = wasm_module.function(0_u32.into());
         let code = function.code().unwrap();
         let high_level_body: HighLevelBody = (&wasm_module, function, code).try_into().unwrap();
-        let transformed = Target::IfThenElse(if_then_else_trap_idx).transform(&high_level_body);
+        let transformed =
+            Target::IfThenElse(if_then_else_trap_idx).transform(&high_level_body, &mut wasm_module);
 
         let LowLevelBody(low_level_body) = LowLevelBody::from(transformed);
         wasm_module
@@ -360,8 +480,6 @@ mod tests {
             .code_mut()
             .unwrap()
             .body = low_level_body;
-
-        dbg!(&wasm_module);
 
         // Execute instrumented:
         assert_outcome(&wasm_module, instrumented_assertions, &instrumentation_body);

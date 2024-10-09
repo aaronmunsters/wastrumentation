@@ -53,7 +53,7 @@ pub enum Target {
 }
 
 impl TransformationStrategy for Target {
-    fn transform(&self, high_level_body: &HighLevelBody) -> HighLevelBody {
+    fn transform(&self, high_level_body: &HighLevelBody, _: &mut Module) -> HighLevelBody {
         let HighLevelBody(body) = high_level_body;
         let transformed_body = transform(body, *self);
         HighLevelBody(transformed_body)
@@ -65,226 +65,229 @@ fn transform(body: &BodyInner, target: Target) -> BodyInner {
 
     for typed_instr @ TypedHighLevelInstr { instr, .. } in body {
         if typed_instr.is_uninstrumented() {
-            result.push(typed_instr.clone());
-            continue;
-        }
-
-        match (target, instr) {
-            (Target::MemorySize(trap_idx), Instr::MemorySize(idx)) => {
-                result.extend_from_slice(&[
-                    // []                   // Perform operation
-                    typed_instr.place_original(instr.clone()),
-                    // [size:I32]           // Push memory index on stack
-                    typed_instr.instrument_with(Instr::Const(Val::I64(idx.to_u32().into()))),
-                    // [size:I32,index:I64] // Call trap
-                    typed_instr.instrument_with(Instr::Call(trap_idx)),
-                    // [size:I32]
-                ]);
-                continue;
+            match (target, instr) {
+                (Target::MemorySize(trap_idx), Instr::MemorySize(idx)) => {
+                    result.extend_from_slice(&[
+                        // []                   // Perform operation
+                        typed_instr.place_original(instr.clone()),
+                        // [size:I32]           // Push memory index on stack
+                        typed_instr.instrument_with(Instr::Const(Val::I64(idx.to_u32().into()))),
+                        // [size:I32,index:I64] // Call trap
+                        typed_instr.instrument_with(Instr::Call(trap_idx)),
+                        // [size:I32]
+                    ]);
+                    continue;
+                }
+                (Target::MemoryGrow(trap_idx), Instr::MemoryGrow(idx)) => {
+                    result.extend_from_slice(&[
+                        // [amount:I32]                   // Push memory index on stack
+                        typed_instr.instrument_with(Instr::Const(Val::I64(idx.to_u32().into()))),
+                        // [amount:I32,index:I64]         // Call to instrumentation
+                        typed_instr.instrument_with(Instr::Call(trap_idx)),
+                        // [previous-size-or-neg-one:I32]
+                    ]);
+                    continue;
+                }
+                _ => (),
             }
-            (Target::MemoryGrow(trap_idx), Instr::MemoryGrow(idx)) => {
-                result.extend_from_slice(&[
-                    // [amount:I32]                   // Push memory index on stack
-                    typed_instr.instrument_with(Instr::Const(Val::I64(idx.to_u32().into()))),
-                    // [amount:I32,index:I64]         // Call to instrumentation
-                    typed_instr.instrument_with(Instr::Call(trap_idx)),
-                    // [previous-size-or-neg-one:I32]
-                ]);
-                continue;
+
+            {
+                use GlobalOp::{Get as GGet, Set as GSet};
+                use Instr::{Global, Local};
+                use LocalOp::{Get as LGet, Set as LSet, Tee};
+                use Target::*;
+                use ValType::{F32, F64, I32, I64};
+
+                match typed_instr.type_ {
+                    InferredInstructionType::Reachable(type_) => {
+                        let (params, results) = (type_.inputs(), type_.results());
+                        match (target, &typed_instr.instr, params, results) {
+                            (LocalGetI32(trap_idx), Local(LGet, get_idx), &[], &[I32])
+                            | (LocalGetF32(trap_idx), Local(LGet, get_idx), &[], &[F32])
+                            | (LocalGetI64(trap_idx), Local(LGet, get_idx), &[], &[I64])
+                            | (LocalGetF64(trap_idx), Local(LGet, get_idx), &[], &[F64]) => {
+                                result.extend_from_slice(&[
+                                    // Perform operation
+                                    typed_instr.place_original(instr.clone()),
+                                    // Push get-index
+                                    typed_instr.instrument_with(
+                                        Instr::Const(Val::I64(i64::from((get_idx).to_u32())))
+                                            .clone(),
+                                    ),
+                                    // [value-to-write] // Call trap (in value, get-index -> out value)
+                                    typed_instr.instrument_with(Instr::Call(trap_idx)),
+                                ]);
+                                continue;
+                            }
+                            (GlobalGetI32(trap_idx), Global(GGet, get_idx), &[], &[I32])
+                            | (GlobalGetF32(trap_idx), Global(GGet, get_idx), &[], &[F32])
+                            | (GlobalGetI64(trap_idx), Global(GGet, get_idx), &[], &[I64])
+                            | (GlobalGetF64(trap_idx), Global(GGet, get_idx), &[], &[F64]) => {
+                                result.extend_from_slice(&[
+                                    // Perform operation
+                                    typed_instr.place_original(instr.clone()),
+                                    // Push get-index
+                                    typed_instr.instrument_with(
+                                        Instr::Const(Val::I64(i64::from((get_idx).to_u32())))
+                                            .clone(),
+                                    ),
+                                    // [value-to-write] // Call trap (in value, get-index -> out value)
+                                    typed_instr.instrument_with(Instr::Call(trap_idx)),
+                                ]);
+                                continue;
+                            }
+                            (LocalSetI32(trap_idx), Local(LSet, set_idx), &[I32], &[])
+                            | (LocalSetF32(trap_idx), Local(LSet, set_idx), &[F32], &[])
+                            | (LocalSetI64(trap_idx), Local(LSet, set_idx), &[I64], &[])
+                            | (LocalSetF64(trap_idx), Local(LSet, set_idx), &[F64], &[]) => {
+                                result.extend_from_slice(&[
+                                    // [value-to-write]
+                                    typed_instr.instrument_with(
+                                        // Push set-index
+                                        Instr::Const(Val::I64(i64::from((set_idx).to_u32())))
+                                            .clone(),
+                                    ),
+                                    // [value-to-write, set-index] // Call trap (in value, set-index -> out value)
+                                    typed_instr.instrument_with(Instr::Call(trap_idx)),
+                                    // Perform operation
+                                    typed_instr.place_original(instr.clone()),
+                                ]);
+                                continue;
+                            }
+                            (GlobalSetI32(trap_idx), Global(GSet, set_idx), &[I32], &[])
+                            | (GlobalSetF32(trap_idx), Global(GSet, set_idx), &[F32], &[])
+                            | (GlobalSetI64(trap_idx), Global(GSet, set_idx), &[I64], &[])
+                            | (GlobalSetF64(trap_idx), Global(GSet, set_idx), &[F64], &[]) => {
+                                result.extend_from_slice(&[
+                                    // [value-to-write]
+                                    typed_instr.instrument_with(
+                                        // Push set-index
+                                        Instr::Const(Val::I64(i64::from((set_idx).to_u32())))
+                                            .clone(),
+                                    ),
+                                    // [value-to-write, set-index] // Call trap (in value, set-index -> out value)
+                                    typed_instr.instrument_with(Instr::Call(trap_idx)),
+                                    // Perform operation
+                                    typed_instr.place_original(instr.clone()),
+                                ]);
+                                continue;
+                            }
+                            (LocalTeeI32(trap_idx), Local(Tee, tee_idx), &[I32], &[I32])
+                            | (LocalTeeF32(trap_idx), Local(Tee, tee_idx), &[F32], &[F32])
+                            | (LocalTeeI64(trap_idx), Local(Tee, tee_idx), &[I64], &[I64])
+                            | (LocalTeeF64(trap_idx), Local(Tee, tee_idx), &[F64], &[F64]) => {
+                                result.extend_from_slice(&[
+                                    // [value-to-write]
+                                    typed_instr.instrument_with(
+                                        // Push tee-index
+                                        Instr::Const(Val::I64(i64::from((tee_idx).to_u32())))
+                                            .clone(),
+                                    ),
+                                    // [value-to-write, tee-index] // Call trap (in value, tee-index -> out value)
+                                    typed_instr.instrument_with(Instr::Call(trap_idx)),
+                                    // Perform operation
+                                    typed_instr.place_original(instr.clone()),
+                                ]);
+                                continue;
+                            }
+
+                            _ => (), // Skip
+                        };
+                    }
+                    InferredInstructionType::Unreachable => (), // Skip
+                };
             }
-            _ => (),
-        }
 
-        {
-            use GlobalOp::{Get as GGet, Set as GSet};
-            use Instr::{Global, Local};
-            use LocalOp::{Get as LGet, Set as LSet, Tee};
-            use Target::*;
-            use ValType::{F32, F64, I32, I64};
-
-            match typed_instr.type_ {
-                InferredInstructionType::Reachable(type_) => {
-                    let (params, results) = (type_.inputs(), type_.results());
-                    match (target, &typed_instr.instr, params, results) {
-                        (LocalGetI32(trap_idx), Local(LGet, get_idx), &[], &[I32])
-                        | (LocalGetF32(trap_idx), Local(LGet, get_idx), &[], &[F32])
-                        | (LocalGetI64(trap_idx), Local(LGet, get_idx), &[], &[I64])
-                        | (LocalGetF64(trap_idx), Local(LGet, get_idx), &[], &[F64]) => {
-                            result.extend_from_slice(&[
-                                // Perform operation
-                                typed_instr.place_original(instr.clone()),
-                                // Push get-index
-                                typed_instr.instrument_with(
-                                    Instr::Const(Val::I64(i64::from((get_idx).to_u32()))).clone(),
-                                ),
-                                // [value-to-write] // Call trap (in value, get-index -> out value)
-                                typed_instr.instrument_with(Instr::Call(trap_idx)),
-                            ]);
-                            continue;
-                        }
-                        (GlobalGetI32(trap_idx), Global(GGet, get_idx), &[], &[I32])
-                        | (GlobalGetF32(trap_idx), Global(GGet, get_idx), &[], &[F32])
-                        | (GlobalGetI64(trap_idx), Global(GGet, get_idx), &[], &[I64])
-                        | (GlobalGetF64(trap_idx), Global(GGet, get_idx), &[], &[F64]) => {
-                            result.extend_from_slice(&[
-                                // Perform operation
-                                typed_instr.place_original(instr.clone()),
-                                // Push get-index
-                                typed_instr.instrument_with(
-                                    Instr::Const(Val::I64(i64::from((get_idx).to_u32()))).clone(),
-                                ),
-                                // [value-to-write] // Call trap (in value, get-index -> out value)
-                                typed_instr.instrument_with(Instr::Call(trap_idx)),
-                            ]);
-                            continue;
-                        }
-                        (LocalSetI32(trap_idx), Local(LSet, set_idx), &[I32], &[])
-                        | (LocalSetF32(trap_idx), Local(LSet, set_idx), &[F32], &[])
-                        | (LocalSetI64(trap_idx), Local(LSet, set_idx), &[I64], &[])
-                        | (LocalSetF64(trap_idx), Local(LSet, set_idx), &[F64], &[]) => {
-                            result.extend_from_slice(&[
-                                // [value-to-write]
-                                typed_instr.instrument_with(
-                                    // Push set-index
-                                    Instr::Const(Val::I64(i64::from((set_idx).to_u32()))).clone(),
-                                ),
-                                // [value-to-write, set-index] // Call trap (in value, set-index -> out value)
-                                typed_instr.instrument_with(Instr::Call(trap_idx)),
-                                // Perform operation
-                                typed_instr.place_original(instr.clone()),
-                            ]);
-                            continue;
-                        }
-                        (GlobalSetI32(trap_idx), Global(GSet, set_idx), &[I32], &[])
-                        | (GlobalSetF32(trap_idx), Global(GSet, set_idx), &[F32], &[])
-                        | (GlobalSetI64(trap_idx), Global(GSet, set_idx), &[I64], &[])
-                        | (GlobalSetF64(trap_idx), Global(GSet, set_idx), &[F64], &[]) => {
-                            result.extend_from_slice(&[
-                                // [value-to-write]
-                                typed_instr.instrument_with(
-                                    // Push set-index
-                                    Instr::Const(Val::I64(i64::from((set_idx).to_u32()))).clone(),
-                                ),
-                                // [value-to-write, set-index] // Call trap (in value, set-index -> out value)
-                                typed_instr.instrument_with(Instr::Call(trap_idx)),
-                                // Perform operation
-                                typed_instr.place_original(instr.clone()),
-                            ]);
-                            continue;
-                        }
-                        (LocalTeeI32(trap_idx), Local(Tee, tee_idx), &[I32], &[I32])
-                        | (LocalTeeF32(trap_idx), Local(Tee, tee_idx), &[F32], &[F32])
-                        | (LocalTeeI64(trap_idx), Local(Tee, tee_idx), &[I64], &[I64])
-                        | (LocalTeeF64(trap_idx), Local(Tee, tee_idx), &[F64], &[F64]) => {
-                            result.extend_from_slice(&[
-                                // [value-to-write]
-                                typed_instr.instrument_with(
-                                    // Push tee-index
-                                    Instr::Const(Val::I64(i64::from((tee_idx).to_u32()))).clone(),
-                                ),
-                                // [value-to-write, tee-index] // Call trap (in value, tee-index -> out value)
-                                typed_instr.instrument_with(Instr::Call(trap_idx)),
-                                // Perform operation
-                                typed_instr.place_original(instr.clone()),
-                            ]);
-                            continue;
-                        }
-
-                        _ => (), // Skip
-                    };
-                }
-                InferredInstructionType::Unreachable => (), // Skip
-            };
-        }
-
-        macro_rules! instrument_memory_op {
-            (
-                store:
-                $(
-                    ($target:ident, $store_op:ident)
-                ),*
-            ) => {
-                match (target, instr) {
+            macro_rules! instrument_memory_op {
+                (
+                    store:
                     $(
-                        (Target::$target(trap_idx), Instr::Store($store_op, Memarg { offset, .. })) => {
-                            result.extend_from_slice(&[
-                                // [i32: index to write to, F32: value to write to] // FIXME: not sure if TOS index or value
-                                typed_instr.instrument_with(Instr::Const(Val::I64((*offset).into()))),
-                                // [i32: index to write to, F32: value to write to, U32 as I64: Offset]
-                                typed_instr.instrument_with(Instr::Const(Val::I32($store_op.serialize()))),
-                                // [i32: index to write to, F32: value to write to, U32 as I64: Offset, i32: serialized operation]
-                                typed_instr.instrument_with(Instr::Call(trap_idx)),
-                            ]);
-                            continue;
-                        }
+                        ($target:ident, $store_op:ident)
                     ),*
-                    _ => (),
-                }
-            };
-            (
-                load:
-                $(
-                    ($target:ident, $load_op:ident)
-                ),*
-            ) => {
-                match (target, instr) {
+                ) => {
+                    match (target, instr) {
+                        $(
+                            (Target::$target(trap_idx), Instr::Store($store_op, Memarg { offset, .. })) => {
+                                result.extend_from_slice(&[
+                                    // [i32: index to write to, F32: value to write to] // FIXME: not sure if TOS index or value
+                                    typed_instr.instrument_with(Instr::Const(Val::I64((*offset).into()))),
+                                    // [i32: index to write to, F32: value to write to, U32 as I64: Offset]
+                                    typed_instr.instrument_with(Instr::Const(Val::I32($store_op.serialize()))),
+                                    // [i32: index to write to, F32: value to write to, U32 as I64: Offset, i32: serialized operation]
+                                    typed_instr.instrument_with(Instr::Call(trap_idx)),
+                                ]);
+                                continue;
+                            }
+                        ),*
+                        _ => (),
+                    }
+                };
+                (
+                    load:
                     $(
-                        (Target::$target(trap_idx), Instr::Load($load_op, Memarg { offset, .. })) => {
-                            result.extend_from_slice(&[
-                                // [i32: index to load from]
-                                typed_instr.instrument_with(Instr::Const(Val::I64((*offset).into()))),
-                                // [i32: index to load from,  U32as I64: Offset]
-                                typed_instr.instrument_with(Instr::Const(Val::I32($load_op.serialize()))),
-                                // [i32: index to load from,  U32as I64: Offset, i32: serialized operation]
-                                typed_instr.instrument_with(Instr::Call(trap_idx)),
-                            ]);
-                            continue;
-                        }
+                        ($target:ident, $load_op:ident)
                     ),*
-                    _ => (),
-                }
-            };
+                ) => {
+                    match (target, instr) {
+                        $(
+                            (Target::$target(trap_idx), Instr::Load($load_op, Memarg { offset, .. })) => {
+                                result.extend_from_slice(&[
+                                    // [i32: index to load from]
+                                    typed_instr.instrument_with(Instr::Const(Val::I64((*offset).into()))),
+                                    // [i32: index to load from,  U32as I64: Offset]
+                                    typed_instr.instrument_with(Instr::Const(Val::I32($load_op.serialize()))),
+                                    // [i32: index to load from,  U32as I64: Offset, i32: serialized operation]
+                                    typed_instr.instrument_with(Instr::Call(trap_idx)),
+                                ]);
+                                continue;
+                            }
+                        ),*
+                        _ => (),
+                    }
+                };
 
-        }
-        {
-            use StoreOp::{
-                F32Store, F64Store, I32Store, I32Store16, I32Store8, I64Store, I64Store16,
-                I64Store32, I64Store8,
-            };
-            instrument_memory_op!(
-                store:
-                (F32Store, F32Store),
-                (F64Store, F64Store),
-                (I32Store, I32Store),
-                (I32Store, I32Store16),
-                (I32Store, I32Store8),
-                (I64Store, I64Store),
-                (I64Store, I64Store16),
-                (I64Store, I64Store32),
-                (I64Store, I64Store8)
-            );
+            }
 
-            use LoadOp::{
-                F32Load, F64Load, I32Load, I32Load16S, I32Load16U, I32Load8S, I32Load8U, I64Load,
-                I64Load16S, I64Load16U, I64Load32S, I64Load32U, I64Load8S, I64Load8U,
-            };
-            instrument_memory_op!(
-                load:
-                (F32Load, F32Load),
-                (F64Load, F64Load),
-                (I32Load, I32Load),
-                (I32Load, I32Load16S),
-                (I32Load, I32Load16U),
-                (I32Load, I32Load8S),
-                (I32Load, I32Load8U),
-                (I64Load, I64Load),
-                (I64Load, I64Load16S),
-                (I64Load, I64Load16U),
-                (I64Load, I64Load32S),
-                (I64Load, I64Load32U),
-                (I64Load, I64Load8S),
-                (I64Load, I64Load8U)
-            );
+            {
+                use StoreOp::{
+                    F32Store, F64Store, I32Store, I32Store16, I32Store8, I64Store, I64Store16,
+                    I64Store32, I64Store8,
+                };
+                instrument_memory_op!(
+                    store:
+                    (F32Store, F32Store),
+                    (F64Store, F64Store),
+                    (I32Store, I32Store),
+                    (I32Store, I32Store16),
+                    (I32Store, I32Store8),
+                    (I64Store, I64Store),
+                    (I64Store, I64Store16),
+                    (I64Store, I64Store32),
+                    (I64Store, I64Store8)
+                );
+
+                use LoadOp::{
+                    F32Load, F64Load, I32Load, I32Load16S, I32Load16U, I32Load8S, I32Load8U,
+                    I64Load, I64Load16S, I64Load16U, I64Load32S, I64Load32U, I64Load8S, I64Load8U,
+                };
+                instrument_memory_op!(
+                    load:
+                    (F32Load, F32Load),
+                    (F64Load, F64Load),
+                    (I32Load, I32Load),
+                    (I32Load, I32Load16S),
+                    (I32Load, I32Load16U),
+                    (I32Load, I32Load8S),
+                    (I32Load, I32Load8U),
+                    (I64Load, I64Load),
+                    (I64Load, I64Load16S),
+                    (I64Load, I64Load16U),
+                    (I64Load, I64Load32S),
+                    (I64Load, I64Load32U),
+                    (I64Load, I64Load8S),
+                    (I64Load, I64Load8U)
+                );
+            }
         }
 
         match (target, instr) {

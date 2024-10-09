@@ -1,7 +1,7 @@
 use crate::parse_nesting::{
     BodyInner, HighLevelBody, HighLevelInstr as Instr, TypedHighLevelInstr,
 };
-use wasabi_wasm::{BinaryOp, Function, Idx, UnaryOp, Val};
+use wasabi_wasm::{BinaryOp, Function, Idx, Module, UnaryOp, Val};
 
 use super::TransformationStrategy;
 
@@ -43,7 +43,7 @@ pub enum Target {
 }
 
 impl TransformationStrategy for Target {
-    fn transform(&self, high_level_body: &HighLevelBody) -> HighLevelBody {
+    fn transform(&self, high_level_body: &HighLevelBody, _: &mut Module) -> HighLevelBody {
         let HighLevelBody(body) = high_level_body;
         let transformed_body = transform(body, *self);
         HighLevelBody(transformed_body)
@@ -253,79 +253,76 @@ fn transform(body: &BodyInner, target: Target) -> BodyInner {
 
     for typed_instr @ TypedHighLevelInstr { instr, .. } in body {
         if typed_instr.is_uninstrumented() {
-            result.push(typed_instr.clone());
-            continue;
-        }
+            if let (Target::Return(trap_idx), Instr::Return) = (target, instr) {
+                result.extend_from_slice(&[
+                    // Inject call
+                    typed_instr.instrument_with(Instr::Call(trap_idx)),
+                    // Inject original instruction after
+                    typed_instr.place_original(instr.clone()),
+                ]);
+                continue;
+            }
 
-        if let (Target::Return(trap_idx), Instr::Return) = (target, instr) {
-            result.extend_from_slice(&[
-                // Inject call
-                typed_instr.instrument_with(Instr::Call(trap_idx)),
-                // Inject original instruction after
-                typed_instr.place_original(instr.clone()),
-            ]);
-            continue;
-        }
+            if let (Target::Drop(trap_idx), Instr::Drop) = (target, instr) {
+                result.extend_from_slice(&[
+                    // Inject call
+                    typed_instr.instrument_with(Instr::Call(trap_idx)),
+                    // Inject original instruction after
+                    typed_instr.place_original(instr.clone()),
+                ]);
+                continue;
+            }
 
-        if let (Target::Drop(trap_idx), Instr::Drop) = (target, instr) {
-            result.extend_from_slice(&[
-                // Inject call
-                typed_instr.instrument_with(Instr::Call(trap_idx)),
-                // Inject original instruction after
-                typed_instr.place_original(instr.clone()),
-            ]);
-            continue;
-        }
+            transformation_strategy!(
+                typed_instr, target, instr, result,
+                ConstI32 for Instr::Const(Val::I32(_))
+                ConstF32 for Instr::Const(Val::F32(_))
+                ConstI64 for Instr::Const(Val::I64(_))
+                ConstF64 for Instr::Const(Val::F64(_))
+            );
 
-        transformation_strategy!(
-            typed_instr, target, instr, result,
-            ConstI32 for Instr::Const(Val::I32(_))
-            ConstF32 for Instr::Const(Val::F32(_))
-            ConstI64 for Instr::Const(Val::I64(_))
-            ConstF64 for Instr::Const(Val::F64(_))
-        );
+            transformation_strategy! {
+                typed_instr, target, instr, result,
+                // Unary
+                UnaryI32ToI32 for Unary instr UnaryOp::{I32Eqz}
+                UnaryI64ToI32 for Unary instr UnaryOp::{I64Eqz}
+                UnaryI32ToI32 for Unary instr UnaryOp::{I32Clz | I32Ctz | I32Popcnt}
+                UnaryI64ToI64 for Unary instr UnaryOp::{I64Clz | I64Ctz | I64Popcnt}
 
-        transformation_strategy! {
-            typed_instr, target, instr, result,
-            // Unary
-            UnaryI32ToI32 for Unary instr UnaryOp::{I32Eqz}
-            UnaryI64ToI32 for Unary instr UnaryOp::{I64Eqz}
-            UnaryI32ToI32 for Unary instr UnaryOp::{I32Clz | I32Ctz | I32Popcnt}
-            UnaryI64ToI64 for Unary instr UnaryOp::{I64Clz | I64Ctz | I64Popcnt}
+                UnaryF32ToF32 for Unary instr UnaryOp::{F32Abs | F32Neg | F32Ceil | F32Floor | F32Trunc | F32Nearest | F32Sqrt}
+                UnaryF64ToF64 for Unary instr UnaryOp::{F64Abs | F64Neg | F64Ceil | F64Floor | F64Trunc | F64Nearest | F64Sqrt}
 
-            UnaryF32ToF32 for Unary instr UnaryOp::{F32Abs | F32Neg | F32Ceil | F32Floor | F32Trunc /* | F32Nearest */ | F32Sqrt}
-            UnaryF64ToF64 for Unary instr UnaryOp::{F64Abs | F64Neg | F64Ceil | F64Floor | F64Trunc /* | F64Nearest */ | F64Sqrt}
+                UnaryI64ToI32 for Unary instr UnaryOp::{I32WrapI64}
+                UnaryF32ToI32 for Unary instr UnaryOp::{I32TruncF32S | I32TruncF32U | I32TruncSatF32S | I32TruncSatF32U}
+                UnaryF64ToI32 for Unary instr UnaryOp::{I32TruncF64S | I32TruncF64U | I32TruncSatF64S | I32TruncSatF64U}
+                UnaryI32ToI64 for Unary instr UnaryOp::{I64ExtendI32S | I64ExtendI32U}
+                UnaryF32ToI64 for Unary instr UnaryOp::{I64TruncF32S | I64TruncF32U | I64TruncSatF32S | I64TruncSatF32U}
+                UnaryF64ToI64 for Unary instr UnaryOp::{I64TruncF64S | I64TruncF64U | I64TruncSatF64S | I64TruncSatF64U}
+                UnaryI32ToF32 for Unary instr UnaryOp::{F32ConvertI32S | F32ConvertI32U}
+                UnaryI64ToF32 for Unary instr UnaryOp::{F32ConvertI64S | F32ConvertI64U}
+                UnaryF64ToF32 for Unary instr UnaryOp::{F32DemoteF64}
+                UnaryI32ToF64 for Unary instr UnaryOp::{F64ConvertI32S | F64ConvertI32U}
+                UnaryI64ToF64 for Unary instr UnaryOp::{F64ConvertI64S | F64ConvertI64U}
+                UnaryF32ToF64 for Unary instr UnaryOp::{F64PromoteF32}
+                UnaryF32ToI32 for Unary instr UnaryOp::{I32ReinterpretF32}
+                UnaryF64ToI64 for Unary instr UnaryOp::{I64ReinterpretF64}
+                UnaryI32ToF32 for Unary instr UnaryOp::{F32ReinterpretI32}
+                UnaryI64ToF64 for Unary instr UnaryOp::{F64ReinterpretI64}
+                UnaryI32ToI32 for Unary instr UnaryOp::{I32Extend8S | I32Extend16S }
+                UnaryI64ToI64 for Unary instr UnaryOp::{I64Extend8S | I64Extend16S | I64Extend32S }
 
-            UnaryI64ToI32 for Unary instr UnaryOp::{I32WrapI64}
-            UnaryF32ToI32 for Unary instr UnaryOp::{I32TruncF32S | I32TruncF32U | I32TruncSatF32S | I32TruncSatF32U}
-            UnaryF64ToI32 for Unary instr UnaryOp::{I32TruncF64S | I32TruncF64U | I32TruncSatF64S | I32TruncSatF64U}
-            UnaryI32ToI64 for Unary instr UnaryOp::{I64ExtendI32S | I64ExtendI32U}
-            UnaryF32ToI64 for Unary instr UnaryOp::{I64TruncF32S | I64TruncF32U | I64TruncSatF32S | I64TruncSatF32U}
-            UnaryF64ToI64 for Unary instr UnaryOp::{I64TruncF64S | I64TruncF64U | I64TruncSatF64S | I64TruncSatF64U}
-            UnaryI32ToF32 for Unary instr UnaryOp::{F32ConvertI32S | F32ConvertI32U}
-            UnaryI64ToF32 for Unary instr UnaryOp::{F32ConvertI64S | F32ConvertI64U}
-            UnaryF64ToF32 for Unary instr UnaryOp::{F32DemoteF64}
-            UnaryI32ToF64 for Unary instr UnaryOp::{F64ConvertI32S | F64ConvertI32U}
-            UnaryI64ToF64 for Unary instr UnaryOp::{F64ConvertI64S | F64ConvertI64U}
-            UnaryF32ToF64 for Unary instr UnaryOp::{F64PromoteF32}
-            UnaryF32ToI32 for Unary instr UnaryOp::{I32ReinterpretF32}
-            UnaryF64ToI64 for Unary instr UnaryOp::{I64ReinterpretF64}
-            UnaryI32ToF32 for Unary instr UnaryOp::{F32ReinterpretI32}
-            UnaryI64ToF64 for Unary instr UnaryOp::{F64ReinterpretI64}
-            UnaryI32ToI32 for Unary instr UnaryOp::{I32Extend8S | I32Extend16S }
-            UnaryI64ToI64 for Unary instr UnaryOp::{I64Extend8S | I64Extend16S | I64Extend32S }
+                // Binary
+                BinaryI32I32toI32 for Binary instr BinaryOp::{I32Eq | I32Ne | I32LtS | I32LtU | I32GtS | I32GtU | I32LeS | I32LeU | I32GeS | I32GeU}
+                BinaryI64I64toI32 for Binary instr BinaryOp::{I64Eq | I64Ne | I64LtS | I64LtU | I64GtS | I64GtU | I64LeS | I64LeU | I64GeS | I64GeU}
 
-            // Binary
-            BinaryI32I32toI32 for Binary instr BinaryOp::{I32Eq | I32Ne | I32LtS | I32LtU | I32GtS | I32GtU | I32LeS | I32LeU | I32GeS | I32GeU}
-            BinaryI64I64toI32 for Binary instr BinaryOp::{I64Eq | I64Ne | I64LtS | I64LtU | I64GtS | I64GtU | I64LeS | I64LeU | I64GeS | I64GeU}
+                BinaryF32F32toI32 for Binary instr BinaryOp::{F32Eq | F32Ne | F32Lt | F32Gt | F32Le | F32Ge}
+                BinaryF64F64toI32 for Binary instr BinaryOp::{F64Eq | F64Ne | F64Lt | F64Gt | F64Le | F64Ge}
 
-            BinaryF32F32toI32 for Binary instr BinaryOp::{F32Eq | F32Ne | F32Lt | F32Gt | F32Le | F32Ge}
-            BinaryF64F64toI32 for Binary instr BinaryOp::{F64Eq | F64Ne | F64Lt | F64Gt | F64Le | F64Ge}
-
-            BinaryI32I32toI32 for Binary instr BinaryOp::{I32Add | I32Sub | I32Mul | I32DivS | I32DivU | I32RemS | I32RemU | I32And | I32Or | I32Xor | I32Shl | I32ShrS | I32ShrU | I32Rotl | I32Rotr}
-            BinaryI64I64toI64 for Binary instr BinaryOp::{I64Add | I64Sub | I64Mul | I64DivS | I64DivU | I64RemS | I64RemU | I64And | I64Or | I64Xor | I64Shl | I64ShrS | I64ShrU | I64Rotl | I64Rotr}
-            BinaryF32F32toF32 for Binary instr BinaryOp::{F32Add | F32Sub | F32Mul | F32Div | F32Min | F32Max | F32Copysign}
-            BinaryF64F64toF64 for Binary instr BinaryOp::{F64Add | F64Sub | F64Mul | F64Div | F64Min | F64Max | F64Copysign}
+                BinaryI32I32toI32 for Binary instr BinaryOp::{I32Add | I32Sub | I32Mul | I32DivS | I32DivU | I32RemS | I32RemU | I32And | I32Or | I32Xor | I32Shl | I32ShrS | I32ShrU | I32Rotl | I32Rotr}
+                BinaryI64I64toI64 for Binary instr BinaryOp::{I64Add | I64Sub | I64Mul | I64DivS | I64DivU | I64RemS | I64RemU | I64And | I64Or | I64Xor | I64Shl | I64ShrS | I64ShrU | I64Rotl | I64Rotr}
+                BinaryF32F32toF32 for Binary instr BinaryOp::{F32Add | F32Sub | F32Mul | F32Div | F32Min | F32Max | F32Copysign}
+                BinaryF64F64toF64 for Binary instr BinaryOp::{F64Add | F64Sub | F64Mul | F64Div | F64Min | F64Max | F64Copysign}
+            }
         }
 
         match (target, instr) {

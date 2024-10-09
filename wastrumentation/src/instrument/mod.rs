@@ -16,7 +16,7 @@ use crate::parse_nesting::HighLevelBody;
 use crate::parse_nesting::LowLevelBody;
 
 use self::block_loop::Target::{BlockPost, BlockPre, LoopPost, LoopPre, Select};
-use self::branch_if::Target::{Br, BrIf, BrTable, IfThen, IfThenElse};
+use self::branch_if::Target::{Br, BrIf, BrTable, IfThen, IfThenElse, IfThenElsePost, IfThenPost};
 use self::function_application::INSTRUMENTATION_ANALYSIS_MODULE;
 use self::function_call_indirect::Target::{
     IndirectPost as CallIndirectPost, IndirectPre as CallIndirectPre, Post as CallPost,
@@ -45,7 +45,9 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
     let AnalysisInterface {
         generic_interface,
         if_then_else_trap,
+        if_then_else_post_trap,
         if_then_trap,
+        if_then_post_trap,
         br_trap,
         br_if_trap,
         pre_trap_call,
@@ -122,6 +124,17 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
     let (mut module, _offsets, _issue) =
         Module::from_bytes(module).map_err(InstrumentationError::ParseModuleError)?;
 
+    let target_indices_including_imports: HashSet<Idx<Function>> = module
+        .functions()
+        .filter(|(_index, f)| !uses_reference_types(f))
+        .map(|(idx, _)| idx)
+        .filter(|index| {
+            target_indices
+                .as_ref()
+                .map_or(true, |ts| ts.contains(&index.to_u32()))
+        })
+        .collect();
+
     let target_indices: HashSet<Idx<Function>> = module
         .functions()
         .filter(|(_index, f)| f.code().is_some())
@@ -141,7 +154,7 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
             let target_function = module.function(*target_function_idx);
             let code = target_function
                 .code()
-                .ok_or(InstrumentationError::AttemptInstrumentImport)?;
+                .ok_or(InstrumentationError::AttemptInnerInstrumentImport)?;
             ((&module), target_function, code)
                 .try_into()
                 .map_err(|e| InstrumentationError::LowToHighError { low_to_high_err: e })
@@ -161,7 +174,9 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
         (pre_trap_call_indirect, (|i| Box::new(CallIndirectPre(i)))),
         (post_trap_call_indirect, (|i| Box::new(CallIndirectPost(i)))),
         (if_then_trap, (|i| Box::new(IfThen(i)))),
+        (if_then_post_trap, (|i| Box::new(IfThenPost(i)))),
         (if_then_else_trap, (|i| Box::new(IfThenElse(i)))),
+        (if_then_else_post_trap, (|i| Box::new(IfThenElsePost(i)))),
         (br_trap, (|i| Box::new(Br(i)))),
         (br_if_trap, (|i| Box::new(BrIf(i)))),
         (br_table_trap, (|i| Box::new(BrTable(i)))),
@@ -224,7 +239,7 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
         (f64_load, (|i| Box::new(F64Load(i)))),
         (i32_load, (|i| Box::new(I32Load(i)))),
         (i64_load, (|i| Box::new(I64Load(i)))),
-    ] as [(&Option<WasmExport>, TFn); 73];
+    ] as [(&Option<WasmExport>, TFn); 75];
 
     let targets: Vec<Box<dyn TransformationStrategy>> = traps_target_generators
         .into_iter()
@@ -240,7 +255,7 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
         .into_iter()
         .map(|high_level_body| {
             targets.iter().fold(high_level_body, |transformed, target| {
-                target.transform(&transformed)
+                target.transform(&transformed, &mut module)
             })
         })
         .collect();
@@ -250,7 +265,7 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
         let locals = module
             .function(*target_function_idx)
             .code()
-            .ok_or(InstrumentationError::AttemptInstrumentImport)?
+            .ok_or(InstrumentationError::AttemptInnerInstrumentImport)?
             .locals
             .clone();
         module.function_mut(*target_function_idx).code = ImportOrPresent::Present(Code {
@@ -265,7 +280,7 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
             .map(|(generic_import, generic_export)| {
                 function_application::instrument::<InstrumentationLanguage>(
                     &mut module,
-                    &target_indices,
+                    &target_indices_including_imports,
                     generic_import,
                     generic_export,
                 )
@@ -360,14 +375,7 @@ impl FunctionTypeConvertible for WasmImport {
 }
 
 pub trait TransformationStrategy {
-    fn transform(&self, high_level_body: &HighLevelBody) -> HighLevelBody;
-}
-
-impl HighLevelBody {
-    #[must_use]
-    pub fn transform_for(&self, transformation_strategy: &dyn TransformationStrategy) -> Self {
-        transformation_strategy.transform(self)
-    }
+    fn transform(&self, high_level_body: &HighLevelBody, module: &mut Module) -> HighLevelBody;
 }
 
 #[cfg(test)]

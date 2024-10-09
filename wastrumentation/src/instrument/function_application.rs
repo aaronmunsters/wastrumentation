@@ -2,7 +2,6 @@ use std::collections::HashSet;
 
 use crate::compiler::{LibGeneratable, Library};
 use crate::stack_library::StackLibrary;
-use wasabi_wasm::Element;
 use wasabi_wasm::ElementMode;
 use wasabi_wasm::Function;
 use wasabi_wasm::FunctionType;
@@ -16,6 +15,7 @@ use wasabi_wasm::RefType;
 use wasabi_wasm::Table;
 use wasabi_wasm::Val;
 use wasabi_wasm::ValType;
+use wasabi_wasm::{Code, Element, ImportOrPresent};
 
 use crate::analysis::{WasmExport, WasmImport};
 
@@ -24,6 +24,9 @@ use super::FunctionTypeConvertible;
 pub const INSTRUMENTATION_STACK_MODULE: &str = "wastrumentation_stack";
 pub const INSTRUMENTATION_ANALYSIS_MODULE: &str = "WASP_ANALYSIS";
 pub const INSTRUMENTATION_INSTRUMENTED_MODULE: &str = "instrumented_input";
+
+pub const CODE_IS_PRESENT: i32 = 0;
+pub const CODE_IS_IMPORT: i32 = 1;
 
 #[allow(clippy::too_many_lines)]
 pub fn instrument<InstrumentationLanguage: LibGeneratable>(
@@ -54,27 +57,34 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
 
     for function_index in pre_instrumentation_function_indices {
         let target_function_type = module.function(*function_index).type_;
-        let target_function_locals: Vec<ValType> = module
-            .function(*function_index)
-            .locals()
-            .map(|(_, l)| l.type_)
-            .collect();
-        let target_function_body = module
-            .function(*function_index)
-            .code()
-            .unwrap()
-            .body
-            .clone();
+
         let stack_library_for_target = signature_import_links
             .get(&target_function_type)
             .expect("Imported");
 
         // 1. Generate "uninstrumented" function
-        let uninstrumented_index = module.add_function(
-            target_function_type,
-            target_function_locals,
-            target_function_body,
-        );
+        let target_code_is_present = module.function(*function_index).code().is_some();
+        let uninstrumented_index = match &module.function(*function_index).code {
+            wasabi_wasm::ImportOrPresent::Import(module_name, function_name) => module
+                .add_function_import(
+                    target_function_type,
+                    module_name.to_string(),
+                    function_name.to_string(),
+                ),
+            wasabi_wasm::ImportOrPresent::Present(code) => {
+                let target_function_locals: Vec<ValType> = module
+                    .function(*function_index)
+                    .locals()
+                    .map(|(_, l)| l.type_)
+                    .collect();
+                let target_function_body = code.body.clone();
+                module.add_function(
+                    target_function_type,
+                    target_function_locals,
+                    target_function_body,
+                )
+            }
+        };
 
         // 2. Generate "base apply" function
         let signature_buffer_pointer_type = ValType::I32;
@@ -106,6 +116,7 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
 
         // 3. Change the original function to call into analysis apply
         let original_function = module.function_mut(*function_index);
+        original_function.code = ImportOrPresent::Present(Code::new()); // clear out / install body
         let stack_ptr_local = original_function.add_fresh_local(ValType::I32);
         let stack_ptr_types_local = original_function.add_fresh_local(ValType::I32);
 
@@ -134,6 +145,11 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
         let call_generic_apply = Call(generic_apply_index);
         let call_free_values_buffer = Call(stack_library_for_target.free_values_buffer);
         let call_free_types_buffer = Call(stack_library_for_target.free_types_buffer);
+        let code_present_serialized = Const(Val::I32(if target_code_is_present {
+            CODE_IS_PRESENT
+        } else {
+            CODE_IS_IMPORT
+        }));
 
         let mut instrumented_body = Vec::new();
         instrumented_body.extend(push_args_on_stack);
@@ -149,6 +165,7 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
             resc,                              // resc    : i32
             local_get_stack_ptr(),             // sigv    : i32
             local_get_stack_types_ptr(),       // sigtypv : i32
+            code_present_serialized,           // code_present_serialized : i32
             call_generic_apply,
         ]);
 

@@ -2,10 +2,12 @@
 name = "wastrumentation-rs-stdlib"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.81"
 
 [dependencies]
 wee_alloc = "0.4.5"
 libm = "0.2.8"
+cfg-if = "1.0"
 
 [features]
 default = []

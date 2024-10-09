@@ -9,7 +9,8 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: "-Dwarnings"
-  binaryen_version: 119
+  BINARYEN_VERSION: 119
+  RUST_CHANNEL: "nightly"
 
 jobs:
   pre-commit-hooks:
@@ -35,14 +36,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Update rustup
-        run: rustup update $toolchain && rustup default $toolchain
+        run: rustup update ${RUST_CHANNEL} && rustup default ${RUST_CHANNEL}
       - name: Install wasm & wasip1 as a rust target
         run: rustup target add wasm32-unknown-unknown wasm32-wasip1
         shell: bash
       - name: Install Binaryen
         run: |
           mkdir $HOME/binaryen
-          wget https://github.com/WebAssembly/binaryen/releases/download/version_${binaryen_version}/binaryen-version_${binaryen_version}-x86_64-linux.tar.gz -O $HOME/binaryen.tar.gz
+          wget https://github.com/WebAssembly/binaryen/releases/download/version_${BINARYEN_VERSION}/binaryen-version_${BINARYEN_VERSION}-x86_64-linux.tar.gz -O $HOME/binaryen.tar.gz
           tar -xzvf $HOME/binaryen.tar.gz --directory $HOME/binaryen --strip-components=1
           echo "$HOME/binaryen/bin" >> $GITHUB_PATH
       - name: Verify Binaryen installation
@@ -61,7 +62,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Update rustup
-        run: rustup update $toolchain && rustup default $toolchain
+        run: rustup update ${RUST_CHANNEL} && rustup default ${RUST_CHANNEL}
+      - name: Install clippy
+        run: rustup component add clippy
       - name: Install wasm & wasip1 as a rust target
         run: rustup target add wasm32-unknown-unknown wasm32-wasip1
         shell: bash

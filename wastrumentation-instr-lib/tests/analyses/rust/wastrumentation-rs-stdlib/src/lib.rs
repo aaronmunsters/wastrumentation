@@ -1,4 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
+#![feature(asm_experimental_arch)]
 #[cfg(not(feature = "std"))]
 extern crate wee_alloc;
 #[cfg(not(feature = "std"))]
@@ -135,12 +136,24 @@ impl WasmType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum WasmValue {
     I32(i32),
     F32(f32),
     I64(i64),
     F64(f64),
+}
+
+impl PartialEq for WasmValue {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::I32(l), Self::I32(r)) => l == r,
+            (Self::F32(l), Self::F32(r)) => l.to_be_bytes() == r.to_be_bytes(),
+            (Self::I64(l), Self::I64(r)) => l == r,
+            (Self::F64(l), Self::F64(r)) => l.to_be_bytes() == r.to_be_bytes(),
+            _ => false,
+        }
+    }
 }
 
 impl From<i32> for WasmValue {
@@ -214,6 +227,15 @@ impl WasmValue {
         }
     }
 
+    pub fn type_(&self) -> WasmType {
+        match self {
+            WasmValue::I32(_) => WasmType::I32,
+            WasmValue::F32(_) => WasmType::F32,
+            WasmValue::I64(_) => WasmType::I64,
+            WasmValue::F64(_) => WasmType::F64,
+        }
+    }
+
     pub fn i32_from_bool(b: bool) -> Self {
         if b {
             Self::I32(1)
@@ -221,15 +243,44 @@ impl WasmValue {
             Self::I32(0)
         }
     }
-}
 
-#[derive(Debug)]
-pub struct FunctionIndex(pub i32);
+    // Cfr. https://webassembly.github.io/spec/core/exec/runtime.html#default-val
+    pub fn default_for(type_: &WasmType) -> Self {
+        match type_ {
+            WasmType::I32 => Self::I32(0),
+            WasmType::I64 => Self::I64(0),
+            WasmType::F32 => Self::F32(0.0),
+            WasmType::F64 => Self::F64(0.0),
+        }
+    }
+
+    #[cfg(feature = "std")]
+    pub fn bytes_string(&self) -> String {
+        let bytes = match self {
+            WasmValue::I32(v) => v.to_le_bytes().to_vec(),
+            WasmValue::F32(v) => v.to_le_bytes().to_vec(),
+            WasmValue::I64(v) => v.to_le_bytes().to_vec(),
+            WasmValue::F64(v) => v.to_le_bytes().to_vec(),
+        }
+        .into_iter()
+        .map(|v| format!("{v}"))
+        .collect::<Vec<String>>()
+        .join(", ");
+        let _ = format!("{type_:?}[{bytes}]", type_ = self.type_());
+        format!("{self:?}")
+    }
+
+    #[must_use]
+    pub fn as_wasm_bool(&self) -> bool {
+        self.as_i32() != 0
+    }
+}
 
 pub struct WasmFunction {
     pub f_apply: i32,
     pub instr_f_idx: i32,
     pub sigv: i32,
+    pub code_present_serialized: i32,
 }
 
 #[cfg(feature = "std")]
@@ -243,6 +294,9 @@ impl std::fmt::Debug for WasmFunction {
 }
 
 #[derive(Debug)]
+pub struct FunctionIndex(pub i32);
+
+#[derive(Debug, PartialEq)]
 pub struct FunctionTableIndex(pub i32);
 
 #[derive(Debug)]
@@ -257,12 +311,16 @@ pub struct RuntimeValues {
     pub signature_offsets: Vec<usize>,
 }
 
+pub const CODE_IS_PRESENT: i32 = 0;
+pub const CODE_IS_IMPORT: i32 = 1;
+
 impl WasmFunction {
-    pub fn new(f_apply: i32, instr_f_idx: i32, sigv: i32) -> Self {
+    pub fn new(f_apply: i32, instr_f_idx: i32, sigv: i32, code_present_serialized: i32) -> Self {
         WasmFunction {
             f_apply,
             instr_f_idx,
             sigv,
+            code_present_serialized,
         }
     }
 
@@ -272,6 +330,14 @@ impl WasmFunction {
 
     pub fn instr_f_idx(&self) -> FunctionIndex {
         FunctionIndex(self.instr_f_idx)
+    }
+
+    pub fn is_imported(&self) -> bool {
+        self.code_present_serialized == CODE_IS_IMPORT
+    }
+
+    pub fn is_present(&self) -> bool {
+        self.code_present_serialized == CODE_IS_PRESENT
     }
 }
 
@@ -362,6 +428,61 @@ impl RuntimeValues {
         self.check_bounds(self.resc, index);
         &self.signature_types[(self.res_base_offset() + index) as usize]
     }
+
+    pub fn args_iter(&self) -> RuntimeValuesIterator<'_> {
+        RuntimeValuesIterator::new(self, RuntimeValuesIteratorTarget::Arguments)
+    }
+
+    pub fn ress_iter(&self) -> RuntimeValuesIterator<'_> {
+        RuntimeValuesIterator::new(self, RuntimeValuesIteratorTarget::Results)
+    }
+}
+
+pub struct RuntimeValuesIterator<'a> {
+    runtime_values: &'a RuntimeValues,
+    state: i32,
+    limit: i32,
+}
+
+enum RuntimeValuesIteratorTarget {
+    Arguments,
+    Results,
+}
+
+impl<'a> RuntimeValuesIterator<'a> {
+    fn new(runtime_values: &'a RuntimeValues, target: RuntimeValuesIteratorTarget) -> Self {
+        // ie. begin state
+        let state = match target {
+            RuntimeValuesIteratorTarget::Arguments => runtime_values.arg_base_offset(),
+            RuntimeValuesIteratorTarget::Results => runtime_values.res_base_offset(),
+        };
+
+        let limit = match target {
+            RuntimeValuesIteratorTarget::Arguments => state + runtime_values.argc,
+            RuntimeValuesIteratorTarget::Results => state + runtime_values.resc,
+        };
+
+        Self {
+            runtime_values,
+            state,
+            limit,
+        }
+    }
+}
+
+impl<'a> core::iter::Iterator for RuntimeValuesIterator<'a> {
+    type Item = WasmValue;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let Self {
+            runtime_values,
+            state,
+            limit,
+        } = self;
+        let next = (state < limit).then(|| runtime_values.get_value(*state));
+        *state += 1;
+        next
+    }
 }
 
 const THEN_KONTN: i32 = 1;
@@ -412,6 +533,41 @@ impl SerializedContinuation for PathContinuation {
 }
 
 #[derive(Debug)]
+pub struct IfThenElseInputCount(pub i32);
+impl IfThenElseInputCount {
+    pub fn value(&self) -> i32 {
+        let Self(label) = self;
+        *label
+    }
+}
+
+#[derive(Debug)]
+pub struct IfThenElseArity(pub i32);
+impl IfThenElseArity {
+    pub fn value(&self) -> i32 {
+        let Self(label) = self;
+        *label
+    }
+}
+
+#[derive(Debug)]
+pub struct IfThenInputCount(pub i32);
+impl IfThenInputCount {
+    pub fn value(&self) -> i32 {
+        let Self(label) = self;
+        *label
+    }
+}
+
+#[derive(Debug)]
+pub struct IfThenArity(pub i32);
+impl IfThenArity {
+    pub fn value(&self) -> i32 {
+        let Self(label) = self;
+        *label
+    }
+}
+#[derive(Debug)]
 pub struct ParameterBrIfCondition(pub i32);
 impl SerializedContinuation for ParameterBrIfCondition {
     fn low_level_continuation(&self) -> &i32 {
@@ -452,6 +608,15 @@ impl BranchTableTarget {
 }
 
 #[derive(Debug)]
+pub struct BranchTableEffective(pub i32);
+impl BranchTableEffective {
+    pub fn label(&self) -> &i32 {
+        let Self(label) = self;
+        label
+    }
+}
+
+#[derive(Debug)]
 pub struct BranchTableDefault(pub i32);
 impl BranchTableDefault {
     pub fn value(&self) -> &i32 {
@@ -464,6 +629,42 @@ impl BranchTableDefault {
 pub struct LocalIndex(pub i64);
 impl LocalIndex {
     pub fn value(&self) -> &i64 {
+        let Self(value) = self;
+        value
+    }
+}
+
+#[derive(Debug)]
+pub struct BlockArity(pub i32);
+impl BlockArity {
+    pub fn value(&self) -> &i32 {
+        let Self(value) = self;
+        value
+    }
+}
+
+#[derive(Debug)]
+pub struct BlockInputCount(pub i32);
+impl BlockInputCount {
+    pub fn value(&self) -> &i32 {
+        let Self(value) = self;
+        value
+    }
+}
+
+#[derive(Debug)]
+pub struct LoopArity(pub i32);
+impl LoopArity {
+    pub fn value(&self) -> &i32 {
+        let Self(value) = self;
+        value
+    }
+}
+
+#[derive(Debug)]
+pub struct LoopInputCount(pub i32);
+impl LoopInputCount {
+    pub fn value(&self) -> &i32 {
         let Self(value) = self;
         value
     }
@@ -490,6 +691,8 @@ pub enum GlobalOp {
     Get,
     Set,
 }
+
+// TODO: rewrite `ident :` to `ident:` to make consistent
 
 #[macro_export]
 macro_rules! advice {
@@ -545,8 +748,8 @@ macro_rules! advice {
     ) => {
         #[no_mangle]
         pub extern "C"
-        fn generic_apply (f_apply: i32, instr_f_idx: i32, argc: i32, resc: i32, sigv: i32, sigtypv: i32) -> () {
-            let $func_ident = WasmFunction::new(f_apply, instr_f_idx, sigv);
+        fn generic_apply (f_apply: i32, instr_f_idx: i32, argc: i32, resc: i32, sigv: i32, sigtypv: i32, code_present_serialized: i32) -> () {
+            let $func_ident = WasmFunction::new(f_apply, instr_f_idx, sigv, code_present_serialized);
             let mut $args_ident = MutDynResults::new(argc, resc, sigv, sigtypv);
             let mut $ress_ident = MutDynArgs::new(argc, resc, sigv, sigtypv);
             $body
@@ -568,32 +771,53 @@ macro_rules! advice {
     };
     (if_
         (
-            $path_continuation: ident : PathContinuation $(,)?
+            $path_continuation: ident: PathContinuation,
+            $if_then_else_input_c: ident: IfThenElseInputCount,
+            $if_then_else_arity: ident: IfThenElseArity $(,)?
         ) $body:block
     ) => {
+        // TODO: rename this macro to if_then_else
         #[no_mangle]
         pub extern "C"
         fn specialized_if_then_else_k (
             path_continuation: i32,
+            if_then_else_input_c: i32,
+            if_then_else_arity: i32,
         ) -> i32 {
             let $path_continuation = PathContinuation(path_continuation);
+            let $if_then_else_input_c = IfThenElseInputCount(if_then_else_input_c);
+            let $if_then_else_arity = IfThenElseArity(if_then_else_arity);
             let PathContinuation(path_continuation) = $body;
             path_continuation
         }
     };
     (if_then
         (
-            $path_continuation: ident : PathContinuation $(,)?
+            $path_continuation: ident: PathContinuation,
+            $if_then_input_c: ident: IfThenInputCount,
+            $if_then_arity: ident: IfThenArity $(,)?
         ) $body:block) => {
         #[no_mangle]
         pub extern "C"
         fn specialized_if_then_k (
             path_continuation: i32,
+            if_then_input_c: i32,
+            if_then_arity: i32,
         ) -> i32 {
             let $path_continuation = PathContinuation(path_continuation);
+            let $if_then_input_c = IfThenInputCount(if_then_input_c);
+            let $if_then_arity = IfThenArity(if_then_arity);
             let PathContinuation(path_continuation) = $body;
             path_continuation
         }
+    };
+    (if_post () $body:block) => {
+        #[no_mangle]
+        extern "C" fn trap_if_then_else_post() -> () $body
+    };
+    (if_then_post () $body:block) => {
+        #[no_mangle]
+        extern "C" fn trap_if_then_post() -> () $body
     };
     (br_if
         (
@@ -616,6 +840,7 @@ macro_rules! advice {
     (br_table
         (
             $branch_table_target: ident : BranchTableTarget,
+            $branch_table_effective: ident : BranchTableEffective,
             $branch_table_default: ident : BranchTableDefault $(,)?
         ) $body:block
     ) => {
@@ -623,9 +848,11 @@ macro_rules! advice {
         pub extern "C"
         fn specialized_br_table (
             br_table_target: i32,
+            effective_label: i32,
             br_table_default: i32,
         ) -> i32 {
             let $branch_table_target = BranchTableTarget(br_table_target);
+            let $branch_table_effective = BranchTableEffective(effective_label);
             let $branch_table_default = BranchTableDefault(br_table_default);
             let BranchTableTarget(br_table_target) = $body;
             br_table_target
@@ -997,17 +1224,31 @@ macro_rules! advice {
             delta_or_neg_1.as_i32()
         }
     };
-    (block pre () $body:block) => {
+    (block pre (
+        $block_input_c: ident: BlockInputCount,
+        $block_arity: ident: BlockArity $(,)?
+    ) $body:block) => {
         #[no_mangle]
-        extern "C" fn trap_block_pre() -> () $body
+        extern "C" fn trap_block_pre(block_input_c: i32, block_arity: i32) -> () {
+            let $block_input_c = BlockInputCount(block_input_c);
+            let $block_arity = BlockArity(block_arity);
+            $body;
+        }
     };
     (block post () $body:block) => {
         #[no_mangle]
         extern "C" fn trap_block_post() -> () $body
     };
-    (loop_ pre () $body:block) => {
+    (loop_ pre (
+        $loop_input_c: ident: LoopInputCount,
+        $loop_arity: ident: LoopArity $(,)?
+    ) $body:block) => {
         #[no_mangle]
-        extern "C" fn trap_loop_pre() -> () $body
+        extern "C" fn trap_loop_pre(loop_input_c: i32, loop_arity: i32) -> () {
+            let $loop_input_c = LoopInputCount(loop_input_c);
+            let $loop_arity = LoopArity(loop_arity);
+            $body;
+        }
     };
     (loop_ post () $body:block) => {
         #[no_mangle]
