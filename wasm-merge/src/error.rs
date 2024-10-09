@@ -13,8 +13,16 @@ pub enum Error {
     TempOutputFileWriteFailed(ErrorIO),
     #[error("Merge execution failed: {0}")]
     MergeExecutionFailed(ErrorIO),
-    #[error("Merge execution failed with std-err: {0}")]
-    MergeExecutionReasonFailed(String),
+    #[error("Merge execution failed with reason: {0}")]
+    MergeExecutionFailedReason(MergeFailReason),
     #[error("Could not read result from written output: {0}")]
     ReadFromOutputFileFailed(ErrorIO),
+}
+
+#[derive(Error, Debug)]
+pub enum MergeFailReason {
+    #[error("Cannot merge input programs using multi control flow inputs using wasm-merge (binaryen does not support this)")]
+    ControlFlowInputs,
+    #[error("Merge execution failed with std-err: {0}")]
+    CompilerReason(String),
 }

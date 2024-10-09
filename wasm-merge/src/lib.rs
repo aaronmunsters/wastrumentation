@@ -2,8 +2,8 @@ use std::io::{Read, Write};
 use std::process::Command;
 use tempfile::NamedTempFile;
 
-mod error;
-pub use error::Error;
+pub mod error;
+use error::{Error, MergeFailReason};
 
 /*
 # DOCUMENTATION
@@ -129,7 +129,13 @@ pub fn merge(merge_options: &MergeOptions) -> Result<Vec<u8>, Error> {
     (result.stderr.is_empty() && result.stdout.is_empty())
         .then_some(true)
         .ok_or_else(|| {
-            Error::MergeExecutionReasonFailed(String::from_utf8_lossy(&result.stderr).to_string())
+            let std_err_string = String::from_utf8_lossy(&result.stderr).to_string();
+            if std_err_string
+                .contains("parse exception: control flow inputs are not supported yet ")
+            {
+                return Error::MergeExecutionFailedReason(MergeFailReason::ControlFlowInputs);
+            }
+            Error::MergeExecutionFailedReason(MergeFailReason::CompilerReason(std_err_string))
         })?;
 
     let mut result = Vec::new();

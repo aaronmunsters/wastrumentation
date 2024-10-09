@@ -1,6 +1,6 @@
 use thiserror::Error;
 use wasabi_wasm::{EncodeError, ParseError};
-use wasm_merge::Error as MergeError;
+use wasm_merge::error::Error as MergeError;
 
 use crate::{compiler::CompilationError, parse_nesting::LowToHighError};
 
