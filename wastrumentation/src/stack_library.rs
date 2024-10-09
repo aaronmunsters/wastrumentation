@@ -68,7 +68,7 @@ impl WasabiFunctionType<'_> {
     }
 }
 
-impl<'a> From<WasabiFunctionType<'a>> for Signature {
+impl From<WasabiFunctionType<'_>> for Signature {
     fn from(value: WasabiFunctionType) -> Self {
         let WasabiFunctionType(function_type) = value;
         Self {

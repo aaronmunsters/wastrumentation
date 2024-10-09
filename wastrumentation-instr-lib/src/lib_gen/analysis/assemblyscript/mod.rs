@@ -301,7 +301,7 @@ impl ASWasmExport {
 
 // TODO: move this to elsewhere? is this tied to AssemblyScript?
 struct WasmParameterVec<'a>(&'a [WasmParameter]);
-impl<'a> WasmParameterVec<'a> {
+impl WasmParameterVec<'_> {
     fn types(&self) -> Vec<WasmType> {
         let Self(vec) = self;
         vec.iter()

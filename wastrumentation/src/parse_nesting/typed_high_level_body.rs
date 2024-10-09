@@ -78,6 +78,8 @@ impl TypedHighLevelInstr {
     }
 }
 
+/// Typed instructions with high-level body.
+///
 /// Equal to `wasabi_wasm::Instr` minus `Else` and `End` instruction
 /// Which occur in `Block`, `Loop` and `If`
 /// Cfr. [Control Instructions](https://webassembly.github.io/spec/core/syntax/instructions.html#syntax-instr-control)
