@@ -31,7 +31,7 @@ fn panic(_panic: &core::panic::PanicInfo<'_>) -> ! {
 #[link(wasm_import_module = "instrumented_input")]
 extern "C" {
     // Base apply
-    fn call_base(f_apply: i32, sigv: i32) -> ();
+    fn call_base(f_apply: i32, sigv: i32);
     // Base load
     fn instrumented_base_load_i32(ptr: i32, offset: i32) -> i32;
     fn instrumented_base_load_i64(ptr: i32, offset: i32) -> i64;
@@ -48,15 +48,15 @@ extern "C" {
     fn instrumented_base_load_i64_32S(ptr: i32, offset: i32) -> i64;
     fn instrumented_base_load_i64_32U(ptr: i32, offset: i32) -> i64;
     // Base store
-    fn instrumented_base_store_i32(ptr: i32, value: i32, offset: i32) -> ();
-    fn instrumented_base_store_i64(ptr: i32, value: i64, offset: i32) -> ();
-    fn instrumented_base_store_f32(ptr: i32, value: f32, offset: i32) -> ();
-    fn instrumented_base_store_f64(ptr: i32, value: f64, offset: i32) -> ();
-    fn instrumented_base_store_i32_8(ptr: i32, value: i32, offset: i32) -> ();
-    fn instrumented_base_store_i32_16(ptr: i32, value: i32, offset: i32) -> ();
-    fn instrumented_base_store_i64_8(ptr: i32, value: i64, offset: i32) -> ();
-    fn instrumented_base_store_i64_16(ptr: i32, value: i64, offset: i32) -> ();
-    fn instrumented_base_store_i64_32(ptr: i32, value: i64, offset: i32) -> ();
+    fn instrumented_base_store_i32(ptr: i32, value: i32, offset: i32);
+    fn instrumented_base_store_i64(ptr: i32, value: i64, offset: i32);
+    fn instrumented_base_store_f32(ptr: i32, value: f32, offset: i32);
+    fn instrumented_base_store_f64(ptr: i32, value: f64, offset: i32);
+    fn instrumented_base_store_i32_8(ptr: i32, value: i32, offset: i32);
+    fn instrumented_base_store_i32_16(ptr: i32, value: i32, offset: i32);
+    fn instrumented_base_store_i64_8(ptr: i32, value: i64, offset: i32);
+    fn instrumented_base_store_i64_16(ptr: i32, value: i64, offset: i32);
+    fn instrumented_base_store_i64_32(ptr: i32, value: i64, offset: i32);
     // Base memory grow
     fn instrumented_memory_grow(amount: i32, idx: i32) -> i32;
 }
@@ -67,10 +67,10 @@ extern "C" {
     fn wastrumentation_stack_load_f32(ptr: i32, offset: i32) -> f32;
     fn wastrumentation_stack_load_i64(ptr: i32, offset: i32) -> i64;
     fn wastrumentation_stack_load_f64(ptr: i32, offset: i32) -> f64;
-    fn wastrumentation_stack_store_i32(ptr: i32, value: i32, offset: i32) -> ();
-    fn wastrumentation_stack_store_f32(ptr: i32, value: f32, offset: i32) -> ();
-    fn wastrumentation_stack_store_i64(ptr: i32, value: i64, offset: i32) -> ();
-    fn wastrumentation_stack_store_f64(ptr: i32, value: f64, offset: i32) -> ();
+    fn wastrumentation_stack_store_i32(ptr: i32, value: i32, offset: i32);
+    fn wastrumentation_stack_store_f32(ptr: i32, value: f32, offset: i32);
+    fn wastrumentation_stack_store_i64(ptr: i32, value: i64, offset: i32);
+    fn wastrumentation_stack_store_f64(ptr: i32, value: f64, offset: i32);
 }
 
 const TYPE_I32: i32 = 0;
@@ -89,11 +89,11 @@ pub enum WasmType {
 // TODO: can I wrap this i32 into MaterializedWasmType to ensure type safety?
 impl From<&i32> for WasmType {
     fn from(serialized_type: &i32) -> Self {
-        match serialized_type {
-            &TYPE_I32 => Self::I32,
-            &TYPE_F32 => Self::F32,
-            &TYPE_I64 => Self::I64,
-            &TYPE_F64 => Self::F64,
+        match *serialized_type {
+            TYPE_I32 => Self::I32,
+            TYPE_F32 => Self::F32,
+            TYPE_I64 => Self::I64,
+            TYPE_F64 => Self::F64,
             _ => panic!(),
         }
     }
@@ -181,7 +181,7 @@ impl From<f64> for WasmValue {
 }
 
 impl WasmValue {
-    fn store(&self, ptr: i32, offset: usize) -> () {
+    fn store(&self, ptr: i32, offset: usize) {
         let offset = offset as i32;
         match self {
             WasmValue::I32(value) => unsafe {
@@ -324,7 +324,7 @@ impl WasmFunction {
         }
     }
 
-    pub fn apply(&self) -> () {
+    pub fn apply(&self) {
         unsafe { call_base(self.f_apply, self.sigv) };
     }
 
@@ -372,8 +372,8 @@ impl RuntimeValues {
         }
     }
 
-    fn check_bounds(&self, count: i32, index: i32) -> () {
-        if !(index >= 0) {
+    fn check_bounds(&self, count: i32, index: i32) {
+        if index < 0 {
             panic!()
         };
         if index >= count {
@@ -383,10 +383,10 @@ impl RuntimeValues {
 
     fn get_value(&self, index: i32) -> WasmValue {
         let index = index as usize;
-        self.signature_types[index as usize].load(self.sigv, self.signature_offsets[index])
+        self.signature_types[index].load(self.sigv, self.signature_offsets[index])
     }
 
-    fn set_value(&mut self, index: i32, value: WasmValue) -> () {
+    fn set_value(&mut self, index: i32, value: WasmValue) {
         let index = index as usize;
         value.store(self.sigv, self.signature_offsets[index]);
     }
@@ -409,12 +409,12 @@ impl RuntimeValues {
         self.get_value(self.res_base_offset() + index)
     }
 
-    pub fn set_arg(&mut self, index: i32, value: WasmValue) -> () {
+    pub fn set_arg(&mut self, index: i32, value: WasmValue) {
         self.check_bounds(self.argc, index);
         self.set_value(self.arg_base_offset() + index, value);
     }
 
-    pub fn set_res(&mut self, index: i32, value: WasmValue) -> () {
+    pub fn set_res(&mut self, index: i32, value: WasmValue) {
         self.check_bounds(self.resc, index);
         self.set_value(self.res_base_offset() + index, value);
     }
@@ -470,7 +470,7 @@ impl<'a> RuntimeValuesIterator<'a> {
     }
 }
 
-impl<'a> core::iter::Iterator for RuntimeValuesIterator<'a> {
+impl core::iter::Iterator for RuntimeValuesIterator<'_> {
     type Item = WasmValue;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -701,7 +701,7 @@ macro_rules! advice {
     ) => {
         #[no_mangle]
         pub extern "C"
-        fn specialized_call_pre ($func_ident:FunctionIndex) -> ()
+        fn specialized_call_pre ($func_ident:FunctionIndex)
         $body
     };
     (call post
@@ -709,7 +709,7 @@ macro_rules! advice {
     ) => {
         #[no_mangle]
         pub extern "C"
-        fn specialized_call_post ($func_ident:FunctionIndex) -> ()
+        fn specialized_call_post ($func_ident:FunctionIndex)
         $body
     };
     (call_indirect pre
@@ -734,7 +734,7 @@ macro_rules! advice {
         pub extern "C"
         fn specialized_call_indirect_post (
             function_table: i32,
-        ) -> () {
+        ) {
             let $func_table_ident = FunctionTable(function_table);
             $body
         }
@@ -748,7 +748,7 @@ macro_rules! advice {
     ) => {
         #[no_mangle]
         pub extern "C"
-        fn generic_apply (f_apply: i32, instr_f_idx: i32, argc: i32, resc: i32, sigv: i32, sigtypv: i32, code_present_serialized: i32) -> () {
+        fn generic_apply (f_apply: i32, instr_f_idx: i32, argc: i32, resc: i32, sigv: i32, sigtypv: i32, code_present_serialized: i32) {
             let $func_ident = WasmFunction::new(f_apply, instr_f_idx, sigv, code_present_serialized);
             let mut $args_ident = MutDynResults::new(argc, resc, sigv, sigtypv);
             let mut $ress_ident = MutDynArgs::new(argc, resc, sigv, sigtypv);
@@ -813,11 +813,11 @@ macro_rules! advice {
     };
     (if_post () $body:block) => {
         #[no_mangle]
-        extern "C" fn trap_if_then_else_post() -> () $body
+        extern "C" fn trap_if_then_else_post() $body
     };
     (if_then_post () $body:block) => {
         #[no_mangle]
-        extern "C" fn trap_if_then_post() -> () $body
+        extern "C" fn trap_if_then_post() $body
     };
     (br_if
         (
@@ -1229,7 +1229,7 @@ macro_rules! advice {
         $block_arity: ident: BlockArity $(,)?
     ) $body:block) => {
         #[no_mangle]
-        extern "C" fn trap_block_pre(block_input_c: i32, block_arity: i32) -> () {
+        extern "C" fn trap_block_pre(block_input_c: i32, block_arity: i32) {
             let $block_input_c = BlockInputCount(block_input_c);
             let $block_arity = BlockArity(block_arity);
             $body;
@@ -1237,14 +1237,14 @@ macro_rules! advice {
     };
     (block post () $body:block) => {
         #[no_mangle]
-        extern "C" fn trap_block_post() -> () $body
+        extern "C" fn trap_block_post() $body
     };
     (loop_ pre (
         $loop_input_c: ident: LoopInputCount,
         $loop_arity: ident: LoopArity $(,)?
     ) $body:block) => {
         #[no_mangle]
-        extern "C" fn trap_loop_pre(loop_input_c: i32, loop_arity: i32) -> () {
+        extern "C" fn trap_loop_pre(loop_input_c: i32, loop_arity: i32) {
             let $loop_input_c = LoopInputCount(loop_input_c);
             let $loop_arity = LoopArity(loop_arity);
             $body;
@@ -1252,7 +1252,7 @@ macro_rules! advice {
     };
     (loop_ post () $body:block) => {
         #[no_mangle]
-        extern "C" fn trap_loop_post() -> () $body
+        extern "C" fn trap_loop_post() $body
     };
 }
 
