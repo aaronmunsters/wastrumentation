@@ -1,10 +1,4 @@
-use wastrumentation_rs_stdlib::{
-    advice, BinaryOperator, BranchTableDefault, BranchTableTarget, BranchTargetLabel, Deserialize,
-    FunctionIndex, FunctionTable, FunctionTableIndex, GlobalIndex, GlobalOp, LoadIndex, LoadOffset,
-    LoadOperation, LocalIndex, LocalOp, MemoryIndex, MutDynArgs, MutDynResults,
-    ParameterBrIfCondition, ParameterBrIfLabel, PathContinuation, StoreIndex, StoreOffset,
-    StoreOperation, UnaryOperator, WasmFunction, WasmValue,
-};
+use wastrumentation_rs_stdlib::*;
 
 /////
 // START ADVICE SPECIFICATION //
@@ -17,13 +11,33 @@ advice! { apply (function : WasmFunction, args : MutDynArgs, ress : MutDynResult
     }
 }
 
-advice! { if_ (path_continuation: PathContinuation) {
+advice! { if_ (
+        path_continuation: PathContinuation,
+        if_then_else_input_c: IfThenElseInputCount,
+        if_then_else_arity: IfThenElseArity
+    ) {
+        let _ = if_then_else_input_c;
+        let _ = if_then_else_arity;
         path_continuation
     }
 }
 
-advice! { if_then (path_continuation: PathContinuation) {
+advice! { if_post () {
+    }
+}
+
+advice! { if_then (
+        path_continuation: PathContinuation,
+        if_then_input_c: IfThenInputCount,
+        if_then_arity: IfThenArity
+    ) {
+        let _ = if_then_input_c;
+        let _ = if_then_arity;
         path_continuation
+    }
+}
+
+advice! { if_then_post () {
     }
 }
 
@@ -38,7 +52,12 @@ advice! { br_if (path_continuation : ParameterBrIfCondition, target_label : Para
     }
 }
 
-advice! { br_table (branch_table_target: BranchTableTarget, branch_table_default: BranchTableDefault) {
+advice! { br_table (
+        branch_table_target: BranchTableTarget,
+        branch_table_effective: BranchTableEffective,
+        branch_table_default: BranchTableDefault
+    ) {
+        let _ = branch_table_effective;
         let _ = branch_table_default;
         branch_table_target
     }
@@ -126,5 +145,25 @@ advice! { memory_size (size: WasmValue, index: MemoryIndex) {
 
 advice! { memory_grow (amount: WasmValue, index: MemoryIndex) {
         index.grow(amount)
+    }
+}
+
+advice! { block pre (block_input_count: BlockInputCount, block_arity: BlockArity) {
+        let _ = block_input_count;
+        let _ = block_arity;
+    }
+}
+
+advice! { block post () {
+    }
+}
+
+advice! { loop_ pre (loop_input_count: LoopInputCount, loop_arity: LoopArity) {
+        let _ = loop_input_count;
+        let _ = loop_arity;
+    }
+}
+
+advice! { loop_ post () {
     }
 }
