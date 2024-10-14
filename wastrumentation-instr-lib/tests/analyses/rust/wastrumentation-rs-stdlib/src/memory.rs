@@ -1,4 +1,4 @@
-use crate::WasmValue;
+use crate::{generate_wrapper, WasmValue};
 use crate::{
     // load
     instrumented_base_load_f32,
@@ -29,30 +29,16 @@ use crate::{
     instrumented_base_store_i64_8,
 };
 
-macro_rules! generate_wrapper {
-    ($name:ident wrapping $type:ident) => {
-        #[derive(Debug)]
-        pub struct $name(pub $type);
-
-        impl $name {
-            pub fn value(&self) -> &$type {
-                let Self(value) = self;
-                value
-            }
-        }
-    };
-}
-
-generate_wrapper!(LoadOffset wrapping i64);
-generate_wrapper!(StoreIndex wrapping i32);
-generate_wrapper!(StoreOffset wrapping i64);
-generate_wrapper!(LoadIndex wrapping i32);
-generate_wrapper!(MemoryIndex wrapping i64);
+generate_wrapper!(LoadOffset  wrapping i64 accessed-using .value());
+generate_wrapper!(StoreIndex  wrapping i32 accessed-using .value());
+generate_wrapper!(StoreOffset wrapping i64 accessed-using .value());
+generate_wrapper!(LoadIndex   wrapping i32 accessed-using .value());
+generate_wrapper!(MemoryIndex wrapping i64 accessed-using .value());
 
 impl MemoryIndex {
     pub fn grow(&self, amount: WasmValue) -> WasmValue {
         let amount = amount.as_i32();
-        let index = i32::try_from(*self.value()).unwrap();
+        let index = self.value().try_into().unwrap();
         (unsafe { crate::instrumented_memory_grow(amount, index) }).into()
     }
 }
@@ -118,8 +104,8 @@ impl StoreOperation {
         // I64 Load
         use StoreOperation::{I64Store16, I64Store32, I64Store8};
 
-        let ptr = *store_index.value();
-        let offset = (*offset.value()).try_into().unwrap();
+        let ptr = store_index.value();
+        let offset = offset.value().try_into().unwrap();
 
         match self {
             // Regular
@@ -171,8 +157,8 @@ impl LoadOperation {
         // I64 Load
         use LoadOperation::{I64Load16S, I64Load16U, I64Load32S, I64Load32U, I64Load8S, I64Load8U};
 
-        let ptr = *load_index.value();
-        let offset = (*offset.value()).try_into().unwrap();
+        let ptr = load_index.value();
+        let offset = offset.value().try_into().unwrap();
 
         match self {
             // Regular

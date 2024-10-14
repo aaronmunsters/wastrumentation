@@ -18,6 +18,10 @@ pub use memory::{
     StoreOperation,
 };
 
+extern crate alloc;
+use alloc::vec::Vec;
+use core::mem::size_of;
+
 // Optionally use primitives from core::arch::wasm
 // https://doc.rust-lang.org/stable/core/arch/wasm/index.html
 #[cfg(not(feature = "std"))]
@@ -71,6 +75,21 @@ extern "C" {
     fn wastrumentation_stack_store_f32(ptr: i32, value: f32, offset: i32);
     fn wastrumentation_stack_store_i64(ptr: i32, value: i64, offset: i32);
     fn wastrumentation_stack_store_f64(ptr: i32, value: f64, offset: i32);
+}
+
+#[macro_export]
+macro_rules! generate_wrapper {
+    ($name:ident wrapping $type:ident accessed-using .$accessor:ident()) => {
+        #[derive(Debug, PartialEq)]
+        pub struct $name(pub $type);
+
+        impl $name {
+            pub fn $accessor(&self) -> $type {
+                let Self(value) = self;
+                *value
+            }
+        }
+    };
 }
 
 const TYPE_I32: i32 = 0;
@@ -294,15 +313,6 @@ impl std::fmt::Debug for WasmFunction {
 }
 
 #[derive(Debug)]
-pub struct FunctionIndex(pub i32);
-
-#[derive(Debug, PartialEq)]
-pub struct FunctionTableIndex(pub i32);
-
-#[derive(Debug)]
-pub struct FunctionTable(pub i32);
-
-#[derive(Debug)]
 pub struct RuntimeValues {
     pub argc: i32,
     pub resc: i32,
@@ -343,9 +353,6 @@ impl WasmFunction {
 
 pub type MutDynResults = RuntimeValues;
 pub type MutDynArgs = RuntimeValues;
-
-extern crate alloc;
-use alloc::vec::Vec;
 
 impl RuntimeValues {
     pub fn new(argc: i32, resc: i32, sigv: i32, sigtypv: i32) -> Self {
@@ -519,8 +526,27 @@ where
     }
 }
 
-#[derive(Debug)]
-pub struct PathContinuation(pub i32);
+generate_wrapper!(FunctionIndex          wrapping i32 accessed-using .value());
+generate_wrapper!(FunctionTableIndex     wrapping i32 accessed-using .value());
+generate_wrapper!(FunctionTable          wrapping i32 accessed-using .value());
+generate_wrapper!(PathContinuation       wrapping i32 accessed-using .value());
+generate_wrapper!(IfThenElseInputCount   wrapping i32 accessed-using .value());
+generate_wrapper!(IfThenElseArity        wrapping i32 accessed-using .value());
+generate_wrapper!(IfThenInputCount       wrapping i32 accessed-using .value());
+generate_wrapper!(IfThenArity            wrapping i32 accessed-using .value());
+generate_wrapper!(ParameterBrIfCondition wrapping i32 accessed-using .value());
+generate_wrapper!(BranchTargetLabel      wrapping i64 accessed-using .label());
+generate_wrapper!(ParameterBrIfLabel     wrapping i32 accessed-using .label());
+generate_wrapper!(BranchTableTarget      wrapping i32 accessed-using .target());
+generate_wrapper!(BranchTableEffective   wrapping i32 accessed-using .label());
+generate_wrapper!(BranchTableDefault     wrapping i32 accessed-using .value());
+generate_wrapper!(LocalIndex             wrapping i64 accessed-using .value());
+generate_wrapper!(BlockArity             wrapping i32 accessed-using .value());
+generate_wrapper!(BlockInputCount        wrapping i32 accessed-using .value());
+generate_wrapper!(LoopArity              wrapping i32 accessed-using .value());
+generate_wrapper!(LoopInputCount         wrapping i32 accessed-using .value());
+generate_wrapper!(GlobalIndex            wrapping i64 accessed-using .value());
+
 impl SerializedContinuation for PathContinuation {
     fn low_level_continuation(&self) -> &i32 {
         let Self(continuation) = self;
@@ -532,43 +558,6 @@ impl SerializedContinuation for PathContinuation {
     }
 }
 
-#[derive(Debug)]
-pub struct IfThenElseInputCount(pub i32);
-impl IfThenElseInputCount {
-    pub fn value(&self) -> i32 {
-        let Self(label) = self;
-        *label
-    }
-}
-
-#[derive(Debug)]
-pub struct IfThenElseArity(pub i32);
-impl IfThenElseArity {
-    pub fn value(&self) -> i32 {
-        let Self(label) = self;
-        *label
-    }
-}
-
-#[derive(Debug)]
-pub struct IfThenInputCount(pub i32);
-impl IfThenInputCount {
-    pub fn value(&self) -> i32 {
-        let Self(label) = self;
-        *label
-    }
-}
-
-#[derive(Debug)]
-pub struct IfThenArity(pub i32);
-impl IfThenArity {
-    pub fn value(&self) -> i32 {
-        let Self(label) = self;
-        *label
-    }
-}
-#[derive(Debug)]
-pub struct ParameterBrIfCondition(pub i32);
 impl SerializedContinuation for ParameterBrIfCondition {
     fn low_level_continuation(&self) -> &i32 {
         let Self(continuation) = self;
@@ -581,109 +570,10 @@ impl SerializedContinuation for ParameterBrIfCondition {
 }
 
 #[derive(Debug)]
-pub struct BranchTargetLabel(pub i64);
-impl BranchTargetLabel {
-    pub fn label(&self) -> i64 {
-        let Self(label) = self;
-        *label
-    }
-}
-
-#[derive(Debug)]
-pub struct ParameterBrIfLabel(pub i32);
-impl ParameterBrIfLabel {
-    pub fn label(&self) -> i32 {
-        let Self(label) = self;
-        *label
-    }
-}
-
-#[derive(Debug)]
-pub struct BranchTableTarget(pub i32);
-impl BranchTableTarget {
-    pub fn target(&self) -> &i32 {
-        let Self(target) = self;
-        target
-    }
-}
-
-#[derive(Debug)]
-pub struct BranchTableEffective(pub i32);
-impl BranchTableEffective {
-    pub fn label(&self) -> &i32 {
-        let Self(label) = self;
-        label
-    }
-}
-
-#[derive(Debug)]
-pub struct BranchTableDefault(pub i32);
-impl BranchTableDefault {
-    pub fn value(&self) -> &i32 {
-        let Self(value) = self;
-        value
-    }
-}
-
-#[derive(Debug)]
-pub struct LocalIndex(pub i64);
-impl LocalIndex {
-    pub fn value(&self) -> &i64 {
-        let Self(value) = self;
-        value
-    }
-}
-
-#[derive(Debug)]
-pub struct BlockArity(pub i32);
-impl BlockArity {
-    pub fn value(&self) -> &i32 {
-        let Self(value) = self;
-        value
-    }
-}
-
-#[derive(Debug)]
-pub struct BlockInputCount(pub i32);
-impl BlockInputCount {
-    pub fn value(&self) -> &i32 {
-        let Self(value) = self;
-        value
-    }
-}
-
-#[derive(Debug)]
-pub struct LoopArity(pub i32);
-impl LoopArity {
-    pub fn value(&self) -> &i32 {
-        let Self(value) = self;
-        value
-    }
-}
-
-#[derive(Debug)]
-pub struct LoopInputCount(pub i32);
-impl LoopInputCount {
-    pub fn value(&self) -> &i32 {
-        let Self(value) = self;
-        value
-    }
-}
-
-#[derive(Debug)]
 pub enum LocalOp {
     Get,
     Set,
     Tee,
-}
-
-#[derive(Debug)]
-pub struct GlobalIndex(pub i64);
-impl GlobalIndex {
-    pub fn value(&self) -> &i64 {
-        let Self(value) = self;
-        value
-    }
 }
 
 #[derive(Debug)]
@@ -692,12 +582,10 @@ pub enum GlobalOp {
     Set,
 }
 
-// TODO: rewrite `ident :` to `ident:` to make consistent
-
 #[macro_export]
 macro_rules! advice {
     (call pre
-        ($func_ident: ident : FunctionIndex $(,)?) $body:block
+        ($func_ident: ident: FunctionIndex $(,)?) $body:block
     ) => {
         #[no_mangle]
         pub extern "C"
@@ -705,7 +593,7 @@ macro_rules! advice {
         $body
     };
     (call post
-        ($func_ident: ident : FunctionIndex $(,)?) $body:block
+        ($func_ident: ident: FunctionIndex $(,)?) $body:block
     ) => {
         #[no_mangle]
         pub extern "C"
@@ -713,7 +601,10 @@ macro_rules! advice {
         $body
     };
     (call_indirect pre
-        ($func_table_index_ident: ident : FunctionTableIndex, $func_table_ident: ident : FunctionTable $(,)?) $body:block
+        (
+            $func_table_index_ident: ident: FunctionTableIndex,
+            $func_table_ident: ident: FunctionTable $(,)?
+        ) $body:block
     ) => {
         #[no_mangle]
         pub extern "C"
@@ -728,7 +619,7 @@ macro_rules! advice {
         }
     };
     (call_indirect post
-        ($func_table_ident: ident : FunctionTable $(,)?) $body:block
+        ($func_table_ident: ident: FunctionTable $(,)?) $body:block
     ) => {
         #[no_mangle]
         pub extern "C"
@@ -741,9 +632,9 @@ macro_rules! advice {
     };
     (apply
         (
-            $func_ident: ident : WasmFunction,
-            $args_ident: ident : MutDynArgs,
-            $ress_ident: ident : MutDynResults $(,)?
+            $func_ident: ident: WasmFunction,
+            $args_ident: ident: MutDynArgs,
+            $ress_ident: ident: MutDynResults $(,)?
         ) $body:block
     ) => {
         #[no_mangle]
@@ -757,7 +648,7 @@ macro_rules! advice {
     };
     (br
         (
-            $target_label: ident : BranchTargetLabel $(,)?
+            $target_label: ident: BranchTargetLabel $(,)?
         ) $body:block
     ) => {
         #[no_mangle]
@@ -821,8 +712,8 @@ macro_rules! advice {
     };
     (br_if
         (
-            $path_continuation: ident : ParameterBrIfCondition,
-            $target_label: ident : ParameterBrIfLabel $(,)?
+            $path_continuation: ident: ParameterBrIfCondition,
+            $target_label: ident: ParameterBrIfLabel $(,)?
         ) $body:block
     ) => {
         #[no_mangle]
@@ -839,9 +730,9 @@ macro_rules! advice {
     };
     (br_table
         (
-            $branch_table_target: ident : BranchTableTarget,
-            $branch_table_effective: ident : BranchTableEffective,
-            $branch_table_default: ident : BranchTableDefault $(,)?
+            $branch_table_target: ident: BranchTableTarget,
+            $branch_table_effective: ident: BranchTableEffective,
+            $branch_table_default: ident: BranchTableDefault $(,)?
         ) $body:block
     ) => {
         #[no_mangle]
@@ -860,7 +751,7 @@ macro_rules! advice {
     };
     (select
         (
-            $path_continuation: ident : PathContinuation $(,)?
+            $path_continuation: ident: PathContinuation $(,)?
         ) $body:block
      ) => {
         #[no_mangle]
@@ -1255,5 +1146,3 @@ macro_rules! advice {
         extern "C" fn trap_loop_post() $body
     };
 }
-
-use core::mem::size_of;
