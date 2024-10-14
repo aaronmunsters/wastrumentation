@@ -62,6 +62,11 @@ impl RustToWasmCompiler {
         .map_err(Into::into)
         .map_err(CompilationError::TargetCreationFailed)?;
 
+        compile_options.target_rustc_args = Some(vec![
+            "-C".into(),
+            "target-feature=+nontrapping-fptoint".into(),
+        ]);
+
         let compile_kind = CompileKind::Target(target);
         compile_options.build_config.requested_kinds = vec![compile_kind];
         compile_options.build_config.requested_profile = match profile {

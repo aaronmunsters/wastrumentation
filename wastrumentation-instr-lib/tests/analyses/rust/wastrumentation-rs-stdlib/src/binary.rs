@@ -4,15 +4,16 @@ use core::arch::asm;
 use crate::WasmValue;
 use cfg_if::cfg_if;
 
-use core::fmt::Display;
-
-macro_rules! generate_unary_boilerplate {
+macro_rules! generate_binary_boilerplate {
     (
         $(
-            $serialized:literal $operator:ident $apply_body:expr
+            $serialized:literal
+            $operator:ident
+            : $l_in_type:ident -> $r_in_type:ident -> $wasm_asm_instruction:literal -> $wasm_res_out_type:ident
+            REIFIED:
+            $apply_body:expr
         ),*
         $(,)?
-
     ) => {
         #[derive(Debug, Clone, Copy)]
         pub enum BinaryOperator {
@@ -21,23 +22,36 @@ macro_rules! generate_unary_boilerplate {
             ),*
         }
 
-        impl Display for BinaryOperator {
-            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                let s = match self {
-                    $(
-                        Self::$operator => stringify!($operator),
-                    )*
-
-                };
-                write!(f, "{s}")
-            }
-        }
-
         impl BinaryOperator {
             pub fn apply(&self, l: WasmValue, r: WasmValue) -> WasmValue {
                 match self {
                     $(
-                        Self::$operator => $apply_body(l, r),
+                        Self::$operator => {
+                            let l_operand: $l_in_type = generate_binary_boilerplate!(@internally WasmValue-to-primitive l $l_in_type);
+                            let r_operand: $r_in_type = generate_binary_boilerplate!(@internally WasmValue-to-primitive r $r_in_type);
+
+                            cfg_if! {
+                                if #[cfg(target_arch = "wasm32")] {
+                                    unsafe {
+                                        let result: $wasm_res_out_type;
+                                        asm! {
+                                            "local.get {l_operand}",
+                                            "local.get {r_operand}",
+                                            $wasm_asm_instruction,
+                                            "local.set {result}",
+                                            l_operand = in(local) l_operand,
+                                            r_operand = in(local) r_operand,
+                                            result = out(local) result
+                                        };
+                                        generate_binary_boilerplate!(@internally primitive-to-WasmValue result $wasm_res_out_type)
+                                    }
+                                } else {
+                                    /* Using alternative attempt */
+                                    let result: $wasm_res_out_type = $apply_body(l_operand, r_operand);
+                                    generate_binary_boilerplate!(@internally primitive-to-WasmValue result $wasm_res_out_type)
+                                }
+                            }
+                        }
                     )*
                 }
             }
@@ -54,84 +68,94 @@ macro_rules! generate_unary_boilerplate {
             }
         }
     };
+
+    (@internally WasmValue-to-primitive $wasm_value:ident i32) => { $wasm_value.as_i32() };
+    (@internally WasmValue-to-primitive $wasm_value:ident f32) => { $wasm_value.as_f32() };
+    (@internally WasmValue-to-primitive $wasm_value:ident i64) => { $wasm_value.as_i64() };
+    (@internally WasmValue-to-primitive $wasm_value:ident f64) => { $wasm_value.as_f64() };
+
+    (@internally primitive-to-WasmValue $value:ident i32) => { WasmValue::I32($value) };
+    (@internally primitive-to-WasmValue $value:ident f32) => { WasmValue::F32($value) };
+    (@internally primitive-to-WasmValue $value:ident i64) => { WasmValue::I64($value) };
+    (@internally primitive-to-WasmValue $value:ident f64) => { WasmValue::F64($value) };
 }
 
-generate_unary_boilerplate!(
-// IDX VARIANT           CONVERSION IMPLEMENTATION
-     1 I32Eq             |l: WasmValue, r: WasmValue| WasmValue::i32_from_bool(l.as_i32() == r.as_i32()),
-     2 I32Ne             |l: WasmValue, r: WasmValue| WasmValue::i32_from_bool(l.as_i32() != r.as_i32()),
-     3 I32LtS            |l: WasmValue, r: WasmValue| WasmValue::i32_from_bool(l.as_i32() < r.as_i32()),
-     4 I32LtU            |l: WasmValue, r: WasmValue| WasmValue::i32_from_bool((l.as_i32() as u32) < (r.as_i32() as u32)),
-     5 I32GtS            |l: WasmValue, r: WasmValue| WasmValue::i32_from_bool(l.as_i32() > r.as_i32()),
-     6 I32GtU            |l: WasmValue, r: WasmValue| WasmValue::i32_from_bool((l.as_i32() as u32) > (r.as_i32() as u32)),
-     7 I32LeS            |l: WasmValue, r: WasmValue| WasmValue::i32_from_bool(l.as_i32() <= r.as_i32()),
-     8 I32LeU            |l: WasmValue, r: WasmValue| WasmValue::i32_from_bool((l.as_i32() as u32) <= (r.as_i32() as u32)),
-     9 I32GeS            |l: WasmValue, r: WasmValue| WasmValue::i32_from_bool(l.as_i32() >= r.as_i32()),
-    10 I32GeU            |l: WasmValue, r: WasmValue| WasmValue::i32_from_bool((l.as_i32() as u32) >= (r.as_i32() as u32)),
-    11 I64Eq             |l: WasmValue, r: WasmValue| WasmValue::i32_from_bool(l.as_i64() == r.as_i64()),
-    12 I64Ne             |l: WasmValue, r: WasmValue| WasmValue::i32_from_bool(l.as_i64() != r.as_i64()),
-    13 I64LtS            |l: WasmValue, r: WasmValue| WasmValue::i32_from_bool(l.as_i64() < r.as_i64()),
-    14 I64LtU            |l: WasmValue, r: WasmValue| WasmValue::i32_from_bool((l.as_i64() as u64) < (r.as_i64() as u64)),
-    15 I64GtS            |l: WasmValue, r: WasmValue| WasmValue::i32_from_bool(l.as_i64() > r.as_i64()),
-    16 I64GtU            |l: WasmValue, r: WasmValue| WasmValue::i32_from_bool((l.as_i64() as u64) > (r.as_i64() as u64)),
-    17 I64LeS            |l: WasmValue, r: WasmValue| WasmValue::i32_from_bool(l.as_i64() <= r.as_i64()),
-    18 I64LeU            |l: WasmValue, r: WasmValue| WasmValue::i32_from_bool((l.as_i64() as u64) <= (r.as_i64() as u64)),
-    19 I64GeS            |l: WasmValue, r: WasmValue| WasmValue::i32_from_bool(l.as_i64() >= r.as_i64()),
-    20 I64GeU            |l: WasmValue, r: WasmValue| WasmValue::i32_from_bool((l.as_i64() as u64) >= (r.as_i64() as u64)),
-    21 F32Eq             |l: WasmValue, r: WasmValue| WasmValue::i32_from_bool(l.as_f32() == r.as_f32()),
-    22 F32Ne             |l: WasmValue, r: WasmValue| WasmValue::i32_from_bool(l.as_f32() != r.as_f32()),
-    23 F32Lt             |l: WasmValue, r: WasmValue| WasmValue::i32_from_bool(l.as_f32() < r.as_f32()),
-    24 F32Gt             |l: WasmValue, r: WasmValue| WasmValue::i32_from_bool(l.as_f32() > r.as_f32()),
-    25 F32Le             |l: WasmValue, r: WasmValue| WasmValue::i32_from_bool(l.as_f32() <= r.as_f32()),
-    26 F32Ge             |l: WasmValue, r: WasmValue| WasmValue::i32_from_bool(l.as_f32() >= r.as_f32()),
-    27 F64Eq             |l: WasmValue, r: WasmValue| WasmValue::i32_from_bool(l.as_f64() == r.as_f64()),
-    28 F64Ne             |l: WasmValue, r: WasmValue| WasmValue::i32_from_bool(l.as_f64() != r.as_f64()),
-    29 F64Lt             |l: WasmValue, r: WasmValue| WasmValue::i32_from_bool(l.as_f64() < r.as_f64()),
-    30 F64Gt             |l: WasmValue, r: WasmValue| WasmValue::i32_from_bool(l.as_f64() > r.as_f64()),
-    31 F64Le             |l: WasmValue, r: WasmValue| WasmValue::i32_from_bool(l.as_f64() <= r.as_f64()),
-    32 F64Ge             |l: WasmValue, r: WasmValue| WasmValue::i32_from_bool(l.as_f64() >= r.as_f64()),
-    33 I32Add            |l: WasmValue, r: WasmValue| WasmValue::I32(l.as_i32() + r.as_i32()),
-    34 I32Sub            |l: WasmValue, r: WasmValue| WasmValue::I32(l.as_i32() - r.as_i32()),
-    35 I32Mul            |l: WasmValue, r: WasmValue| WasmValue::I32(l.as_i32() * r.as_i32()),
-    36 I32DivS           |l: WasmValue, r: WasmValue| WasmValue::I32(l.as_i32() / r.as_i32()),
-    37 I32DivU           |l: WasmValue, r: WasmValue| WasmValue::I32(((l.as_i32() as u32) / (r.as_i32() as u32)) as i32),
-    38 I32RemS           |l: WasmValue, r: WasmValue| WasmValue::I32(l.as_i32().wrapping_rem(r.as_i32())),
-    39 I32RemU           |l: WasmValue, r: WasmValue| WasmValue::I32(((l.as_i32() as u32) % (r.as_i32() as u32)) as i32),
-    40 I32And            |l: WasmValue, r: WasmValue| WasmValue::I32(l.as_i32() & r.as_i32()),
-    41 I32Or             |l: WasmValue, r: WasmValue| WasmValue::I32(l.as_i32() | r.as_i32()),
-    42 I32Xor            |l: WasmValue, r: WasmValue| WasmValue::I32(l.as_i32() ^ r.as_i32()),
-    43 I32Shl            |l: WasmValue, r: WasmValue| WasmValue::I32(l.as_i32() << r.as_i32()),
-    44 I32ShrS           |l: WasmValue, r: WasmValue| WasmValue::I32(l.as_i32() >> r.as_i32()),
-    45 I32ShrU           |l: WasmValue, r: WasmValue| WasmValue::I32(((l.as_i32() as u32) >> (r.as_i32() as u32)) as i32),
-    46 I32Rotl           |l: WasmValue, r: WasmValue| WasmValue::I32(l.as_i32().rotate_left(r.as_i32() as u32)),
-    47 I32Rotr           |l: WasmValue, r: WasmValue| WasmValue::I32(l.as_i32().rotate_right(r.as_i32() as u32)),
-    48 I64Add            |l: WasmValue, r: WasmValue| WasmValue::I64(l.as_i64() + r.as_i64()),
-    49 I64Sub            |l: WasmValue, r: WasmValue| WasmValue::I64(l.as_i64() - r.as_i64()),
-    50 I64Mul            |l: WasmValue, r: WasmValue| WasmValue::I64(l.as_i64() * r.as_i64()),
-    51 I64DivS           |l: WasmValue, r: WasmValue| WasmValue::I64(l.as_i64() / r.as_i64()),
-    52 I64DivU           |l: WasmValue, r: WasmValue| WasmValue::I64(((l.as_i64() as u64) / (r.as_i64() as u64)) as i64),
-    53 I64RemS           |l: WasmValue, r: WasmValue| WasmValue::I64(l.as_i64().wrapping_rem(r.as_i64())),
-    54 I64RemU           |l: WasmValue, r: WasmValue| WasmValue::I64(((l.as_i64() as u64) % (r.as_i64() as u64)) as i64),
-    55 I64And            |l: WasmValue, r: WasmValue| WasmValue::I64(l.as_i64() & r.as_i64()),
-    56 I64Or             |l: WasmValue, r: WasmValue| WasmValue::I64(l.as_i64() | r.as_i64()),
-    57 I64Xor            |l: WasmValue, r: WasmValue| WasmValue::I64(l.as_i64() ^ r.as_i64()),
-    58 I64Shl            |l: WasmValue, r: WasmValue| WasmValue::I64(l.as_i64() << r.as_i64()),
-    59 I64ShrS           |l: WasmValue, r: WasmValue| WasmValue::I64(l.as_i64() >> r.as_i64()),
-    60 I64ShrU           |l: WasmValue, r: WasmValue| WasmValue::I64(((l.as_i64() as u64) >> (r.as_i64() as u64)) as i64),
-    61 I64Rotl           |l: WasmValue, r: WasmValue| WasmValue::I64(l.as_i64().rotate_left(r.as_i64() as u32)),
-    62 I64Rotr           |l: WasmValue, r: WasmValue| WasmValue::I64(l.as_i64().rotate_right(r.as_i64() as u32)),
-    63 F32Add            |l: WasmValue, r: WasmValue| WasmValue::F32(l.as_f32() + r.as_f32()),
-    64 F32Sub            |l: WasmValue, r: WasmValue| WasmValue::F32(l.as_f32() - r.as_f32()),
-    65 F32Mul            |l: WasmValue, r: WasmValue| WasmValue::F32(l.as_f32() * r.as_f32()),
-    66 F32Div            |l: WasmValue, r: WasmValue| WasmValue::F32(l.as_f32() / r.as_f32()),
-    67 F32Min            |l: WasmValue, r: WasmValue| { let left = l.as_f32(); let right = r.as_f32(); /* Check if either value is NaN */ if left.is_nan() || right.is_nan() { WasmValue::F32(f32::NAN) /* Return canonical NaN */ } else if left == right && left == 0.0 { /* Handle the special case for -0.0 and 0.0 */ if left.is_sign_negative() || right.is_sign_negative() { WasmValue::F32(-0.0) } else { WasmValue::F32(0.0) } } else { /* Use the standard min function */ WasmValue::F32(libm::fminf(left, right)) } },
-    68 F32Max            |l: WasmValue, r: WasmValue| { let left = l.as_f32(); let right = r.as_f32(); /* either number is NaN */ if left.is_nan() || right.is_nan() { return WasmValue::F32(f32::NAN); /* Return canonical NaN */ }; /* Equal bit patterns */ if left.to_be_bytes() == right.to_be_bytes() { return WasmValue::F32(left); }; /* If one of them is -0.0 and the other is +0.0, return +0.0 */ if left == 0.0 && right == 0.0 { return WasmValue::F32(0.0);  /* Return +0.0 when comparing +0.0 and -0.0 */ }; /* Otherwise, use libm::fmaxf for the general case */ WasmValue::F32(libm::fmaxf(left, right)) },
-    69 F32Copysign       |l: WasmValue, r: WasmValue| WasmValue::F32(libm::copysignf(l.as_f32(), r.as_f32())),
-    70 F64Add            |l: WasmValue, r: WasmValue| WasmValue::F64(l.as_f64() + r.as_f64()),
-    71 F64Sub            |l: WasmValue, r: WasmValue| WasmValue::F64(l.as_f64() - r.as_f64()),
-    72 F64Mul            |l: WasmValue, r: WasmValue| WasmValue::F64(l.as_f64() * r.as_f64()),
-    73 F64Div            |l: WasmValue, r: WasmValue| WasmValue::F64(l.as_f64() / r.as_f64()),
-    74 F64Min            |l: WasmValue, r: WasmValue| { let l_operand = l.as_f64();  let r_operand = r.as_f64(); let result: f64; cfg_if! { if #[cfg(target_arch = "wasm32")] { unsafe { asm! { "local.get {l_operand}", "local.get {r_operand}", "f64.min", "local.set {result}", l_operand = in(local) l_operand, r_operand = in(local) r_operand, result = out(local) result }; }; } else { /* Return the rounded value using libm */ result = l_operand.min(r_operand) ; } }; WasmValue::F64(result) },
-    75 F64Max            |l: WasmValue, r: WasmValue| { let l_operand = l.as_f64();  let r_operand = r.as_f64(); let result: f64; cfg_if! { if #[cfg(target_arch = "wasm32")] { unsafe { asm! { "local.get {l_operand}", "local.get {r_operand}", "f64.max", "local.set {result}", l_operand = in(local) l_operand, r_operand = in(local) r_operand, result = out(local) result }; }; } else { /* Return the rounded value using libm */ result = l_operand.max(r_operand) ; } }; WasmValue::F64(result) },
-    76 F64Copysign       |l: WasmValue, r: WasmValue| WasmValue::F64(libm::copysign(l.as_f64(), r.as_f64())),
+generate_binary_boilerplate!(
+// IDX VARIANT     <-LIN----RIN----WASM_OPERATOR----OUT->        <--------------------------RUST IMPL------------------------->
+     1 I32Eq       : i32 -> i32 -> "i32.eq"      -> i32 REIFIED: |l: i32, r: i32| ( l         ==              r        ) as i32,
+     2 I32Ne       : i32 -> i32 -> "i32.ne"      -> i32 REIFIED: |l: i32, r: i32| ( l         !=              r        ) as i32,
+     3 I32LtS      : i32 -> i32 -> "i32.lt_s"    -> i32 REIFIED: |l: i32, r: i32| ( l         <               r        ) as i32,
+     4 I32LtU      : i32 -> i32 -> "i32.lt_u"    -> i32 REIFIED: |l: i32, r: i32| ((l as u32) <              (r as u32)) as i32,
+     5 I32GtS      : i32 -> i32 -> "i32.gt_s"    -> i32 REIFIED: |l: i32, r: i32| ( l         >               r        ) as i32,
+     6 I32GtU      : i32 -> i32 -> "i32.gt_u"    -> i32 REIFIED: |l: i32, r: i32| ((l as u32) >              (r as u32)) as i32,
+     7 I32LeS      : i32 -> i32 -> "i32.le_s"    -> i32 REIFIED: |l: i32, r: i32| ( l         <=              r        ) as i32,
+     8 I32LeU      : i32 -> i32 -> "i32.le_u"    -> i32 REIFIED: |l: i32, r: i32| ((l as u32) <=             (r as u32)) as i32,
+     9 I32GeS      : i32 -> i32 -> "i32.ge_s"    -> i32 REIFIED: |l: i32, r: i32| ( l         >=              r        ) as i32,
+    10 I32GeU      : i32 -> i32 -> "i32.ge_u"    -> i32 REIFIED: |l: i32, r: i32| ((l as u32) >=             (r as u32)) as i32,
+    11 I64Eq       : i64 -> i64 -> "i64.eq"      -> i32 REIFIED: |l: i64, r: i64| ( l         ==              r        ) as i32,
+    12 I64Ne       : i64 -> i64 -> "i64.ne"      -> i32 REIFIED: |l: i64, r: i64| ( l         !=              r        ) as i32,
+    13 I64LtS      : i64 -> i64 -> "i64.lt_s"    -> i32 REIFIED: |l: i64, r: i64| ( l         <               r        ) as i32,
+    14 I64LtU      : i64 -> i64 -> "i64.lt_u"    -> i32 REIFIED: |l: i64, r: i64| ((l as u64) <              (r as u64)) as i32,
+    15 I64GtS      : i64 -> i64 -> "i64.gt_s"    -> i32 REIFIED: |l: i64, r: i64| ( l         >               r        ) as i32,
+    16 I64GtU      : i64 -> i64 -> "i64.gt_u"    -> i32 REIFIED: |l: i64, r: i64| ((l as u64) >              (r as u64)) as i32,
+    17 I64LeS      : i64 -> i64 -> "i64.le_s"    -> i32 REIFIED: |l: i64, r: i64| ( l         <=              r        ) as i32,
+    18 I64LeU      : i64 -> i64 -> "i64.le_u"    -> i32 REIFIED: |l: i64, r: i64| ((l as u64) <=             (r as u64)) as i32,
+    19 I64GeS      : i64 -> i64 -> "i64.ge_s"    -> i32 REIFIED: |l: i64, r: i64| ( l         >=              r        ) as i32,
+    20 I64GeU      : i64 -> i64 -> "i64.ge_u"    -> i32 REIFIED: |l: i64, r: i64| ((l as u64) >=             (r as u64)) as i32,
+    21 F32Eq       : f32 -> f32 -> "f32.eq"      -> i32 REIFIED: |l: f32, r: f32| ( l         ==              r        ) as i32,
+    22 F32Ne       : f32 -> f32 -> "f32.ne"      -> i32 REIFIED: |l: f32, r: f32| ( l         !=              r        ) as i32,
+    23 F32Lt       : f32 -> f32 -> "f32.lt"      -> i32 REIFIED: |l: f32, r: f32| ( l         <               r        ) as i32,
+    24 F32Gt       : f32 -> f32 -> "f32.gt"      -> i32 REIFIED: |l: f32, r: f32| ( l         >               r        ) as i32,
+    25 F32Le       : f32 -> f32 -> "f32.le"      -> i32 REIFIED: |l: f32, r: f32| ( l         <=              r        ) as i32,
+    26 F32Ge       : f32 -> f32 -> "f32.ge"      -> i32 REIFIED: |l: f32, r: f32| ( l         >=              r        ) as i32,
+    27 F64Eq       : f64 -> f64 -> "f64.eq"      -> i32 REIFIED: |l: f64, r: f64| ( l         ==              r        ) as i32,
+    28 F64Ne       : f64 -> f64 -> "f64.ne"      -> i32 REIFIED: |l: f64, r: f64| ( l         !=              r        ) as i32,
+    29 F64Lt       : f64 -> f64 -> "f64.lt"      -> i32 REIFIED: |l: f64, r: f64| ( l         <               r        ) as i32,
+    30 F64Gt       : f64 -> f64 -> "f64.gt"      -> i32 REIFIED: |l: f64, r: f64| ( l         >               r        ) as i32,
+    31 F64Le       : f64 -> f64 -> "f64.le"      -> i32 REIFIED: |l: f64, r: f64| ( l         <=              r        ) as i32,
+    32 F64Ge       : f64 -> f64 -> "f64.ge"      -> i32 REIFIED: |l: f64, r: f64| ( l         >=              r        ) as i32,
+    33 I32Add      : i32 -> i32 -> "i32.add"     -> i32 REIFIED: |l: i32, r: i32|   l         +               r                ,
+    34 I32Sub      : i32 -> i32 -> "i32.sub"     -> i32 REIFIED: |l: i32, r: i32|   l         -               r                ,
+    35 I32Mul      : i32 -> i32 -> "i32.mul"     -> i32 REIFIED: |l: i32, r: i32|   l         *               r                ,
+    36 I32DivS     : i32 -> i32 -> "i32.div_s"   -> i32 REIFIED: |l: i32, r: i32|   l         /               r                ,
+    37 I32DivU     : i32 -> i32 -> "i32.div_u"   -> i32 REIFIED: |l: i32, r: i32| ((l as u32) /              (r as u32)) as i32,
+    38 I32RemS     : i32 -> i32 -> "i32.rem_s"   -> i32 REIFIED: |l: i32, r: i32|   l         .wrapping_rem(  r               ),
+    39 I32RemU     : i32 -> i32 -> "i32.rem_u"   -> i32 REIFIED: |l: i32, r: i32| ((l as u32) %              (r as u32)) as i32,
+    40 I32And      : i32 -> i32 -> "i32.and"     -> i32 REIFIED: |l: i32, r: i32|   l         &               r                ,
+    41 I32Or       : i32 -> i32 -> "i32.or"      -> i32 REIFIED: |l: i32, r: i32|   l         |               r                ,
+    42 I32Xor      : i32 -> i32 -> "i32.xor"     -> i32 REIFIED: |l: i32, r: i32|   l         ^               r                ,
+    43 I32Shl      : i32 -> i32 -> "i32.shl"     -> i32 REIFIED: |l: i32, r: i32|   l         <<              r                ,
+    44 I32ShrS     : i32 -> i32 -> "i32.shr_s"   -> i32 REIFIED: |l: i32, r: i32|   l         >>              r                ,
+    45 I32ShrU     : i32 -> i32 -> "i32.shr_u"   -> i32 REIFIED: |l: i32, r: i32| ((l as u32) >>             (r as u32)) as i32,
+    46 I32Rotl     : i32 -> i32 -> "i32.rotl"    -> i32 REIFIED: |l: i32, r: i32|   l         .rotate_left(   r as u32        ),
+    47 I32Rotr     : i32 -> i32 -> "i32.rotr"    -> i32 REIFIED: |l: i32, r: i32|   l         .rotate_right(  r as u32        ),
+    48 I64Add      : i64 -> i64 -> "i64.add"     -> i64 REIFIED: |l: i64, r: i64|   l         +               r                ,
+    49 I64Sub      : i64 -> i64 -> "i64.sub"     -> i64 REIFIED: |l: i64, r: i64|   l         -               r                ,
+    50 I64Mul      : i64 -> i64 -> "i64.mul"     -> i64 REIFIED: |l: i64, r: i64|   l         *               r                ,
+    51 I64DivS     : i64 -> i64 -> "i64.div_s"   -> i64 REIFIED: |l: i64, r: i64|   l         /               r                ,
+    52 I64DivU     : i64 -> i64 -> "i64.div_u"   -> i64 REIFIED: |l: i64, r: i64| ((l as u64) /              (r as u64)) as i64,
+    53 I64RemS     : i64 -> i64 -> "i64.rem_s"   -> i64 REIFIED: |l: i64, r: i64|   l         .wrapping_rem(  r               ),
+    54 I64RemU     : i64 -> i64 -> "i64.rem_u"   -> i64 REIFIED: |l: i64, r: i64| ((l as u64) %              (r as u64)) as i64,
+    55 I64And      : i64 -> i64 -> "i64.and"     -> i64 REIFIED: |l: i64, r: i64|   l         &               r                ,
+    56 I64Or       : i64 -> i64 -> "i64.or"      -> i64 REIFIED: |l: i64, r: i64|   l         |               r                ,
+    57 I64Xor      : i64 -> i64 -> "i64.xor"     -> i64 REIFIED: |l: i64, r: i64|   l         ^               r                ,
+    58 I64Shl      : i64 -> i64 -> "i64.shl"     -> i64 REIFIED: |l: i64, r: i64|   l         <<              r                ,
+    59 I64ShrS     : i64 -> i64 -> "i64.shr_s"   -> i64 REIFIED: |l: i64, r: i64|   l         >>              r                ,
+    60 I64ShrU     : i64 -> i64 -> "i64.shr_u"   -> i64 REIFIED: |l: i64, r: i64| ((l as u64) >>             (r as u64)) as i64,
+    61 I64Rotl     : i64 -> i64 -> "i64.rotl"    -> i64 REIFIED: |l: i64, r: i64|   l         .rotate_left(   r as u32        ),
+    62 I64Rotr     : i64 -> i64 -> "i64.rotr"    -> i64 REIFIED: |l: i64, r: i64|   l         .rotate_right(  r as u32        ),
+    63 F32Add      : f32 -> f32 -> "f32.add"     -> f32 REIFIED: |l: f32, r: f32|   l         +               r                ,
+    64 F32Sub      : f32 -> f32 -> "f32.sub"     -> f32 REIFIED: |l: f32, r: f32|   l         -               r                ,
+    65 F32Mul      : f32 -> f32 -> "f32.mul"     -> f32 REIFIED: |l: f32, r: f32|   l         *               r                ,
+    66 F32Div      : f32 -> f32 -> "f32.div"     -> f32 REIFIED: |l: f32, r: f32|   l         /               r                ,
+    67 F32Min      : f32 -> f32 -> "f32.min"     -> f32 REIFIED: |l: f32, r: f32|             libm::fminf(    l, r            ),
+    68 F32Max      : f32 -> f32 -> "f32.max"     -> f32 REIFIED: |l: f32, r: f32|             libm::fmaxf(    l, r            ),
+    69 F32Copysign : f32 -> f32 -> "f32.copysign"-> f32 REIFIED: |l: f32, r: f32|             libm::copysignf(l, r            ),
+    70 F64Add      : f64 -> f64 -> "f64.add"     -> f64 REIFIED: |l: f64, r: f64|   l         +               r                ,
+    71 F64Sub      : f64 -> f64 -> "f64.sub"     -> f64 REIFIED: |l: f64, r: f64|   l         -               r                ,
+    72 F64Mul      : f64 -> f64 -> "f64.mul"     -> f64 REIFIED: |l: f64, r: f64|   l         *               r                ,
+    73 F64Div      : f64 -> f64 -> "f64.div"     -> f64 REIFIED: |l: f64, r: f64|   l         /               r                ,
+    74 F64Min      : f64 -> f64 -> "f64.min"     -> f64 REIFIED: |l: f64, r: f64|   l         .min(           r               ),
+    75 F64Max      : f64 -> f64 -> "f64.max"     -> f64 REIFIED: |l: f64, r: f64|   l         .max(           r               ),
+    76 F64Copysign : f64 -> f64 -> "f64.copysign"-> f64 REIFIED: |l: f64, r: f64|             libm::copysign( l, r            ),
 );
