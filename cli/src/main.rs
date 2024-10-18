@@ -25,8 +25,8 @@ struct Args {
     rust_analysis_toml_path: Input,
 
     /// Hooks to instrument
-    #[arg(long, required = true, num_args = 1..)]
-    hooks: Vec<Hook>,
+    #[arg(long, num_args = 1..)]
+    hooks: Option<Vec<Hook>>,
 
     // Target functions of interest
     #[arg(long, required = false, num_args = 1..)]
@@ -44,6 +44,29 @@ enum Hook {
     CallPost,
     CallIndirectPre,
     CallIndirectPost,
+    IfThen,
+    IfThenPost,
+    IfThenElse,
+    IfThenElsePost,
+    Branch,
+    BranchIf,
+    BranchTable,
+    Select,
+    Unary,
+    Binary,
+    Drop,
+    Return,
+    Const,
+    Local,
+    Global,
+    Store,
+    Load,
+    MemorySize,
+    MemoryGrow,
+    BlockPre,
+    BlockPost,
+    LoopPre,
+    LoopPost,
 }
 
 impl From<&Hook> for AnalysisHook {
@@ -54,6 +77,29 @@ impl From<&Hook> for AnalysisHook {
             Hook::CallPost => AnalysisHook::CallPost,
             Hook::CallIndirectPre => AnalysisHook::CallIndirectPre,
             Hook::CallIndirectPost => AnalysisHook::CallIndirectPost,
+            Hook::IfThen => AnalysisHook::IfThen,
+            Hook::IfThenPost => AnalysisHook::IfThenPost,
+            Hook::IfThenElse => AnalysisHook::IfThenElse,
+            Hook::IfThenElsePost => AnalysisHook::IfThenElsePost,
+            Hook::Branch => AnalysisHook::Branch,
+            Hook::BranchIf => AnalysisHook::BranchIf,
+            Hook::BranchTable => AnalysisHook::BranchTable,
+            Hook::Select => AnalysisHook::Select,
+            Hook::Unary => AnalysisHook::Unary,
+            Hook::Binary => AnalysisHook::Binary,
+            Hook::Drop => AnalysisHook::Drop,
+            Hook::Return => AnalysisHook::Return,
+            Hook::Const => AnalysisHook::Const,
+            Hook::Local => AnalysisHook::Local,
+            Hook::Global => AnalysisHook::Global,
+            Hook::Store => AnalysisHook::Store,
+            Hook::Load => AnalysisHook::Load,
+            Hook::MemorySize => AnalysisHook::MemorySize,
+            Hook::MemoryGrow => AnalysisHook::MemoryGrow,
+            Hook::BlockPre => AnalysisHook::BlockPre,
+            Hook::BlockPost => AnalysisHook::BlockPost,
+            Hook::LoopPre => AnalysisHook::LoopPre,
+            Hook::LoopPost => AnalysisHook::LoopPost,
         }
     }
 }
@@ -70,8 +116,13 @@ fn main() -> anyhow::Result<()> {
     let mut wasm_module = Vec::new();
     input_program_path.read_to_end(&mut wasm_module)?;
 
+    let hooks = match hooks {
+        None => AnalysisHook::all_hooks(),
+        Some(hooks) => hooks.iter().map(From::from).collect(),
+    };
+
     let analysis = RustAnalysisSpec {
-        hooks: hooks.iter().map(From::from).collect(),
+        hooks,
         source: RustSource::Manifest(
             WasiSupport::Disabled,
             rust_analysis_toml_path.path().to_path_buf(),

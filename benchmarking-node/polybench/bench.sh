@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-benchmark_runs=10
+benchmark_runs=1
 
 workingdir="working-dir"
 polybenchpath="polybench-c"
@@ -58,8 +58,7 @@ download-unarchive ${polybenchpath} ${polybencharchive} ${polybenchlink}
 ### --> Very MacOS based ...                  ###
 #################################################
 
-# Line below is more Unix-based
-# download-unarchive ${firefoxpath} ${firefoxarchive} ${firefoxlink_linux}
+# This line is more Unix-based: `download-unarchive ${firefoxpath} ${firefoxarchive} ${firefoxlink_linux}`
 
 if [[ -d "`realpath /Volumes/Firefox*`" ]]; then
     echo "Assuming Firefox it already mounted, under \"`realpath /Volumes/Firefox*`\""
@@ -102,21 +101,21 @@ do
     # For documentation of Polybench/C, see README of downloaded ${polybencharchive}
     if [[ -f build/${name}.wasm && -f build/${name}.js && -f build/${name}.html ]]; then
         echo "[already compiled] skipping compilation $name ; ${dataset_size}"
-    else
-	    echo "Compiling $name (for ${dataset_size})"
-        emcc                            \
-            -O3                         \
-            -I utilities                \
-            -I $sourcedir               \
-            utilities/polybench.c       \
-            $sourcefile                 \
-            -s ALLOW_MEMORY_GROWTH=1    \
-            --emrun                     \
-            -DPOLYBENCH_TIME            \
-            -D$dataset_size             \
-            -o build/$name.html
+        continue
     fi
 
+    echo "Compiling $name (for ${dataset_size})"
+    emcc                            \
+        -O3                         \
+        -I utilities                \
+        -I $sourcedir               \
+        utilities/polybench.c       \
+        $sourcefile                 \
+        -s ALLOW_MEMORY_GROWTH=1    \
+        --emrun                     \
+        -DPOLYBENCH_TIME            \
+        -D$dataset_size             \
+        -o build/$name.html
 done < utilities/benchmark_list # <-- This file will dictate the input source files
 
 ##################
@@ -133,7 +132,7 @@ echo > ${results_file} # create / clear ${results_file}
 echo "runtime_environment,benchmark,performance" >> ${results_file}
 results_file_path=`readlink -f ${results_file}`
 
-timeout="40s"
+timeout="4000s"
 EXIT_STATUS_TIMEOUT=124
 
 trap exit SIGINT SIGTERM # allow to break out of loop on Ctrl+C
