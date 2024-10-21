@@ -589,16 +589,24 @@ macro_rules! advice {
     ) => {
         #[no_mangle]
         pub extern "C"
-        fn specialized_call_pre ($func_ident:FunctionIndex)
-        $body
+        fn specialized_call_pre (
+            func_ident: i32,
+        ) {
+            let $func_ident = FunctionIndex(func_ident);
+            $body
+        }
     };
     (call post
         ($func_ident: ident: FunctionIndex $(,)?) $body:block
     ) => {
         #[no_mangle]
         pub extern "C"
-        fn specialized_call_post ($func_ident:FunctionIndex)
-        $body
+        fn specialized_call_post (
+            func_ident: i32,
+        ) {
+            let $func_ident = FunctionIndex(func_ident);
+            $body
+        }
     };
     (call_indirect pre
         (
