@@ -10,53 +10,29 @@ from config import NODE_BENCHMARK_RUNS
 def setup_benchmarks_wastrumentation(
     node_wasm_wrap_path: str,
     input_programs: list[str],
+    analysis_name: str,
     analysis_path: str,
+    analysis_hooks: list[str],
 ):
-    if not os.path.exists(bench_suite_benchmarks_path_wastrumentation):
-        os.makedirs(bench_suite_benchmarks_path_wastrumentation, exist_ok=True)
-
+    os.makedirs(bench_suite_benchmarks_path_wastrumentation, exist_ok=True)
     for input_program in input_programs:
+        # Input path of [benchmark directory / program]
         benchmark_directory = os.path.join(bench_suite_benchmarks_path, input_program)
         benchmark_path = os.path.join(benchmark_directory, f'{input_program}.wasm')
-        benchmark_directory_wastrumentation_instrumented = os.path.join(bench_suite_benchmarks_path_wastrumentation, input_program)
+        # Output path of [benchmark directory / program]
+        benchmark_directory_wastrumentation_instrumented = os.path.join(bench_suite_benchmarks_path_wastrumentation, analysis_name, input_program)
         benchmark_path_wastrumentation_instrumented = os.path.join(benchmark_directory_wastrumentation_instrumented, f'{input_program}.wasm')
-        if not os.path.exists(benchmark_directory_wastrumentation_instrumented):
-            os.makedirs(benchmark_directory_wastrumentation_instrumented, exist_ok=True)
+        os.makedirs(benchmark_directory_wastrumentation_instrumented, exist_ok=True)
+
+        if os.path.exists(benchmark_path_wastrumentation_instrumented):
+            print(f'[WASTRUMENTATION INSTRUMENTATION PHASE] instrumented already exists; skipping: {analysis_name}/{input_program}.wasm')
+            continue
 
         # copy over input.wasm
         shutil.copy(benchmark_path, benchmark_path_wastrumentation_instrumented)
 
         # Setup wastrumentation instrumentation infrastructure
-        hooks = [
-                'call-pre',
-                'call-post',
-                'call-indirect-pre',
-                'call-indirect-post',
-                'if-then',
-                'if-then-post ',
-                'if-then-else',
-                'if-then-else-post',
-                'branch',
-                'branch-if',
-                'branch-table',
-                'select',
-                'unary',
-                'binary',
-                'drop',
-                'return',
-                'const',
-                'local',
-                'global',
-                'store',
-                'load',
-                'memory-size',
-                'memory-grow',
-                'block-pre',
-                'block-post',
-                'loop-pre',
-                'loop-post',
-        ]
-        hooks = ' '.join(hooks)
+        hooks = ' '.join(analysis_hooks)
 
         subprocess.run([
             'bash', '-c', f"""                                                  \

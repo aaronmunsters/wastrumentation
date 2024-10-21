@@ -10,18 +10,23 @@ from config import NODE_BENCHMARK_RUNS
 def setup_benchmarks_wasabi(
     node_wasm_wrap_path: str,
     input_programs: list[str],
+    analysis_name: str,
     analysis_path: str,
+    analysis_hooks: list[str],
 ):
-    if not os.path.exists(bench_suite_benchmarks_path_wasabi):
-        os.makedirs(bench_suite_benchmarks_path_wasabi, exist_ok=True)
-
+    os.makedirs(bench_suite_benchmarks_path_wasabi, exist_ok=True)
     for input_program in input_programs:
+        # Input path of [benchmark directory / program]
         benchmark_directory = os.path.join(bench_suite_benchmarks_path, input_program)
         benchmark_path = os.path.join(benchmark_directory, f'{input_program}.wasm')
-        benchmark_directory_wasabi_instrumented = os.path.join(bench_suite_benchmarks_path_wasabi, input_program)
+        # Output path of [benchmark directory / program]
+        benchmark_directory_wasabi_instrumented = os.path.join(bench_suite_benchmarks_path_wasabi, analysis_name, input_program)
+        os.makedirs(benchmark_directory_wasabi_instrumented, exist_ok=True)
         benchmark_path_wasabi_instrumented = os.path.join(benchmark_directory_wasabi_instrumented, f'{input_program}.wasm')
-        if not os.path.exists(benchmark_directory_wasabi_instrumented):
-            os.makedirs(benchmark_directory_wasabi_instrumented, exist_ok=True)
+
+        if os.path.exists(benchmark_path_wasabi_instrumented):
+            print(f'[WASABI INSTRUMENTATION PHASE] instrumented already exists; skipping: {analysis_name}/{input_program}.wasm')
+            continue
 
         # copy over input.wasm
         shutil.copy(benchmark_path, benchmark_path_wasabi_instrumented)
@@ -35,29 +40,7 @@ def setup_benchmarks_wasabi(
         # will output a `<input>.wasabi.js` file and
         # an instrumented `<input>.wasm` file in the
         # output directory [dir]
-        hooks = [
-                'nop',
-                'unreachable',
-                'if',
-                'br',
-                'br_if',
-                'br_table',
-                'drop',
-                'select',
-                'memory_size',
-                'memory_grow',
-                'unary',
-                'binary',
-                'load',
-                'store',
-                'local',
-                'global',
-                'call',
-                'const',
-                'begin',
-                'return',
-        ]
-        hooks = ' '.join(map(lambda hook: f'--hooks {hook}', hooks))
+        hooks = ' '.join(map(lambda hook: f'--hooks {hook}', analysis_hooks))
 
         subprocess.run([
             'bash', '-c', f"""                                  \

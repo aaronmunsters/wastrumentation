@@ -13,6 +13,7 @@ from execute_benchmarks import execute_benchmarks
 from config import node_wasm_wrap_path
 from config import path_results_file_regular, path_results_file_wasabi, path_results_file_wastrumentation
 from config import bench_suite_benchmarks_path, bench_suite_benchmarks_path_wasabi, bench_suite_benchmarks_path_wastrumentation
+from target_analyses import analysis_names_pathed
 
 # ✅ success
 success_on_both = [
@@ -47,7 +48,6 @@ crash_on_wasabi_or_wastrumentation = [
     'guiicons',
     'rfxgen',
     'rguistyler',
-
 ]
 
 # ⏱️ too slow
@@ -60,21 +60,31 @@ too_slow = [
 
 input_programs = success_on_both
 
-wasabi_analysis_path = os.path.abspath('../input-analyses/javascript/instruction-mix.cjs')
-wastrumentation_analysis_path = os.path.abspath('../input-analyses/rust/instruction-mix')
-
 # Setup workspace
 setup_workspace()
 # Fetch benchmark suite
 fetch_benchmark_suite()
 
-
 # Setup benchmarks regular
 setup_benchmarks_regular(node_wasm_wrap_path, input_programs)
-# Setup benchmarks wasabi
-setup_benchmarks_wasabi(node_wasm_wrap_path, input_programs, wasabi_analysis_path)
-# Setup benchmarks wastrumentation
-setup_benchmarks_wastrumentation(node_wasm_wrap_path, input_programs, wastrumentation_analysis_path)
+
+for (analysis_name, wasabi_analysis_path, wastrumentation_analysis_path, wasabi_hooks, wastrumentation_hooks) in analysis_names_pathed:
+    # Setup benchmarks wasabi
+    setup_benchmarks_wasabi(
+        node_wasm_wrap_path,
+        input_programs,
+        analysis_name,
+        wasabi_analysis_path,
+        wasabi_hooks,
+    )
+    # Setup benchmarks wastrumentation
+    setup_benchmarks_wastrumentation(
+        node_wasm_wrap_path,
+        input_programs,
+        analysis_name,
+        wastrumentation_analysis_path,
+        wastrumentation_hooks,
+    )
 
 # Run benchmarks [uninstrumented]
 execute_benchmarks(
@@ -85,20 +95,21 @@ execute_benchmarks(
     results_file_path = path_results_file_regular,
 )
 
-# Run benchmarks [wasabi]
-execute_benchmarks(
-    setup_name = '[wasabi]',
-    runtime_name = '[nodejs]',
-    input_programs = input_programs,
-    target_build_directory = bench_suite_benchmarks_path_wasabi,
-    results_file_path = path_results_file_wasabi,
-)
+for (analysis_name, wasabi_analysis_path, wastrumentation_analysis_path, wasabi_hooks, wastrumentation_hooks) in analysis_names_pathed:
+    # Run benchmarks [wasabi]
+    execute_benchmarks(
+        setup_name = f'[wasabi - {analysis_name}]',
+        runtime_name = '[nodejs]',
+        input_programs = input_programs,
+        target_build_directory = os.path.join(bench_suite_benchmarks_path_wasabi, analysis_name),
+        results_file_path = path_results_file_wasabi,
+    )
 
-# Run benchmarks [wastrumentation]
-execute_benchmarks(
-    setup_name = '[wastrumentation]',
-    runtime_name = '[nodejs]',
-    input_programs = input_programs,
-    target_build_directory = bench_suite_benchmarks_path_wastrumentation,
-    results_file_path = path_results_file_wastrumentation,
-)
+    # Run benchmarks [wastrumentation]
+    execute_benchmarks(
+        setup_name = f'[wastrumentation - {analysis_name}]',
+        runtime_name = '[nodejs]',
+        input_programs = input_programs,
+        target_build_directory = os.path.join(bench_suite_benchmarks_path_wastrumentation, analysis_name),
+        results_file_path = path_results_file_wastrumentation,
+    )
