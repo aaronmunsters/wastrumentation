@@ -92,6 +92,29 @@ macro_rules! generate_wrapper {
     };
 }
 
+/// Where an instruction trap was invoked
+#[derive(PartialEq, Debug, Clone, Copy)]
+pub struct Location {
+    instr_index: i64,
+    funct_index: i64,
+}
+
+impl Location {
+    pub fn new(instr_index: i64, funct_index: i64) -> Self {
+        Self {
+            instr_index,
+            funct_index,
+        }
+    }
+    pub fn instruction_index(&self) -> i64 {
+        self.instr_index
+    }
+
+    pub fn function_index(&self) -> i64 {
+        self.funct_index
+    }
+}
+
 const TYPE_I32: i32 = 0;
 const TYPE_F32: i32 = 1;
 const TYPE_I64: i32 = 2;
@@ -585,7 +608,9 @@ pub enum GlobalOp {
 #[macro_export]
 macro_rules! advice {
     (call pre
-        ($func_ident: ident: FunctionIndex $(,)?) $body:block
+        (
+            $func_ident: ident: FunctionIndex,
+            $location_ident: ident: Location $(,)?) $body:block
     ) => {
         #[no_mangle]
         pub extern "C"
@@ -595,11 +620,15 @@ macro_rules! advice {
             instr_index: i64,
         ) {
             let $func_ident = FunctionIndex(func_ident);
+            let $location_ident = Location::new(funct_index, instr_index);
             $body
         }
     };
     (call post
-        ($func_ident: ident: FunctionIndex $(,)?) $body:block
+        (
+            $func_ident: ident: FunctionIndex,
+            $location_ident: ident: Location $(,)?
+        ) $body:block
     ) => {
         #[no_mangle]
         pub extern "C"
@@ -609,13 +638,15 @@ macro_rules! advice {
             instr_index: i64,
         ) {
             let $func_ident = FunctionIndex(func_ident);
+            let $location_ident = Location::new(funct_index, instr_index);
             $body
         }
     };
     (call_indirect pre
         (
             $func_table_index_ident: ident: FunctionTableIndex,
-            $func_table_ident: ident: FunctionTable $(,)?
+            $func_table_ident: ident: FunctionTable,
+            $location_ident: ident: Location $(,)?
         ) $body:block
     ) => {
         #[no_mangle]
@@ -628,12 +659,16 @@ macro_rules! advice {
         ) -> i32 {
             let $func_table_index_ident = FunctionTableIndex(function_table_index);
             let $func_table_ident = FunctionTable(function_table);
+            let $location_ident = Location::new(funct_index, instr_index);
             let FunctionTableIndex(final_index) = $body;
             final_index
         }
     };
     (call_indirect post
-        ($func_table_ident: ident: FunctionTable $(,)?) $body:block
+        (
+            $func_table_ident: ident: FunctionTable,
+            $location_ident: ident: Location $(,)?
+        ) $body:block
     ) => {
         #[no_mangle]
         pub extern "C"
@@ -643,6 +678,7 @@ macro_rules! advice {
             instr_index: i64,
         ) {
             let $func_table_ident = FunctionTable(function_table);
+            let $location_ident = Location::new(funct_index, instr_index);
             $body
         }
     };
@@ -672,7 +708,8 @@ macro_rules! advice {
     };
     (br
         (
-            $target_label: ident: BranchTargetLabel $(,)?
+            $target_label: ident: BranchTargetLabel,
+            $location_ident: ident: Location $(,)?
         ) $body:block
     ) => {
         #[no_mangle]
@@ -683,6 +720,7 @@ macro_rules! advice {
             instr_index: i64,
         ) {
             let $target_label = BranchTargetLabel(low_level_label);
+            let $location_ident = Location::new(funct_index, instr_index);
             $body
         }
     };
@@ -690,7 +728,8 @@ macro_rules! advice {
         (
             $path_continuation: ident: PathContinuation,
             $if_then_else_input_c: ident: IfThenElseInputCount,
-            $if_then_else_arity: ident: IfThenElseArity $(,)?
+            $if_then_else_arity: ident: IfThenElseArity,
+            $location_ident: ident: Location $(,)?
         ) $body:block
     ) => {
         // TODO: rename this macro to if_then_else
@@ -706,6 +745,7 @@ macro_rules! advice {
             let $path_continuation = PathContinuation(path_continuation);
             let $if_then_else_input_c = IfThenElseInputCount(if_then_else_input_c);
             let $if_then_else_arity = IfThenElseArity(if_then_else_arity);
+            let $location_ident = Location::new(funct_index, instr_index);
             let PathContinuation(path_continuation) = $body;
             path_continuation
         }
@@ -714,7 +754,8 @@ macro_rules! advice {
         (
             $path_continuation: ident: PathContinuation,
             $if_then_input_c: ident: IfThenInputCount,
-            $if_then_arity: ident: IfThenArity $(,)?
+            $if_then_arity: ident: IfThenArity,
+            $location_ident: ident: Location $(,)?
         ) $body:block) => {
         #[no_mangle]
         pub extern "C"
@@ -728,28 +769,40 @@ macro_rules! advice {
             let $path_continuation = PathContinuation(path_continuation);
             let $if_then_input_c = IfThenInputCount(if_then_input_c);
             let $if_then_arity = IfThenArity(if_then_arity);
+            let $location_ident = Location::new(funct_index, instr_index);
             let PathContinuation(path_continuation) = $body;
             path_continuation
         }
     };
-    (if_post () $body:block) => {
+    (if_post (
+        $location_ident: ident: Location $(,)?
+    ) $body:block) => {
         #[no_mangle]
         extern "C" fn trap_if_then_else_post(
             funct_index: i64,
             instr_index: i64,
-        ) $body
+        ) {
+            let $location_ident = Location::new(funct_index, instr_index);
+            $body
+        }
     };
-    (if_then_post () $body:block) => {
+    (if_then_post (
+        $location_ident: ident: Location $(,)?
+    ) $body:block) => {
         #[no_mangle]
         extern "C" fn trap_if_then_post(
             funct_index: i64,
             instr_index: i64,
-        ) $body
+        ) {
+            let $location_ident = Location::new(funct_index, instr_index);
+            $body
+        }
     };
     (br_if
         (
             $path_continuation: ident: ParameterBrIfCondition,
-            $target_label: ident: ParameterBrIfLabel $(,)?
+            $target_label: ident: ParameterBrIfLabel,
+            $location_ident: ident: Location $(,)?
         ) $body:block
     ) => {
         #[no_mangle]
@@ -762,6 +815,7 @@ macro_rules! advice {
         ) -> i32 {
             let $path_continuation = ParameterBrIfCondition(path_continuation);
             let $target_label = ParameterBrIfLabel(low_level_label);
+            let $location_ident = Location::new(funct_index, instr_index);
             let ParameterBrIfCondition(path_continuation) = $body;
             path_continuation
         }
@@ -770,7 +824,8 @@ macro_rules! advice {
         (
             $branch_table_target: ident: BranchTableTarget,
             $branch_table_effective: ident: BranchTableEffective,
-            $branch_table_default: ident: BranchTableDefault $(,)?
+            $branch_table_default: ident: BranchTableDefault,
+            $location_ident: ident: Location $(,)?
         ) $body:block
     ) => {
         #[no_mangle]
@@ -785,13 +840,15 @@ macro_rules! advice {
             let $branch_table_target = BranchTableTarget(br_table_target);
             let $branch_table_effective = BranchTableEffective(effective_label);
             let $branch_table_default = BranchTableDefault(br_table_default);
+            let $location_ident = Location::new(funct_index, instr_index);
             let BranchTableTarget(br_table_target) = $body;
             br_table_target
         }
     };
     (select
         (
-            $path_continuation: ident: PathContinuation $(,)?
+            $path_continuation: ident: PathContinuation,
+            $location_ident: ident: Location $(,)?
         ) $body:block
      ) => {
         #[no_mangle]
@@ -802,6 +859,7 @@ macro_rules! advice {
             instr_index: i64,
         ) -> i32 {
             let $path_continuation = PathContinuation(path_continuation);
+            let $location_ident = Location::new(funct_index, instr_index);
             let PathContinuation(path_continuation) = $body;
             path_continuation
         }
@@ -812,15 +870,18 @@ macro_rules! advice {
     (unary generic
         (
             $operator: ident: UnaryOperator,
-            $operand: ident: WasmValue $(,)?
+            $operand: ident: WasmValue,
+            $location_ident: ident: Location $(,)?
         ) $body:block
     ) => {
         fn generic_unary_trap(
             operator: UnaryOperator,
             operand: WasmValue,
+            location: Location,
         ) -> WasmValue {
             let $operator = operator;
             let $operand = operand;
+            let $location_ident = location;
             $body
         }
         advice!(unary generic @genererate-specific generic_unary_trap);
@@ -860,7 +921,8 @@ macro_rules! advice {
         ) -> $outcome_type {
             let operator = UnaryOperator::from(operator);
             let operand = WasmValue::$operand_type_wasm_value(operand);
-            let outcome = $generic_unary_trap(operator, operand);
+            let location = Location::new(funct_index, instr_index);
+            let outcome = $generic_unary_trap(operator, operand, location);
             let WasmValue::$outcome_type_wasm_value(outcome) = outcome else {
                 panic!("Attempted to convert {outcome:?} to $outcome_type_wasm_value"); // TODO: stringify!
             };
@@ -874,17 +936,20 @@ macro_rules! advice {
         (
             $operator: ident: BinaryOperator,
             $l: ident: WasmValue,
-            $r: ident: WasmValue $(,)?
+            $r: ident: WasmValue,
+            $location_ident: ident: Location $(,)?
         ) $body:block
     ) => {
         fn generic_binary_trap(
             operator: BinaryOperator,
             l: WasmValue,
             r: WasmValue,
+            location: Location,
         ) -> WasmValue {
             let $operator = operator;
             let $l = l;
             let $r = r;
+            let $location_ident = location;
             $body
         }
         advice!(binary generic @genererate-specific generic_binary_trap);
@@ -915,38 +980,50 @@ macro_rules! advice {
             let operator = BinaryOperator::from(operator);
             let l_op = WasmValue::$l_type_wasm_value(l_op);
             let r_op = WasmValue::$r_type_wasm_value(r_op);
-            let outcome = $generic_binary_trap(operator, l_op, r_op);
+            let location = Location::new(funct_index, instr_index);
+            let outcome = $generic_binary_trap(operator, l_op, r_op, location);
             let WasmValue::$outcome_type_wasm_value(outcome) = outcome else {
                 panic!("Attempted to convert {outcome:?} to $outcome_type_wasm_value"); // TODO: stringify!
             };
             outcome
         }
     };
-    (drop () $body:block) => {
+    (drop (
+        $location_ident: ident: Location $(,)?
+    ) $body:block) => {
         #[no_mangle]
         extern "C" fn drop_trap(
             funct_index: i64,
             instr_index: i64,
         ) {
+            let $location_ident = Location::new(funct_index, instr_index);
             $body
         }
     };
-    (return_ () $body:block) => {
+    (return_ (
+        $location_ident: ident: Location $(,)?
+    ) $body:block) => {
         #[no_mangle]
         extern "C" fn return_trap(
             funct_index: i64,
             instr_index: i64,
         ) {
+            let $location_ident = Location::new(funct_index, instr_index);
             $body
         }
     };
     (const_ generic
         (
-            $value: ident: WasmValue $(,)?
+            $value: ident: WasmValue,
+            $location_ident: ident: Location $(,)?
         ) $body:block
     ) => {
-        fn generic_const_trap(value: WasmValue) -> WasmValue {
+        fn generic_const_trap(
+            value: WasmValue,
+            location: Location,
+        ) -> WasmValue {
             let $value = value;
+            let $location_ident = location;
             $body
         }
         advice!(const_ generic @genererate-specific generic_const_trap);
@@ -970,7 +1047,8 @@ macro_rules! advice {
             instr_index: i64,
         ) -> $const_type {
             let const_ = WasmValue::$const_type_wasm_value(const_);
-            let outcome = $generic_const_trap(const_);
+            let location = Location::new(funct_index, instr_index);
+            let outcome = $generic_const_trap(const_, location);
             let WasmValue::$const_type_wasm_value(outcome) = outcome else {
                 panic!("Attempted to convert {outcome:?} to $const_type_wasm_value"); // TODO: stringify!
             };
@@ -980,16 +1058,19 @@ macro_rules! advice {
     (local generic (
         $value: ident: WasmValue,
         $index: ident: LocalIndex,
-        $local_op: ident: LocalOp $(,)?
+        $local_op: ident: LocalOp,
+        $location_ident: ident: Location $(,)?
     ) $body:block) => {
         fn generic_local_trap(
             value: WasmValue,
             index: LocalIndex,
             local_op: LocalOp,
+            location: Location,
         ) -> WasmValue {
             let $value = value;
             let $index = index;
             let $local_op = local_op;
+            let $location_ident = location;
             $body
         }
         advice!(local generic @genererate-specific generic_local_trap);
@@ -1025,7 +1106,8 @@ macro_rules! advice {
             let operand = WasmValue::$value_type_wasm_value(operand);
             let index = LocalIndex(index);
             let local_op = LocalOp::$op;
-            let outcome = $generic_local_trap(operand, index, local_op);
+            let location = Location::new(funct_index, instr_index);
+            let outcome = $generic_local_trap(operand, index, local_op, location);
             let WasmValue::$value_type_wasm_value(outcome) = outcome else {
                 panic!("Attempted to convert {outcome:?} to $value_type_wasm_value"); // TODO: stringify!
             };
@@ -1035,16 +1117,19 @@ macro_rules! advice {
     (global generic (
         $value: ident: WasmValue,
         $index: ident: GlobalIndex,
-        $global_op: ident: GlobalOp $(,)?
+        $global_op: ident: GlobalOp,
+        $location_ident: ident: Location $(,)?
     ) $body:block) => {
         fn generic_global_trap(
             value: WasmValue,
             index: GlobalIndex,
             global_op: GlobalOp,
+            location: Location,
         ) -> WasmValue {
             let $value = value;
             let $index = index;
             let $global_op = global_op;
+            let $location_ident = location;
             $body
         }
         advice!(global generic @genererate-specific generic_global_trap);
@@ -1075,7 +1160,8 @@ macro_rules! advice {
             let operand = WasmValue::$value_type_wasm_value(operand);
             let index = GlobalIndex(index);
             let global_op = GlobalOp::$op;
-            let outcome = $generic_global_trap(operand, index, global_op);
+            let location = Location::new(funct_index, instr_index);
+            let outcome = $generic_global_trap(operand, index, global_op, location);
             let WasmValue::$value_type_wasm_value(outcome) = outcome else {
                 panic!("Attempted to convert {outcome:?} to $value_type_wasm_value"); // TODO: stringify!
             };
@@ -1086,16 +1172,19 @@ macro_rules! advice {
     (load generic (
         $load_index: ident: LoadIndex,
         $offset: ident: LoadOffset,
-        $operation: ident: LoadOperation $(,)?
+        $operation: ident: LoadOperation,
+        $location_ident: ident: Location $(,)?
     ) $body:block) => {
         fn generic_load_trap(
             load_index: LoadIndex,
             offset: LoadOffset,
             operation: LoadOperation,
+            location: Location,
         ) -> WasmValue {
             let $load_index = load_index;
             let $offset = offset;
             let $operation = operation;
+            let $location_ident = location;
             $body
         }
         advice!(load generic @genererate-specific generic_load_trap);
@@ -1122,7 +1211,8 @@ macro_rules! advice {
             let load_index = LoadIndex(load_idx);
             let offset = LoadOffset(offset);
             let operation = LoadOperation::deserialize(&operation);
-            let outcome = $generic_load_trap(load_index, offset, operation);
+            let location = Location::new(funct_index, instr_index);
+            let outcome = $generic_load_trap(load_index, offset, operation, location);
             let WasmValue::$load_type_wasm_value(outcome) = outcome else {
                 panic!("Attempted to convert {outcome:?} to $value_type_wasm_value"); // TODO: stringify!
             };
@@ -1134,18 +1224,21 @@ macro_rules! advice {
         $store_index: ident: StoreIndex,
         $value: ident: WasmValue,
         $offset: ident: StoreOffset,
-        $operation: ident: StoreOperation $(,)?
+        $operation: ident: StoreOperation,
+        $location_ident: ident: Location $(,)?
     ) $body:block) => {
         fn generic_store_trap(
             store_index: StoreIndex,
             value: WasmValue,
             offset: StoreOffset,
             operation: StoreOperation,
+            location: Location,
         ) {
             let $store_index = store_index;
             let $value = value;
             let $offset = offset;
             let $operation = operation;
+            let $location_ident = location;
             $body
         }
         advice!(store generic @genererate-specific generic_store_trap);
@@ -1175,11 +1268,16 @@ macro_rules! advice {
             let value = WasmValue::$store_type_wasm_value(value);
             let offset = StoreOffset(offset);
             let operation = StoreOperation::deserialize(&operation);
-            $generic_store_trap(store_index, value, offset, operation);
+            let location = Location::new(funct_index, instr_index);
+            $generic_store_trap(store_index, value, offset, operation, location);
         }
     };
     (memory_size
-        ($size: ident: WasmValue, $index: ident: MemoryIndex $(,)?)
+        (
+            $size: ident: WasmValue,
+            $index: ident: MemoryIndex,
+            $location_ident: ident: Location $(,)?
+        )
         $body:block
     ) => {
         #[no_mangle]
@@ -1191,12 +1289,17 @@ macro_rules! advice {
         ) -> i32 {
             let $size = WasmValue::I32(size);
             let $index = MemoryIndex(idx);
+            let $location_ident = Location::new(funct_index, instr_index);
             let size: WasmValue = $body;
             size.as_i32()
         }
     };
     (memory_grow
-        ($amount: ident: WasmValue, $index: ident: MemoryIndex $(,)?)
+        (
+            $amount: ident: WasmValue,
+            $index: ident: MemoryIndex,
+            $location_ident: ident: Location $(,)?
+        )
         $body:block
     ) => {
         #[no_mangle]
@@ -1208,13 +1311,15 @@ macro_rules! advice {
         ) -> i32 {
             let $amount = WasmValue::I32(amount);
             let $index = MemoryIndex(idx);
+            let $location_ident = Location::new(funct_index, instr_index);
             let delta_or_neg_1: WasmValue = $body;
             delta_or_neg_1.as_i32()
         }
     };
     (block pre (
         $block_input_c: ident: BlockInputCount,
-        $block_arity: ident: BlockArity $(,)?
+        $block_arity: ident: BlockArity,
+        $location_ident: ident: Location $(,)?
     ) $body:block) => {
         #[no_mangle]
         extern "C" fn trap_block_pre(
@@ -1225,19 +1330,26 @@ macro_rules! advice {
         ) {
             let $block_input_c = BlockInputCount(block_input_c);
             let $block_arity = BlockArity(block_arity);
+            let $location_ident = Location::new(funct_index, instr_index);
             $body;
         }
     };
-    (block post () $body:block) => {
+    (block post (
+        $location_ident: ident: Location $(,)?
+    ) $body:block) => {
         #[no_mangle]
         extern "C" fn trap_block_post(
             funct_index: i64,
             instr_index: i64,
-        ) $body
+        ) {
+            let $location_ident = Location::new(funct_index, instr_index);
+            $body
+        }
     };
     (loop_ pre (
         $loop_input_c: ident: LoopInputCount,
-        $loop_arity: ident: LoopArity $(,)?
+        $loop_arity: ident: LoopArity,
+        $location_ident: ident: Location $(,)?
     ) $body:block) => {
         #[no_mangle]
         extern "C" fn trap_loop_pre(
@@ -1248,14 +1360,20 @@ macro_rules! advice {
         ) {
             let $loop_input_c = LoopInputCount(loop_input_c);
             let $loop_arity = LoopArity(loop_arity);
+            let $location_ident = Location::new(funct_index, instr_index);
             $body;
         }
     };
-    (loop_ post () $body:block) => {
+    (loop_ post (
+        $location_ident: ident: Location $(,)?
+    ) $body:block) => {
         #[no_mangle]
         extern "C" fn trap_loop_post(
             funct_index: i64,
             instr_index: i64,
-        ) $body
+        ) {
+            let $location_ident = Location::new(funct_index, instr_index);
+            $body
+        }
     };
 }

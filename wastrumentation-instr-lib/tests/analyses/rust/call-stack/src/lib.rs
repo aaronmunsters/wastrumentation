@@ -1,7 +1,7 @@
 #![no_std]
 
 extern crate wastrumentation_rs_stdlib;
-use wastrumentation_rs_stdlib::{advice, FunctionIndex, MutDynArgs, MutDynResults, WasmFunction};
+use wastrumentation_rs_stdlib::*;
 
 // There is no option to make use of WASM Globals here.
 // E.g. `pub static mut NUMBER_OF_APPLIES: i32 = 0;`
@@ -41,8 +41,12 @@ static mut CALL_STACK: i32 = 0;
 
 advice! {
     call pre
-    (f: FunctionIndex) {
+    (
+        f: FunctionIndex,
+        location: Location,
+    ) {
         let _ = f;
+        let _ = location;
         unsafe {
             /* [1] */
             CALL_STACK += 1
@@ -60,8 +64,12 @@ advice! {
 
 advice! {
     call post
-    (f: FunctionIndex) {
+    (
+        f: FunctionIndex,
+        location: Location,
+    ) {
         let _ = f;
+        let _ = location;
         unsafe {
             CALL_STACK -= 1;
         }
