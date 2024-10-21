@@ -216,9 +216,8 @@ macro_rules! transformation_strategy {
                     $total_result.extend_from_slice(&[
                         // Push serialized operator
                         $typed_instr.instrument_with(Instr::Const(Val::I32(op.serialize()))),
-                        // Call trap
-                        $typed_instr.instrument_with(Instr::Call(trap_idx)),
                     ]);
+                    $total_result.extend_from_slice(&$typed_instr.to_trap_call(&trap_idx));
                     continue;
                 }
             )*,
@@ -237,9 +236,8 @@ macro_rules! transformation_strategy {
                     $total_result.extend_from_slice(&[
                         // Inject original instruction to push constant
                         $typed_instr.place_original($loop_instr.clone()),
-                        // Inject call to handle constant how trap wishes
-                        $typed_instr.instrument_with(Instr::Call(trap_idx)),
                     ]);
+                    $total_result.extend_from_slice(&$typed_instr.to_trap_call(&trap_idx));
                     continue;
                 }
             )*,
@@ -254,9 +252,9 @@ fn transform(body: &BodyInner, target: Target) -> BodyInner {
     for typed_instr @ TypedHighLevelInstr { instr, .. } in body {
         if typed_instr.is_uninstrumented() {
             if let (Target::Return(trap_idx), Instr::Return) = (target, instr) {
+                // Inject call
+                result.extend_from_slice(&typed_instr.to_trap_call(&trap_idx));
                 result.extend_from_slice(&[
-                    // Inject call
-                    typed_instr.instrument_with(Instr::Call(trap_idx)),
                     // Inject original instruction after
                     typed_instr.place_original(instr.clone()),
                 ]);
@@ -264,9 +262,9 @@ fn transform(body: &BodyInner, target: Target) -> BodyInner {
             }
 
             if let (Target::Drop(trap_idx), Instr::Drop) = (target, instr) {
+                // Inject call
+                result.extend_from_slice(&typed_instr.to_trap_call(&trap_idx));
                 result.extend_from_slice(&[
-                    // Inject call
-                    typed_instr.instrument_with(Instr::Call(trap_idx)),
                     // Inject original instruction after
                     typed_instr.place_original(instr.clone()),
                 ]);

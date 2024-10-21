@@ -591,6 +591,8 @@ macro_rules! advice {
         pub extern "C"
         fn specialized_call_pre (
             func_ident: i32,
+            funct_index: i64,
+            instr_index: i64,
         ) {
             let $func_ident = FunctionIndex(func_ident);
             $body
@@ -603,6 +605,8 @@ macro_rules! advice {
         pub extern "C"
         fn specialized_call_post (
             func_ident: i32,
+            funct_index: i64,
+            instr_index: i64,
         ) {
             let $func_ident = FunctionIndex(func_ident);
             $body
@@ -619,6 +623,8 @@ macro_rules! advice {
         fn specialized_call_indirect_pre (
             function_table_index: i32,
             function_table: i32,
+            funct_index: i64,
+            instr_index: i64,
         ) -> i32 {
             let $func_table_index_ident = FunctionTableIndex(function_table_index);
             let $func_table_ident = FunctionTable(function_table);
@@ -633,6 +639,8 @@ macro_rules! advice {
         pub extern "C"
         fn specialized_call_indirect_post (
             function_table: i32,
+            funct_index: i64,
+            instr_index: i64,
         ) {
             let $func_table_ident = FunctionTable(function_table);
             $body
@@ -647,7 +655,15 @@ macro_rules! advice {
     ) => {
         #[no_mangle]
         pub extern "C"
-        fn generic_apply (f_apply: i32, instr_f_idx: i32, argc: i32, resc: i32, sigv: i32, sigtypv: i32, code_present_serialized: i32) {
+        fn generic_apply (
+            f_apply: i32,
+            instr_f_idx: i32,
+            argc: i32,
+            resc: i32,
+            sigv: i32,
+            sigtypv: i32,
+            code_present_serialized: i32,
+        ) {
             let $func_ident = WasmFunction::new(f_apply, instr_f_idx, sigv, code_present_serialized);
             let mut $args_ident = MutDynResults::new(argc, resc, sigv, sigtypv);
             let mut $ress_ident = MutDynArgs::new(argc, resc, sigv, sigtypv);
@@ -663,6 +679,8 @@ macro_rules! advice {
         pub extern "C"
         fn specialized_br (
             low_level_label: i64,
+            funct_index: i64,
+            instr_index: i64,
         ) {
             let $target_label = BranchTargetLabel(low_level_label);
             $body
@@ -682,6 +700,8 @@ macro_rules! advice {
             path_continuation: i32,
             if_then_else_input_c: i32,
             if_then_else_arity: i32,
+            funct_index: i64,
+            instr_index: i64,
         ) -> i32 {
             let $path_continuation = PathContinuation(path_continuation);
             let $if_then_else_input_c = IfThenElseInputCount(if_then_else_input_c);
@@ -702,6 +722,8 @@ macro_rules! advice {
             path_continuation: i32,
             if_then_input_c: i32,
             if_then_arity: i32,
+            funct_index: i64,
+            instr_index: i64,
         ) -> i32 {
             let $path_continuation = PathContinuation(path_continuation);
             let $if_then_input_c = IfThenInputCount(if_then_input_c);
@@ -712,11 +734,17 @@ macro_rules! advice {
     };
     (if_post () $body:block) => {
         #[no_mangle]
-        extern "C" fn trap_if_then_else_post() $body
+        extern "C" fn trap_if_then_else_post(
+            funct_index: i64,
+            instr_index: i64,
+        ) $body
     };
     (if_then_post () $body:block) => {
         #[no_mangle]
-        extern "C" fn trap_if_then_post() $body
+        extern "C" fn trap_if_then_post(
+            funct_index: i64,
+            instr_index: i64,
+        ) $body
     };
     (br_if
         (
@@ -729,6 +757,8 @@ macro_rules! advice {
         fn specialized_br_if (
             path_continuation: i32,
             low_level_label: i32,
+            funct_index: i64,
+            instr_index: i64,
         ) -> i32 {
             let $path_continuation = ParameterBrIfCondition(path_continuation);
             let $target_label = ParameterBrIfLabel(low_level_label);
@@ -749,6 +779,8 @@ macro_rules! advice {
             br_table_target: i32,
             effective_label: i32,
             br_table_default: i32,
+            funct_index: i64,
+            instr_index: i64,
         ) -> i32 {
             let $branch_table_target = BranchTableTarget(br_table_target);
             let $branch_table_effective = BranchTableEffective(effective_label);
@@ -766,6 +798,8 @@ macro_rules! advice {
         pub extern "C"
         fn specialized_select (
             path_continuation: i32,
+            funct_index: i64,
+            instr_index: i64,
         ) -> i32 {
             let $path_continuation = PathContinuation(path_continuation);
             let PathContinuation(path_continuation) = $body;
@@ -818,7 +852,12 @@ macro_rules! advice {
         $outcome_type_wasm_value:ident
     ) => {
         #[no_mangle]
-        extern "C" fn $function_name(operand: $operand_type, operator: i32) -> $outcome_type {
+        extern "C" fn $function_name(
+            operand: $operand_type,
+            operator: i32,
+            funct_index: i64,
+            instr_index: i64,
+        ) -> $outcome_type {
             let operator = UnaryOperator::from(operator);
             let operand = WasmValue::$operand_type_wasm_value(operand);
             let outcome = $generic_unary_trap(operator, operand);
@@ -866,7 +905,13 @@ macro_rules! advice {
                              => $outcome_type:ident ($outcome_type_wasm_value:ident)
     ) => {
         #[no_mangle]
-        extern "C" fn $function_name(l_op: $l_type, r_op: $r_type, operator: i32) -> $outcome_type {
+        extern "C" fn $function_name(
+            l_op: $l_type,
+            r_op: $r_type,
+            operator: i32,
+            funct_index: i64,
+            instr_index: i64,
+        ) -> $outcome_type {
             let operator = BinaryOperator::from(operator);
             let l_op = WasmValue::$l_type_wasm_value(l_op);
             let r_op = WasmValue::$r_type_wasm_value(r_op);
@@ -879,13 +924,19 @@ macro_rules! advice {
     };
     (drop () $body:block) => {
         #[no_mangle]
-        extern "C" fn drop_trap() {
+        extern "C" fn drop_trap(
+            funct_index: i64,
+            instr_index: i64,
+        ) {
             $body
         }
     };
     (return_ () $body:block) => {
         #[no_mangle]
-        extern "C" fn return_trap() {
+        extern "C" fn return_trap(
+            funct_index: i64,
+            instr_index: i64,
+        ) {
             $body
         }
     };
@@ -913,7 +964,11 @@ macro_rules! advice {
         $const_type_wasm_value:ident
     ) => {
         #[no_mangle]
-        extern "C" fn $function_name(const_: $const_type) -> $const_type {
+        extern "C" fn $function_name(
+            const_: $const_type,
+            funct_index: i64,
+            instr_index: i64,
+        ) -> $const_type {
             let const_ = WasmValue::$const_type_wasm_value(const_);
             let outcome = $generic_const_trap(const_);
             let WasmValue::$const_type_wasm_value(outcome) = outcome else {
@@ -961,7 +1016,12 @@ macro_rules! advice {
         $op:ident
     ) => {
         #[no_mangle]
-        extern "C" fn $function_name(operand: $value_type, index: i64) -> $value_type {
+        extern "C" fn $function_name(
+            operand: $value_type,
+            index: i64,
+            funct_index: i64,
+            instr_index: i64,
+        ) -> $value_type {
             let operand = WasmValue::$value_type_wasm_value(operand);
             let index = LocalIndex(index);
             let local_op = LocalOp::$op;
@@ -1006,7 +1066,12 @@ macro_rules! advice {
         $value_type_wasm_value:ident
         $op:ident) => {
         #[no_mangle]
-        extern "C" fn $function_name(operand: $value_type, index: i64) -> $value_type {
+        extern "C" fn $function_name(
+            operand: $value_type,
+            index: i64,
+            funct_index: i64,
+            instr_index: i64,
+        ) -> $value_type {
             let operand = WasmValue::$value_type_wasm_value(operand);
             let index = GlobalIndex(index);
             let global_op = GlobalOp::$op;
@@ -1047,7 +1112,13 @@ macro_rules! advice {
         $load_type:ident
         $load_type_wasm_value:ident) => {
         #[no_mangle]
-        extern "C" fn $function_name(load_idx: i32, offset: i64, operation: i32) -> $load_type {
+        extern "C" fn $function_name(
+            load_idx: i32,
+            offset: i64,
+            operation: i32,
+            funct_index: i64,
+            instr_index: i64,
+        ) -> $load_type {
             let load_index = LoadIndex(load_idx);
             let offset = LoadOffset(offset);
             let operation = LoadOperation::deserialize(&operation);
@@ -1089,9 +1160,17 @@ macro_rules! advice {
         store specific @for $generic_store_trap:ident
         $function_name:ident
         $store_type:ident
-        $store_type_wasm_value:ident) => {
+        $store_type_wasm_value:ident
+    ) => {
         #[no_mangle]
-        extern "C" fn $function_name(store_idx: i32, value: $store_type, offset: i64, operation: i32) {
+        extern "C" fn $function_name(
+            store_idx: i32,
+            value: $store_type,
+            offset: i64,
+            operation: i32,
+            funct_index: i64,
+            instr_index: i64,
+        ) {
             let store_index = StoreIndex(store_idx);
             let value = WasmValue::$store_type_wasm_value(value);
             let offset = StoreOffset(offset);
@@ -1104,7 +1183,12 @@ macro_rules! advice {
         $body:block
     ) => {
         #[no_mangle]
-        extern "C" fn trap_memory_size(size: i32, idx: i64) -> i32 {
+        extern "C" fn trap_memory_size(
+            size: i32,
+            idx: i64,
+            funct_index: i64,
+            instr_index: i64,
+        ) -> i32 {
             let $size = WasmValue::I32(size);
             let $index = MemoryIndex(idx);
             let size: WasmValue = $body;
@@ -1116,7 +1200,12 @@ macro_rules! advice {
         $body:block
     ) => {
         #[no_mangle]
-        extern "C" fn trap_memory_grow(amount: i32, idx: i64) -> i32 {
+        extern "C" fn trap_memory_grow(
+            amount: i32,
+            idx: i64,
+            funct_index: i64,
+            instr_index: i64,
+        ) -> i32 {
             let $amount = WasmValue::I32(amount);
             let $index = MemoryIndex(idx);
             let delta_or_neg_1: WasmValue = $body;
@@ -1128,7 +1217,12 @@ macro_rules! advice {
         $block_arity: ident: BlockArity $(,)?
     ) $body:block) => {
         #[no_mangle]
-        extern "C" fn trap_block_pre(block_input_c: i32, block_arity: i32) {
+        extern "C" fn trap_block_pre(
+            block_input_c: i32,
+            block_arity: i32,
+            funct_index: i64,
+            instr_index: i64,
+        ) {
             let $block_input_c = BlockInputCount(block_input_c);
             let $block_arity = BlockArity(block_arity);
             $body;
@@ -1136,14 +1230,22 @@ macro_rules! advice {
     };
     (block post () $body:block) => {
         #[no_mangle]
-        extern "C" fn trap_block_post() $body
+        extern "C" fn trap_block_post(
+            funct_index: i64,
+            instr_index: i64,
+        ) $body
     };
     (loop_ pre (
         $loop_input_c: ident: LoopInputCount,
         $loop_arity: ident: LoopArity $(,)?
     ) $body:block) => {
         #[no_mangle]
-        extern "C" fn trap_loop_pre(loop_input_c: i32, loop_arity: i32) {
+        extern "C" fn trap_loop_pre(
+            loop_input_c: i32,
+            loop_arity: i32,
+            funct_index: i64,
+            instr_index: i64,
+        ) {
             let $loop_input_c = LoopInputCount(loop_input_c);
             let $loop_arity = LoopArity(loop_arity);
             $body;
@@ -1151,6 +1253,9 @@ macro_rules! advice {
     };
     (loop_ post () $body:block) => {
         #[no_mangle]
-        extern "C" fn trap_loop_post() $body
+        extern "C" fn trap_loop_post(
+            funct_index: i64,
+            instr_index: i64,
+        ) $body
     };
 }

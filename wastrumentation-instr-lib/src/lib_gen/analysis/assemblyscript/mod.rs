@@ -412,6 +412,8 @@ impl Display for ASTrapIfThen<'_> {
                 path_kontinuation: i32,
                 if_then_input_c: i32,
                 if_then_arity: i32,
+                func_index: i64,
+                istr_index: i64,
             ): i32 {{
                 let {parameter_condition} = new ParameterIfThenCondition(path_kontinuation);
                 {body}
@@ -441,6 +443,8 @@ impl Display for ASTrapIfThenElse<'_> {
                 path_kontinuation: i32,
                 if_then_else_input_c: i32,
                 if_then_else_arity: i32,
+                func_index: i64,
+                istr_index: i64,
             ): i32 {{
                 let {parameter_condition} = new ParameterIfThenElseCondition(path_kontinuation);
                 {body}
@@ -470,6 +474,8 @@ impl Display for ASTrapBrIf<'_> {
             export function {FUNCTION_NAME_SPECIALIZED_BR_IF}(
                 path_kontinuation: i32,
                 low_level_label: i32,
+                func_index: i64,
+                istr_index: i64,
             ): i32 {{
                 let {parameter_condition} = new ParameterBrIfCondition(path_kontinuation);
                 let {parameter_label} = new ParameterBrIfLabel(low_level_label);
@@ -502,6 +508,8 @@ impl Display for ASTrapBrTable<'_> {
                 br_table_target: i32,
                 effective_label: i32,
                 br_table_default: i32,
+                func_index: i64,
+                istr_index: i64,
             ): i32 {{
                 let {parameter_target} = new ParameterBrTableTarget(br_table_target);
                 let {parameter_default} = new ParameterBrTableDefault(br_table_default);
@@ -538,6 +546,8 @@ impl Display for ASTrapCall<'_> {
             indoc! { r#"
             export function {specialized_name}(
                 function_target: i32,
+                func_index: i64,
+                istr_index: i64,
             ): void {{
                 let {parameter_target} = new FunctionIndex(function_target);
                 {body}
@@ -566,6 +576,8 @@ impl Display for ASTrapCallIndirectPre<'_> {
             export function {FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_PRE}(
                 function_table_index: i32, // NOTE: index first, eases transformation!
                 function_table: i32,
+                func_index: i64,
+                istr_index: i64,
             ): i32 {{
                 let {parameter_table} = new FunctionTable(function_table);
                 let {parameter_index} = new FunctionTableIndex(function_table_index);
@@ -596,6 +608,8 @@ impl Display for ASTrapCallIndirectPost<'_> {
             indoc! { r#"
             export function {FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_POST}(
                 function_table: i32,
+                func_index: i64,
+                istr_index: i64,
             ): void {{
                 let {parameter_table} = new FunctionTable(function_table);
                 {body}
@@ -617,7 +631,10 @@ impl Display for ASTrapBlockPre<'_> {
         write!(
             f,
             indoc! { r#"
-            export function {FUNCTION_NAME_BLOCK_PRE}(): void {{
+            export function {FUNCTION_NAME_BLOCK_PRE}(
+                func_index: i64,
+                istr_index: i64,
+            ): void {{
                 {body}
             }}
             "#
@@ -635,7 +652,10 @@ impl Display for ASTrapBlockPost<'_> {
         write!(
             f,
             indoc! { r#"
-            export function {FUNCTION_NAME_BLOCK_POST}(): void {{
+            export function {FUNCTION_NAME_BLOCK_POST}(
+                func_index: i64,
+                istr_index: i64,
+            ): void {{
                 {body}
             }}
             "# },
@@ -652,7 +672,10 @@ impl Display for ASTrapLoopPre<'_> {
         write!(
             f,
             indoc! { r#"
-            export function {FUNCTION_NAME_LOOP_PRE}(): void {{
+            export function {FUNCTION_NAME_LOOP_PRE}(
+                func_index: i64,
+                istr_index: i64,
+            ): void {{
                 {body}
             }}
             "# },
@@ -669,7 +692,10 @@ impl Display for ASTrapLoopPost<'_> {
         write!(
             f,
             indoc! { r#"
-            export function {FUNCTION_NAME_LOOP_POST}(): void {{
+            export function {FUNCTION_NAME_LOOP_POST}(
+                func_index: i64,
+                istr_index: i64,
+            ): void {{
                 {body}
             }}
             "# },
@@ -689,7 +715,11 @@ impl Display for ASTrapSelect<'_> {
         write!(
             f,
             indoc! { r#"
-            export function {FUNCTION_NAME_SELECT}(path_kontinuation: i32): i32 {{
+            export function {FUNCTION_NAME_SELECT}(
+                path_kontinuation: i32,
+                func_index: i64,
+                istr_index: i64,
+            ): i32 {{
                 let {select_formal_condition} = new ParameterSelectCondition(path_kontinuation);
                 {body}
                 // Fallback, if no return value
@@ -846,6 +876,8 @@ mod tests {
             path_kontinuation: i32,
             if_then_input_c: i32,
             if_then_arity: i32,
+            func_index: i64,
+            istr_index: i64,
         ): i32 {
             let cond = new ParameterIfThenCondition(path_kontinuation);
             console.log('it');
@@ -869,6 +901,8 @@ mod tests {
             path_kontinuation: i32,
             if_then_else_input_c: i32,
             if_then_else_arity: i32,
+            func_index: i64,
+            istr_index: i64,
         ): i32 {
             let cond = new ParameterIfThenElseCondition(path_kontinuation);
             console.log('ite');

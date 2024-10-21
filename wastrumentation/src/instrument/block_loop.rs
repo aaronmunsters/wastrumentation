@@ -38,26 +38,22 @@ fn transform(body: &BodyInner, target: Target) -> BodyInner {
                         typed_instr.instrument_with(Instr::Const(wasabi_wasm::Val::I32(
                             type_.results().len().try_into().unwrap(),
                         ))),
-                        // STACK: [type_in, input_c:i32, arity:i32]
-                        typed_instr.instrument_with(Instr::Call(trap_idx)),
                     ];
+                    // STACK: [type_in, input_c:i32, arity:i32]
+                    injected_body.extend_from_slice(&typed_instr.to_trap_call(&trap_idx));
                     // append rest of body
                     injected_body.extend_from_slice(&transform(body, target));
                     // STACK: [type_in]
-                    result.extend_from_slice(&[
-                        typed_instr.place_original(Instr::Block(*type_, injected_body))
-                    ]);
+                    result.push(typed_instr.place_original(Instr::Block(*type_, injected_body)));
                     continue;
                 }
                 (Target::BlockPost(trap_idx), Instr::Block(type_, body)) => {
                     // STACK: [type_in]
                     let mut injected_body = transform(body, target);
                     // append to rest of body
-                    injected_body.push(typed_instr.instrument_with(Instr::Call(trap_idx)));
+                    injected_body.extend_from_slice(&typed_instr.to_trap_call(&trap_idx));
                     // STACK: [type_in]
-                    result.extend_from_slice(&[
-                        typed_instr.place_original(Instr::Block(*type_, injected_body))
-                    ]);
+                    result.push(typed_instr.place_original(Instr::Block(*type_, injected_body)));
                     continue;
                 }
                 (Target::LoopPre(trap_idx), Instr::Loop(type_, body)) => {
@@ -70,44 +66,36 @@ fn transform(body: &BodyInner, target: Target) -> BodyInner {
                         typed_instr.instrument_with(Instr::Const(wasabi_wasm::Val::I32(
                             type_.results().len().try_into().unwrap(),
                         ))),
-                        // STACK: [type_in, input_c:i32, arity:i32]
-                        typed_instr.instrument_with(Instr::Call(trap_idx)),
                     ];
+                    // STACK: [type_in, input_c:i32, arity:i32]
+                    injected_body.extend_from_slice(&typed_instr.to_trap_call(&trap_idx));
                     // append rest of body
                     injected_body.extend_from_slice(&transform(body, target));
                     // STACK: [type_in]
-                    result.extend_from_slice(&[
-                        typed_instr.place_original(Instr::Loop(*type_, injected_body))
-                    ]);
+                    result.push(typed_instr.place_original(Instr::Loop(*type_, injected_body)));
                     continue;
                 }
                 (Target::LoopPost(trap_idx), Instr::Loop(type_, body)) => {
                     // STACK: [type_in]
                     let mut injected_body = transform(body, target);
                     // append to rest of body
-                    injected_body.push(typed_instr.instrument_with(Instr::Call(trap_idx)));
+                    injected_body.extend_from_slice(&typed_instr.to_trap_call(&trap_idx));
                     // STACK: [type_in]
-                    result.extend_from_slice(&[
-                        typed_instr.place_original(Instr::Loop(*type_, injected_body))
-                    ]);
+                    result.push(typed_instr.place_original(Instr::Loop(*type_, injected_body)));
                     continue;
                 }
                 (Target::Select(trap_idx), Instr::Select) => {
-                    result.extend_from_slice(&[
-                        // STACK: [then_type_in, else_type_in, condition_i32]
-                        typed_instr.instrument_with(Instr::Call(trap_idx)),
-                        // STACK: [then_type_in, else_type_in, kontinuation]
-                        typed_instr.place_original(Instr::Select),
-                    ]);
+                    // STACK: [then_type_in, else_type_in, condition_i32]
+                    result.extend_from_slice(&typed_instr.to_trap_call(&trap_idx));
+                    // STACK: [then_type_in, else_type_in, kontinuation]
+                    result.push(typed_instr.place_original(Instr::Select));
                     continue;
                 }
                 (Target::Select(trap_idx), Instr::TypedSelect(type_)) => {
-                    result.extend_from_slice(&[
-                        // STACK: [then_type_in, else_type_in, condition_i32]
-                        typed_instr.instrument_with(Instr::Call(trap_idx)),
-                        // STACK: [then_type_in, else_type_in, kontinuation]
-                        typed_instr.place_original(Instr::TypedSelect(*type_)),
-                    ]);
+                    // STACK: [then_type_in, else_type_in, condition_i32]
+                    result.extend_from_slice(&typed_instr.to_trap_call(&trap_idx));
+                    // STACK: [then_type_in, else_type_in, kontinuation]
+                    result.push(typed_instr.place_original(Instr::TypedSelect(*type_)));
                     continue;
                 }
                 _ => (),

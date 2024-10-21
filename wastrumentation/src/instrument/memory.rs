@@ -72,20 +72,21 @@ fn transform(body: &BodyInner, target: Target) -> BodyInner {
                         typed_instr.place_original(instr.clone()),
                         // [size:I32]           // Push memory index on stack
                         typed_instr.instrument_with(Instr::Const(Val::I64(idx.to_u32().into()))),
-                        // [size:I32,index:I64] // Call trap
-                        typed_instr.instrument_with(Instr::Call(trap_idx)),
-                        // [size:I32]
+                        // [size:I32,index:I64]
                     ]);
+                    result.extend_from_slice(&typed_instr.to_trap_call(&trap_idx));
+                    // [size:I32]
                     continue;
                 }
                 (Target::MemoryGrow(trap_idx), Instr::MemoryGrow(idx)) => {
                     result.extend_from_slice(&[
                         // [amount:I32]                   // Push memory index on stack
                         typed_instr.instrument_with(Instr::Const(Val::I64(idx.to_u32().into()))),
-                        // [amount:I32,index:I64]         // Call to instrumentation
-                        typed_instr.instrument_with(Instr::Call(trap_idx)),
-                        // [previous-size-or-neg-one:I32]
+                        // [amount:I32,index:I64]
                     ]);
+                    result.extend_from_slice(&typed_instr.to_trap_call(&trap_idx));
+                    // [previous-size-or-neg-one:I32]
+
                     continue;
                 }
                 _ => (),
@@ -109,14 +110,16 @@ fn transform(body: &BodyInner, target: Target) -> BodyInner {
                                 result.extend_from_slice(&[
                                     // Perform operation
                                     typed_instr.place_original(instr.clone()),
+                                    // [gotten-value]
                                     // Push get-index
                                     typed_instr.instrument_with(
                                         Instr::Const(Val::I64(i64::from((get_idx).to_u32())))
                                             .clone(),
                                     ),
-                                    // [value-to-write] // Call trap (in value, get-index -> out value)
-                                    typed_instr.instrument_with(Instr::Call(trap_idx)),
+                                    // [gotten-value, index]
                                 ]);
+                                result.extend_from_slice(&typed_instr.to_trap_call(&trap_idx));
+                                // [local-gotten-value]
                                 continue;
                             }
                             (GlobalGetI32(trap_idx), Global(GGet, get_idx), &[], &[I32])
@@ -126,14 +129,16 @@ fn transform(body: &BodyInner, target: Target) -> BodyInner {
                                 result.extend_from_slice(&[
                                     // Perform operation
                                     typed_instr.place_original(instr.clone()),
+                                    // [gotten-value]
                                     // Push get-index
                                     typed_instr.instrument_with(
                                         Instr::Const(Val::I64(i64::from((get_idx).to_u32())))
                                             .clone(),
                                     ),
-                                    // [value-to-write] // Call trap (in value, get-index -> out value)
-                                    typed_instr.instrument_with(Instr::Call(trap_idx)),
+                                    // [gotten-value, index]
                                 ]);
+                                result.extend_from_slice(&typed_instr.to_trap_call(&trap_idx));
+                                // [global-gotten-value]
                                 continue;
                             }
                             (LocalSetI32(trap_idx), Local(LSet, set_idx), &[I32], &[])
@@ -147,11 +152,12 @@ fn transform(body: &BodyInner, target: Target) -> BodyInner {
                                         Instr::Const(Val::I64(i64::from((set_idx).to_u32())))
                                             .clone(),
                                     ),
-                                    // [value-to-write, set-index] // Call trap (in value, set-index -> out value)
-                                    typed_instr.instrument_with(Instr::Call(trap_idx)),
-                                    // Perform operation
-                                    typed_instr.place_original(instr.clone()),
+                                    // [value-to-write, set-index]
                                 ]);
+                                result.extend_from_slice(&typed_instr.to_trap_call(&trap_idx));
+                                // [trap-determined-value-to-write]
+                                // Perform operation
+                                result.push(typed_instr.place_original(instr.clone()));
                                 continue;
                             }
                             (GlobalSetI32(trap_idx), Global(GSet, set_idx), &[I32], &[])
@@ -165,11 +171,12 @@ fn transform(body: &BodyInner, target: Target) -> BodyInner {
                                         Instr::Const(Val::I64(i64::from((set_idx).to_u32())))
                                             .clone(),
                                     ),
-                                    // [value-to-write, set-index] // Call trap (in value, set-index -> out value)
-                                    typed_instr.instrument_with(Instr::Call(trap_idx)),
-                                    // Perform operation
-                                    typed_instr.place_original(instr.clone()),
+                                    // [value-to-write, set-index]
                                 ]);
+                                result.extend_from_slice(&typed_instr.to_trap_call(&trap_idx));
+                                // [trap-determined-value-to-write]
+                                // Perform operation
+                                result.push(typed_instr.place_original(instr.clone()));
                                 continue;
                             }
                             (LocalTeeI32(trap_idx), Local(Tee, tee_idx), &[I32], &[I32])
@@ -183,11 +190,11 @@ fn transform(body: &BodyInner, target: Target) -> BodyInner {
                                         Instr::Const(Val::I64(i64::from((tee_idx).to_u32())))
                                             .clone(),
                                     ),
-                                    // [value-to-write, tee-index] // Call trap (in value, tee-index -> out value)
-                                    typed_instr.instrument_with(Instr::Call(trap_idx)),
-                                    // Perform operation
-                                    typed_instr.place_original(instr.clone()),
+                                    // [value-to-write, tee-index]
                                 ]);
+                                result.extend_from_slice(&typed_instr.to_trap_call(&trap_idx));
+                                // [trap-determined-value-to-write]
+                                result.push(typed_instr.place_original(instr.clone()));
                                 continue;
                             }
 
@@ -214,8 +221,8 @@ fn transform(body: &BodyInner, target: Target) -> BodyInner {
                                     // [i32: index to write to, F32: value to write to, U32 as I64: Offset]
                                     typed_instr.instrument_with(Instr::Const(Val::I32($store_op.serialize()))),
                                     // [i32: index to write to, F32: value to write to, U32 as I64: Offset, i32: serialized operation]
-                                    typed_instr.instrument_with(Instr::Call(trap_idx)),
                                 ]);
+                                result.extend_from_slice(&typed_instr.to_trap_call(&trap_idx));
                                 continue;
                             }
                         ),*
@@ -237,8 +244,8 @@ fn transform(body: &BodyInner, target: Target) -> BodyInner {
                                     // [i32: index to load from,  U32as I64: Offset]
                                     typed_instr.instrument_with(Instr::Const(Val::I32($load_op.serialize()))),
                                     // [i32: index to load from,  U32as I64: Offset, i32: serialized operation]
-                                    typed_instr.instrument_with(Instr::Call(trap_idx)),
                                 ]);
+                                result.extend_from_slice(&typed_instr.to_trap_call(&trap_idx));
                                 continue;
                             }
                         ),*

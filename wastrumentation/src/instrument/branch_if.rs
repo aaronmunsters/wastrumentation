@@ -54,14 +54,14 @@ fn transform(body: &BodyInner, target: Target, module: &mut Module) -> BodyInner
         if typed_instr.is_uninstrumented() {
             match (target, instr) {
                 (Target::Br(br_trap_idx), Instr::Br(label)) => {
-                    result.extend_from_slice(&[
-                        // STACK: []
+                    // STACK: []
+                    result.push(
                         typed_instr.instrument_with(Instr::Const(Val::I64(label.to_u32().into()))),
-                        // STACK: [label]
-                        typed_instr.instrument_with(Instr::Call(br_trap_idx)),
-                        // STACK: [table_target_index]
-                        typed_instr.place_original(instr.clone()),
-                    ]);
+                    );
+                    // STACK: [label]
+                    result.extend_from_slice(&typed_instr.to_trap_call(&br_trap_idx));
+                    // STACK: [table_target_index]
+                    result.push(typed_instr.place_original(instr.clone()));
                     continue;
                 }
                 (Target::BrTable(br_table_trap_idx), Instr::BrTable { table, default }) => {
@@ -87,11 +87,11 @@ fn transform(body: &BodyInner, target: Target, module: &mut Module) -> BodyInner
                         typed_instr.instrument_with(Instr::Const(Val::I32(
                             i32::try_from(default.to_u32()).expect("i32->u32"),
                         ))),
-                        // STACK: [table_target_index, runtime_label, default]
-                        typed_instr.instrument_with(Instr::Call(br_table_trap_idx)),
-                        // STACK: [table_target_index]
-                        typed_instr.place_original(instr.clone()),
                     ]);
+                    // STACK: [table_target_index, runtime_label, default]
+                    result.extend_from_slice(&typed_instr.to_trap_call(&br_table_trap_idx));
+                    // STACK: [table_target_index]
+                    result.push(typed_instr.place_original(instr.clone()));
                     continue;
                 }
                 (Target::IfThen(if_then_trap_idx), Instr::If(type_, then, None)) => {
@@ -104,15 +104,17 @@ fn transform(body: &BodyInner, target: Target, module: &mut Module) -> BodyInner
                         typed_instr.instrument_with(Instr::Const(Val::I32(
                             type_.results().len().try_into().unwrap(),
                         ))),
-                        // STACK: [type_in, condition, inputs-len:i32, results-len:i32]
-                        typed_instr.instrument_with(Instr::Call(if_then_trap_idx)),
-                        // STACK: [type_in, kontinuation]
+                    ]);
+                    // STACK: [type_in, condition, inputs-len:i32, results-len:i32]
+                    result.extend_from_slice(&typed_instr.to_trap_call(&if_then_trap_idx));
+                    // STACK: [type_in, kontinuation]
+                    result.push(
                         typed_instr.place_original(Instr::if_then(
                             *type_,
                             transform(then, target, module),
                         )),
-                        // STACK: [type_out]
-                    ]);
+                    );
+                    // STACK: [type_out]
                     continue;
                 }
                 (Target::IfThenPost(if_then_post_trap_idx), Instr::If(type_, then, None)) => {
@@ -120,10 +122,9 @@ fn transform(body: &BodyInner, target: Target, module: &mut Module) -> BodyInner
                     let mut injected_then_body = transform(then, target, module);
                     // append to rest of body
                     injected_then_body
-                        .push(typed_instr.instrument_with(Instr::Call(if_then_post_trap_idx)));
+                        .extend_from_slice(&typed_instr.to_trap_call(&if_then_post_trap_idx));
                     // STACK: [type_in, continuation]
-                    let injected_else_body =
-                        vec![typed_instr.instrument_with(Instr::Call(if_then_post_trap_idx))];
+                    let injected_else_body = typed_instr.to_trap_call(&if_then_post_trap_idx);
                     // original instruction
                     result.extend_from_slice(&[
                         // STACK: [type_in, continuation]
@@ -154,18 +155,18 @@ fn transform(body: &BodyInner, target: Target, module: &mut Module) -> BodyInner
                         typed_instr.instrument_with(Instr::Const(Val::I32(
                             type_.results().len().try_into().unwrap(),
                         ))),
-                        // STACK: [type_in, condition, inputs-len:i32, results-len:i32]
-                        typed_instr.instrument_with(Instr::Call(if_then_else_trap_idx)),
-                        // STACK: [type_in, kontinuation]
-                        typed_instr.place_original(Instr::if_then_else(
-                            *type_,
-                            // STACK: [type_in]
-                            transform(then, target, module),
-                            // STACK: [type_in]
-                            transform(else_, target, module),
-                        )),
-                        // STACK: [type_out]
                     ]);
+                    // STACK: [type_in, condition, inputs-len:i32, results-len:i32]
+                    result.extend_from_slice(&typed_instr.to_trap_call(&if_then_else_trap_idx));
+                    // STACK: [type_in, kontinuation]
+                    result.push(typed_instr.place_original(Instr::if_then_else(
+                        *type_,
+                        // STACK: [type_in]
+                        transform(then, target, module),
+                        // STACK: [type_in]
+                        transform(else_, target, module),
+                    )));
+                    // STACK: [type_out]
                     continue;
                 }
                 (
@@ -176,12 +177,12 @@ fn transform(body: &BodyInner, target: Target, module: &mut Module) -> BodyInner
                     let mut injected_then_body = transform(then, target, module);
                     // append to rest of body
                     injected_then_body
-                        .push(typed_instr.instrument_with(Instr::Call(if_then_else_post_trap_idx)));
+                        .extend_from_slice(&typed_instr.to_trap_call(&if_then_else_post_trap_idx));
                     // Inject into else-body
                     let mut injected_else_body = transform(else_, target, module);
                     // append to rest of body
                     injected_else_body
-                        .push(typed_instr.instrument_with(Instr::Call(if_then_else_post_trap_idx)));
+                        .extend_from_slice(&typed_instr.to_trap_call(&if_then_else_post_trap_idx));
 
                     // Original body
                     result.extend_from_slice(&[
@@ -196,17 +197,15 @@ fn transform(body: &BodyInner, target: Target, module: &mut Module) -> BodyInner
                     continue;
                 }
                 (Target::BrIf(br_if_trap_idx), Instr::BrIf(label)) => {
-                    result.extend_from_slice(&[
-                        // STACK: [condition]
-                        typed_instr.instrument_with(Instr::Const(Val::I32(
-                            i32::try_from(label.to_u32()).unwrap(),
-                        ))),
-                        // STACK: [condition, label]
-                        typed_instr.instrument_with(Instr::Call(br_if_trap_idx)),
-                        // STACK: [kontinuation]
-                        typed_instr.place_original(instr.clone()),
-                        // STACK: []
-                    ]);
+                    // STACK: [condition]
+                    result.push(typed_instr.instrument_with(Instr::Const(Val::I32(
+                        i32::try_from(label.to_u32()).unwrap(),
+                    ))));
+                    // STACK: [condition, label]
+                    result.extend_from_slice(&typed_instr.to_trap_call(&br_if_trap_idx));
+                    // STACK: [kontinuation]
+                    result.push(typed_instr.place_original(instr.clone()));
+                    // STACK: []
                     continue;
                 }
                 _ => (),
@@ -267,6 +266,7 @@ mod tests {
         instr: super::Instr,
     ) -> TypedHighLevelInstr {
         TypedHighLevelInstr::new_uninstrumented(
+            0,
             index,
             InferredInstructionType::Reachable(type_),
             instr,

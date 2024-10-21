@@ -35,17 +35,15 @@ fn transform(body: &BodyInner, target: Target) -> BodyInner {
         if typed_instr.is_uninstrumented() {
             match (target, instr) {
                 (Target::Pre(call_pre_idx), Instr::Call(index)) => {
-                    result.extend_from_slice(&[
-                        // STACK: [type_in]
-                        typed_instr.instrument_with(Instr::Const(Val::I32(
-                            i32::try_from(index.to_u32()).unwrap(),
-                        ))),
-                        // STACK: [type_in, f_idx]
-                        typed_instr.instrument_with(Instr::Call(call_pre_idx)),
-                        // STACK: [type_in]
-                        typed_instr.place_original(instr.clone()),
-                        // STACK: [type_out]
-                    ]);
+                    // STACK: [type_in]
+                    result.push(typed_instr.instrument_with(Instr::Const(Val::I32(
+                        i32::try_from(index.to_u32()).unwrap(),
+                    ))));
+                    // STACK: [type_in, f_idx]
+                    result.extend_from_slice(&typed_instr.to_trap_call(&call_pre_idx));
+                    // STACK: [type_in]
+                    result.push(typed_instr.place_original(instr.clone()));
+                    // STACK: [type_out]
                     continue;
                 }
                 (Target::Post(call_post_idx), Instr::Call(index)) => {
@@ -57,26 +55,24 @@ fn transform(body: &BodyInner, target: Target) -> BodyInner {
                             i32::try_from(index.to_u32()).unwrap(),
                         ))),
                         // STACK: [type_out, f_idx]
-                        typed_instr.instrument_with(Instr::Call(call_post_idx)),
-                        // STACK: [type_out]
                     ]);
+                    result.extend_from_slice(&typed_instr.to_trap_call(&call_post_idx));
+                    // STACK: [type_out]
                     continue;
                 }
                 (
                     Target::IndirectPre(call_pre_idx),
                     Instr::CallIndirect(_function_type, table_index),
                 ) => {
-                    result.extend_from_slice(&[
-                        // STACK: [type_in, table_function_index]
-                        typed_instr.instrument_with(Instr::Const(Val::I32(
-                            i32::try_from(table_index.to_u32()).unwrap(),
-                        ))),
-                        // STACK: [type_in, table_function_index, table_index]
-                        typed_instr.instrument_with(Instr::Call(call_pre_idx)),
-                        // STACK: [type_in, table_function_index]
-                        typed_instr.place_original(instr.clone()),
-                        // STACK: [type_out]
-                    ]);
+                    // STACK: [type_in, table_function_index]
+                    result.push(typed_instr.instrument_with(Instr::Const(Val::I32(
+                        i32::try_from(table_index.to_u32()).unwrap(),
+                    ))));
+                    // STACK: [type_in, table_function_index, table_index]
+                    result.extend_from_slice(&typed_instr.to_trap_call(&call_pre_idx));
+                    // STACK: [type_in, table_function_index]
+                    result.push(typed_instr.place_original(instr.clone()));
+                    // STACK: [type_out]
                     continue;
                 }
                 (
@@ -91,9 +87,9 @@ fn transform(body: &BodyInner, target: Target) -> BodyInner {
                             i32::try_from(table_index.to_u32()).unwrap(),
                         ))),
                         // STACK: [type_out, table_index]
-                        typed_instr.instrument_with(Instr::Call(call_post_idx)),
-                        // STACK: [type_out]
                     ]);
+                    result.extend_from_slice(&typed_instr.to_trap_call(&call_post_idx));
+                    // STACK: [type_out]
                     continue;
                 }
                 _ => {}

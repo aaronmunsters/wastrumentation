@@ -38,11 +38,16 @@ fn assert_high_and_low(
 }
 
 fn new_typed_high_level(
-    index: usize,
+    instr_index: usize,
     type_: FunctionType,
     instr: typed_high_level_body::Instr,
 ) -> TypedHighLevelInstr {
-    TypedHighLevelInstr::new_uninstrumented(index, InferredInstructionType::Reachable(type_), instr)
+    TypedHighLevelInstr::new_uninstrumented(
+        0, // in this test module we only create a single function
+        instr_index,
+        InferredInstructionType::Reachable(type_),
+        instr,
+    )
 }
 
 // TODO: macro's for huge bodies?
