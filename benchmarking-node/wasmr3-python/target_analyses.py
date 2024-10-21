@@ -48,6 +48,12 @@ analysis_names_primitive = [
         ['binary'],
         ['binary'],
     ],
+    [
+        'block-profiling',
+        # ✅✅✅   ✅✅✅
+        ['begin'],
+        ['if-then', 'if-then-else', 'branch', 'branch-if', 'branch-table', 'call-pre', 'call-indirect-pre', 'block-pre', 'loop-pre'],
+    ],
 ]
 
 # type: (AnalysisName, AnalysisPathWasabi, AnalysisPathWastrumentation, WasabiHooks, WastrumentationHooks)[]
