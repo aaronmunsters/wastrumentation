@@ -1,10 +1,11 @@
 use wasabi_wasm::{
     types::{InferredInstructionType, TypeChecker, TypeError},
-    Code, Function, Instr, Module,
+    Code, Function, Idx, Instr, Module,
 };
 
 pub struct TypedIndexedInstr {
-    pub index: usize,
+    pub funct_index: u32,
+    pub instr_index: usize,
     pub type_: InferredInstructionType,
     pub instr: Instr,
 }
@@ -14,6 +15,7 @@ pub fn type_inference_index_function(
     function: &Function,
     code: &Code,
     module: &Module,
+    original_idx: &Idx<Function>,
 ) -> Result<Vec<TypedIndexedInstr>, TypeError> {
     let mut type_checker = TypeChecker::begin_function(function, module);
     code.body
@@ -23,7 +25,8 @@ pub fn type_inference_index_function(
             type_checker
                 .check_next_instr(instr)
                 .map(|type_| TypedIndexedInstr {
-                    index,
+                    funct_index: original_idx.to_u32(),
+                    instr_index: index,
                     type_,
                     instr: instr.clone(),
                 })
@@ -67,7 +70,9 @@ mod tests {
         let (module, _, _) = Module::from_bytes(&wat).unwrap();
         let meet_bottom = module.functions.first().unwrap();
         let meet_bottom_code = meet_bottom.code().unwrap();
-        let err = type_inference_index_function(meet_bottom, meet_bottom_code, &module);
+        let target_idx = Idx::from(0_u32);
+        let err =
+            type_inference_index_function(meet_bottom, meet_bottom_code, &module, &target_idx);
         assert!(matches!(err, Err(TypeError(_))))
     }
 }

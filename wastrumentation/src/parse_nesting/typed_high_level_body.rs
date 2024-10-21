@@ -198,36 +198,34 @@ impl Instr {
     }
 }
 
-impl TryFrom<(&Module, &Function, &Code)> for Body {
+impl TryFrom<(&Module, &Function, &Code, &Idx<Function>)> for Body {
     type Error = LowToHighError;
 
-    fn try_from(module_function_code: (&Module, &Function, &Code)) -> Result<Self, Self::Error> {
-        let (module, function, code) = module_function_code;
-        let indexed_typed_body = type_inference_index_function(function, code, module)
-            .map_err(|e| LowToHighError::TypeInference { type_error: e })?;
+    fn try_from(
+        module_function_code: (&Module, &Function, &Code, &Idx<Function>),
+    ) -> Result<Self, Self::Error> {
+        let (module, function, code, original_idx) = module_function_code;
+        let indexed_typed_body =
+            type_inference_index_function(function, code, module, original_idx)
+                .map_err(|e| LowToHighError::TypeInference { type_error: e })?;
 
-        enum Entered {
-            Block {
-                index: usize,
-                type_: FunctionType,
-            },
-            Loop {
-                index: usize,
-                type_: FunctionType,
-            },
-            IfStart {
-                index: usize,
-                type_: FunctionType,
-            },
-            IfThenElse {
-                index: usize,
-                type_: FunctionType,
-                then_body: BodyInner,
-            },
+        enum EnteredType {
+            Block,
+            Loop,
+            IfStart,
+            IfThenElse(BodyInner),
+        }
+
+        struct Entered {
+            entered_type: EnteredType,
+            funct_index: u32,
+            index: usize,
+            type_: FunctionType,
         }
 
         let [instructions @ .., TypedIndexedInstr {
-            index: _,
+            funct_index: _,
+            instr_index: _,
             type_: _,
             instr: wasabi_wasm::Instr::End,
         }] = &indexed_typed_body[..]
@@ -240,43 +238,56 @@ impl TryFrom<(&Module, &Function, &Code)> for Body {
         let mut current_body: BodyInner = Vec::new();
 
         for TypedIndexedInstr {
-            index,
+            funct_index,
+            instr_index: index,
             type_,
             instr,
         } in instructions
         {
             match instr {
                 wasabi_wasm::Instr::Block(type_) => {
-                    entered_stack.push(Entered::Block {
+                    entered_stack.push(Entered {
+                        funct_index: *funct_index,
                         index: *index,
                         type_: *type_,
+                        entered_type: EnteredType::Block,
                     });
                     body_stack.push(current_body.clone());
                     current_body = Vec::new();
                 }
                 wasabi_wasm::Instr::Loop(type_) => {
-                    entered_stack.push(Entered::Loop {
+                    entered_stack.push(Entered {
+                        funct_index: *funct_index,
                         index: *index,
                         type_: *type_,
+                        entered_type: EnteredType::Loop,
                     });
                     body_stack.push(current_body.clone());
                     current_body = Vec::new();
                 }
                 wasabi_wasm::Instr::If(type_) => {
-                    entered_stack.push(Entered::IfStart {
+                    entered_stack.push(Entered {
+                        funct_index: *funct_index,
                         index: *index,
                         type_: *type_,
+                        entered_type: EnteredType::IfStart,
                     });
                     body_stack.push(current_body.clone());
                     current_body = Vec::new();
                 }
                 wasabi_wasm::Instr::Else => match entered_stack.pop() {
-                    Some(Entered::IfStart { index, type_ }) => {
+                    Some(Entered {
+                        funct_index,
+                        index,
+                        type_,
+                        entered_type: EnteredType::IfStart,
+                    }) => {
                         let then_body = current_body.clone();
-                        entered_stack.push(Entered::IfThenElse {
+                        entered_stack.push(Entered {
+                            funct_index,
                             index,
                             type_,
-                            then_body,
+                            entered_type: EnteredType::IfThenElse(then_body),
                         });
                         current_body = Vec::new();
                     }
@@ -284,21 +295,33 @@ impl TryFrom<(&Module, &Function, &Code)> for Body {
                 },
                 wasabi_wasm::Instr::End => {
                     let ended_body = current_body.clone();
-                    let (begin_idx, instruction) = match entered_stack
-                        .pop()
-                        .ok_or(LowToHighError::ExcessiveEnd)?
-                    {
-                        Entered::Block { index, type_ } => (index, Instr::Block(type_, ended_body)),
-                        Entered::Loop { index, type_ } => (index, Instr::Loop(type_, ended_body)),
-                        Entered::IfStart { index, type_ } => {
-                            (index, Instr::if_then(type_, ended_body))
-                        }
-                        Entered::IfThenElse {
-                            index,
-                            type_,
-                            then_body,
-                        } => (index, Instr::if_then_else(type_, then_body, ended_body)),
-                    };
+                    let (begin_idx, instruction) =
+                        match entered_stack.pop().ok_or(LowToHighError::ExcessiveEnd)? {
+                            Entered {
+                                funct_index: _,
+                                index,
+                                type_,
+                                entered_type: EnteredType::Block,
+                            } => (index, Instr::Block(type_, ended_body)),
+                            Entered {
+                                funct_index: _,
+                                index,
+                                type_,
+                                entered_type: EnteredType::Loop,
+                            } => (index, Instr::Loop(type_, ended_body)),
+                            Entered {
+                                funct_index: _,
+                                index,
+                                type_,
+                                entered_type: EnteredType::IfStart,
+                            } => (index, Instr::if_then(type_, ended_body)),
+                            Entered {
+                                funct_index: _,
+                                index,
+                                type_,
+                                entered_type: EnteredType::IfThenElse(then_body),
+                            } => (index, Instr::if_then_else(type_, then_body, ended_body)),
+                        };
                     current_body = body_stack.pop().ok_or(LowToHighError::EndWithoutParent)?;
                     current_body.push(TypedHighLevelInstr::new_uninstrumented(
                         begin_idx, // prefer the begin-index over the end-index!
@@ -406,7 +429,7 @@ fn from_recurse(instructions: BodyInner) -> Vec<wasabi_wasm::Instr> {
 mod tests {
     use super::Body;
     use wasabi_wasm::{
-        types::InferredInstructionType, Code, Function, FunctionType, Module, ValType,
+        types::InferredInstructionType, Code, Function, FunctionType, Idx, Module, ValType,
     };
 
     const EVEN_ODD_PROGRAM: &str = r#"
@@ -437,7 +460,8 @@ mod tests {
                 module.function(index.into()),
                 module.function(index.into()).code().unwrap(),
             );
-            Body::try_from((module, func, code)).unwrap()
+            let f_idx = &Idx::from(index);
+            Body::try_from((module, func, code, f_idx)).unwrap()
         };
 
         // Expected type of the first statement for both functions even and odd

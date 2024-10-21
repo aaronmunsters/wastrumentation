@@ -468,18 +468,16 @@ mod tests {
             instrumentation_body.clone(),
         );
 
-        let function = wasm_module.function(0_u32.into());
+        let index = 0_u32.into();
+        let function = wasm_module.function(index);
         let code = function.code().unwrap();
-        let high_level_body: HighLevelBody = (&wasm_module, function, code).try_into().unwrap();
+        let high_level_body: HighLevelBody =
+            (&wasm_module, function, code, &index).try_into().unwrap();
         let transformed =
             Target::IfThenElse(if_then_else_trap_idx).transform(&high_level_body, &mut wasm_module);
 
         let LowLevelBody(low_level_body) = LowLevelBody::from(transformed);
-        wasm_module
-            .function_mut(0_u32.into())
-            .code_mut()
-            .unwrap()
-            .body = low_level_body;
+        wasm_module.function_mut(index).code_mut().unwrap().body = low_level_body;
 
         // Execute instrumented:
         assert_outcome(&wasm_module, instrumented_assertions, &instrumentation_body);
@@ -507,11 +505,12 @@ mod tests {
             .body
             .push(wasabi_wasm::Instr::Call(0_usize.into()));
 
-        let function = wasm_module.function(0_u32.into());
+        let index = 0_u32.into();
+        let function = wasm_module.function(index);
         let code = function.code().unwrap();
 
         assert!(matches!(
-            HighLevelBody::try_from((&wasm_module, function, code)),
+            HighLevelBody::try_from((&wasm_module, function, code, &index)),
             Err(LowToHighError::TypeInference { .. }),
         ))
     }
@@ -565,11 +564,12 @@ mod tests {
     fn test_nested_ifs() {
         let wasm_module = nested_ifs_body();
 
-        let function: &Function = wasm_module.function(0_usize.into());
+        let index = 0_usize.into();
+        let function: &Function = wasm_module.function(index);
         let code = function.code().unwrap();
 
         assert_eq!(
-            HighLevelBody::try_from((&wasm_module, function, code)).unwrap(),
+            HighLevelBody::try_from((&wasm_module, function, code, &index)).unwrap(),
             {
                 use super::Instr::*;
                 use wasabi_wasm::{BinaryOp::*, LocalOp::*, UnaryOp::*, Val::*};

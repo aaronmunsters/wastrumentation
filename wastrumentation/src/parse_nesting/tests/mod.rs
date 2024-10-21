@@ -15,12 +15,13 @@ fn const_i32(i: i32) -> HighLevelInstr {
     HighLevelInstr::Const(I32(i))
 }
 
-fn wat_to_high_level(wat: &str) -> HighLevelBody {
+fn wat_to_high_level_zeroth_f(wat: &str) -> HighLevelBody {
     let wasm_bytes = wat::parse_str(wat).unwrap();
     let (module, _, _) = wasabi_wasm::Module::from_bytes(&wasm_bytes).unwrap();
-    let function = module.function(0_usize.into());
+    let index = 0_usize.into();
+    let function = module.function(index);
     let code = function.code().unwrap();
-    HighLevelBody::try_from((&module, function, code)).unwrap()
+    HighLevelBody::try_from((&module, function, code, &index)).unwrap()
 }
 
 fn assert_high_and_low(
@@ -29,7 +30,7 @@ fn assert_high_and_low(
     body_expected_high: HighLevelBody,
 ) {
     // Assert expected high-level program
-    let high_level_body = wat_to_high_level(wasm_program);
+    let high_level_body = wat_to_high_level_zeroth_f(wasm_program);
     assert_eq!(high_level_body, body_expected_high);
     // Assert expected low-level program
     let low_level_body: LowLevelBody = high_level_body.into();

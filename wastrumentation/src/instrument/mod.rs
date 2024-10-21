@@ -155,7 +155,7 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
             let code = target_function
                 .code()
                 .ok_or(InstrumentationError::AttemptInnerInstrumentImport)?;
-            ((&module), target_function, code)
+            ((&module), target_function, code, target_function_idx)
                 .try_into()
                 .map_err(|e| InstrumentationError::LowToHighError { low_to_high_err: e })
         })
