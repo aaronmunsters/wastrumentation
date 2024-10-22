@@ -1,0 +1,20 @@
+[package]
+name = "rust-taint-analysis"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wee_alloc = "0.4.5"
+wastrumentation-rs-stdlib = { path = "../wastrumentation-rs-stdlib", features = [
+    "std",
+] }
+
+[profile.release]
+strip = true
+lto = true
+panic = "abort"
+
+[workspace]
