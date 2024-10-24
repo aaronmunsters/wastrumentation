@@ -33,3 +33,4 @@ bench_suite_benchmarks_path_wastrumentation = os.path.join(bench_suite_path, 'be
 # Timeout and exit status
 timeout = 10 # seconds
 EXIT_STATUS_TIMEOUT = 124
+minimum_major_node_version = 22

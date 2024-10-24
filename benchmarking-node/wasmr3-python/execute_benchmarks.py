@@ -3,7 +3,7 @@ import os
 import re
 import subprocess
 
-from config import timeout, benchmark_runs, EXIT_STATUS_TIMEOUT
+from config import timeout, benchmark_runs, NODE_BENCHMARK_RUNS, EXIT_STATUS_TIMEOUT
 from config import bench_suite_benchmarks_path
 
 def execute_benchmarks(
@@ -64,25 +64,24 @@ def execute_benchmarks(
                 captured_lines += [bench_run_result_stdout_line]
 
             # assert exactly 'benchmark_runs' amount of lines are kept as 'relevant' here!
-            assert len(captured_lines) == benchmark_runs
+            assert len(captured_lines) == NODE_BENCHMARK_RUNS
             total_time = 0
-            time_unit = ''
+            time_unit = 'ms'
             for benchmark_report_line in captured_lines:
                 benchmark_report_line = benchmark_report_line.strip()
-                #                           input_program      run             performance   time-unit
-                #                             <------>        <--->     <---------------------><--->
-                performance_regex_pattern = r'([\w-]+)\ \(run (\d+)\): ((?:\d)+(?:\.(?:\d)+)?)(\w+)'
+                #                           input_program      run            performance
+                #                             <------>        <--->     <-------------------->
+                performance_regex_pattern = r'([\w-]+)\ \(run (\d+)\): ((?:\d)+(?:\.(?:\d)+)?)'
                 pattern_match = re.match(performance_regex_pattern, benchmark_report_line)
                 assert pattern_match is not None
-                [re_input_program, re_run, re_performance, re_time_unit] = [pattern_match.group(i) for i in [1, 2, 3, 4]]
+                [re_input_program, re_run, re_performance] = [pattern_match.group(i) for i in [1, 2, 3]]
                 assert input_program == re_input_program
-                assert benchmark_report_line == f'{re_input_program} (run {re_run}): {re_performance}{re_time_unit}'
+                assert benchmark_report_line == f'{re_input_program} (run {re_run}): {re_performance}'
 
                 total_time += float(re_performance)
-                time_unit = re_time_unit
 
                 #                     'setup ✅,      runtime ✅,      input_program ✅, run-iter ✅, performance ✅,   time-unit ✅\n'
-                results_file.write(f'"{setup_name}","{runtime_name}","{input_program}","{re_run}","{re_performance}","{re_time_unit}"\n')
+                results_file.write(f'"{setup_name}","{runtime_name}","{input_program}","{re_run}","{re_performance}","{time_unit}"\n')
                 results_file.flush()
 
-            print(f' -> took {total_time}{time_unit}')
+            print(f' -> {NODE_BENCHMARK_RUNS} took in total {total_time}{time_unit}')

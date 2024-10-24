@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
 
-from config import benchmark_runs
 from config import bench_suite_benchmarks_path
 
 def report_code_size(
