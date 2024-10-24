@@ -9,8 +9,8 @@
 
     const debug = false;
 
-    console.log("=========================");
-    console.log("Starting taint analysis");
+    // console.log("=========================");
+    // console.log("Starting taint analysis");
 
     Array.prototype.peek = function() {
         return this[this.length - 1];
@@ -50,8 +50,8 @@
                 sinkFctIdx = i;
             }
         }
-        if (sourceFctIdx === -1) console.log("Warning: No exported source function found.");
-        if (sinkFctIdx === -1) console.log("Warning: No exported sink function found.");
+        // if (sourceFctIdx === -1) console.log("Warning: No exported source function found.");
+        // if (sinkFctIdx === -1) console.log("Warning: No exported sink function found.");
         return {sourceFctIdx:sourceFctIdx, sinkFctIdx:sinkFctIdx};
     }
 

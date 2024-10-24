@@ -17,6 +17,11 @@ path_results_file_regular = os.path.join(working_directory, 'runtime-analysis-re
 path_results_file_wasabi = os.path.join(working_directory, 'runtime-analysis-wasabi.csv')
 path_results_file_wastrumentation = os.path.join(working_directory, 'runtime-analysis-wastrumentation.csv')
 
+# Output files
+path_code_size_results_file_regular = os.path.join(working_directory, 'code-size-analysis-regular.csv')
+path_code_size_results_file_wasabi = os.path.join(working_directory, 'code-size-analysis-wasabi.csv')
+path_code_size_results_file_wastrumentation = os.path.join(working_directory, 'code-size-analysis-wastrumentation.csv')
+
 # Bench suite
 bench_suite_uri = 'git@github.com:sola-st/wasm-r3.git'
 bench_suite_commit = '299be52000046e5d49248c4c66a21238855587d7'
@@ -26,5 +31,5 @@ bench_suite_benchmarks_path_wasabi = os.path.join(bench_suite_path, 'benchmarks_
 bench_suite_benchmarks_path_wastrumentation = os.path.join(bench_suite_path, 'benchmarks_wastrumentation')
 
 # Timeout and exit status
-timeout = 4000 # seconds
+timeout = 10 # seconds
 EXIT_STATUS_TIMEOUT = 124

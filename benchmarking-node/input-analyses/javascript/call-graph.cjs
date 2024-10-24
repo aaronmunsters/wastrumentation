@@ -6,7 +6,7 @@
 
 (function() {
 
-    console.log("Starting call tracing. Check for results in Wasabi.analysisResult.");
+    // console.log("Starting call tracing. Check for results in Wasabi.analysisResult.");
 
     const callGraphEdges = new Set();
     Wasabi.analysisResult = callGraphEdges;
