@@ -48,20 +48,20 @@ pub(crate) fn shadow_memory_load(
     let shadow_memory = unsafe { addr_of_mut!(SHADOW_MEMRY).as_mut().unwrap() };
     grow_if_out_of_bounds(shadow_memory, addr, operation.target_value_size());
     match operation {
-        I32Load => memory_load::<i32>(&shadow_memory, addr).into(),
-        I64Load => memory_load::<i64>(&shadow_memory, addr).into(),
-        F32Load => memory_load::<f32>(&shadow_memory, addr).into(),
-        F64Load => memory_load::<f64>(&shadow_memory, addr).into(),
-        I32Load8S => memory_load_sub::<i32, u8>(&shadow_memory, addr).into(),
-        I32Load8U => memory_load_sub::<i32, u8>(&shadow_memory, addr).into(),
-        I32Load16S => memory_load_sub::<i32, i16>(&shadow_memory, addr).into(),
-        I32Load16U => memory_load_sub::<i32, u16>(&shadow_memory, addr).into(),
-        I64Load8S => memory_load_sub::<i64, i8>(&shadow_memory, addr).into(),
-        I64Load8U => memory_load_sub::<i64, u8>(&shadow_memory, addr).into(),
-        I64Load16S => memory_load_sub::<i64, i16>(&shadow_memory, addr).into(),
-        I64Load16U => memory_load_sub::<i64, u16>(&shadow_memory, addr).into(),
-        I64Load32S => memory_load_sub::<i64, i32>(&shadow_memory, addr).into(),
-        I64Load32U => memory_load_sub::<i64, u32>(&shadow_memory, addr).into(),
+        I32Load => memory_load::<i32>(shadow_memory, addr).into(),
+        I64Load => memory_load::<i64>(shadow_memory, addr).into(),
+        F32Load => memory_load::<f32>(shadow_memory, addr).into(),
+        F64Load => memory_load::<f64>(shadow_memory, addr).into(),
+        I32Load8S => memory_load_sub::<i32, u8>(shadow_memory, addr).into(),
+        I32Load8U => memory_load_sub::<i32, u8>(shadow_memory, addr).into(),
+        I32Load16S => memory_load_sub::<i32, i16>(shadow_memory, addr).into(),
+        I32Load16U => memory_load_sub::<i32, u16>(shadow_memory, addr).into(),
+        I64Load8S => memory_load_sub::<i64, i8>(shadow_memory, addr).into(),
+        I64Load8U => memory_load_sub::<i64, u8>(shadow_memory, addr).into(),
+        I64Load16S => memory_load_sub::<i64, i16>(shadow_memory, addr).into(),
+        I64Load16U => memory_load_sub::<i64, u16>(shadow_memory, addr).into(),
+        I64Load32S => memory_load_sub::<i64, i32>(shadow_memory, addr).into(),
+        I64Load32U => memory_load_sub::<i64, u32>(shadow_memory, addr).into(),
     }
 }
 

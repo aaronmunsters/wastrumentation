@@ -46,7 +46,7 @@ fn handle_call_to_imported(function: WasmFunction, args: &MutDynArgs, ress: &Mut
         .collect::<Vec<WasmValue>>()
         .into_iter()
         .rev()
-        .for_each(|v| push_value_on_stack(v))
+        .for_each(push_value_on_stack)
 }
 
 #[allow(non_snake_case)]
@@ -129,14 +129,7 @@ advice! { apply (function: WasmFunction, args: MutDynArgs, ress: MutDynResults) 
         //  7. Pop the values `val^{n}` from the stack.
         let actual_values: Vec<WasmValue> = args.args_iter().collect();
         println!("apply>>pre>>pop_value_from_stack");
-        let shadow_values =
-            (0..n)
-                .into_iter()
-                .map(|_| pop_value_from_stack())
-                .collect::<Vec<WasmValue>>()
-                .into_iter()
-                .rev()
-                .collect();
+        let shadow_values = (0..n).map(|_| pop_value_from_stack()).collect::<Vec<WasmValue>>().into_iter().rev().collect();
         assert_eq!(&shadow_values, &actual_values);
         //  8. Let `F` be the frame `{module f.module, locals val^{n} (default_{t})^{*}}`.
         #[allow(non_snake_case)]
@@ -181,7 +174,7 @@ advice! { apply (function: WasmFunction, args: MutDynArgs, ress: MutDynResults) 
         assert_at_least_n_values_on_stack(n);
         // 4. Pop the results `val^{n}` from the stack.
         println!("apply>>post>>pop_value_from_stack");
-        let mut values: Vec<WasmValue> = (0..n).into_iter().map(|_| pop_value_from_stack()).collect();
+        let mut values: Vec<WasmValue> = (0..n).map(|_| pop_value_from_stack()).collect();
         // 5. Assert: due to validation, the frame `F` is now on the top of the stack.
         let StackEntry::Frame(top_of_stack_frame) = top_of_stack() else {
             panic!();
@@ -214,7 +207,7 @@ fn br_with(l: usize) {
     assert_at_least_n_values_on_stack(n);
     // 5. Pop the values `val^{n}` from the stack.
     println!("br_with>>first_case>>pop_value_from_stack");
-    let mut values: Vec<WasmValue> = (0..n).into_iter().map(|_| pop_value_from_stack()).collect();
+    let mut values: Vec<WasmValue> = (0..n).map(|_| pop_value_from_stack()).collect();
     println!("values popped for the br_with: {values:?}");
     // 6. Repeat `l + 1` times:
     for _ in 0..(l + 1) {
@@ -244,7 +237,8 @@ fn br_with(l: usize) {
 advice! { if_ (
         path_continuation: PathContinuation,
         if_then_else_input_c: IfThenElseInputCount,
-        if_then_else_arity: IfThenElseArity
+        if_then_else_arity: IfThenElseArity,
+        _location: Location,
     ) {
         println!("if_ ({path_continuation:?}: PathContinuation)");
         let arguments = if_then_else_input_c.value().try_into().unwrap();
@@ -274,7 +268,8 @@ advice! { if_ (
 advice! { if_then (
         path_continuation: PathContinuation,
         if_then_input_c: IfThenInputCount,
-        if_then_arity: IfThenArity
+        if_then_arity: IfThenArity,
+        _location: Location,
     ) {
         println!("if_then ({path_continuation:?}: PathContinuation)");
         let arguments = if_then_input_c.value().try_into().unwrap();
@@ -303,28 +298,32 @@ advice! { if_then (
     }
 }
 
-advice! { if_post () {
+advice! { if_post (_location: Location) {
         println!("if_post ()");
         println!("if_post>>exit_instr_with_label");
         exit_instr_with_label();
     }
 }
 
-advice! { if_then_post () {
+advice! { if_then_post (_location: Location) {
         println!("if_then_post ()");
         println!("if_then_post>>exit_instr_with_label");
         exit_instr_with_label();
     }
 }
 
-advice! { br (branch_target_label: BranchTargetLabel) {
+advice! { br (branch_target_label: BranchTargetLabel, _location: Location) {
         println!("br ({branch_target_label:?}: BranchTargetLabel)");
         // https://webassembly.github.io/spec/core/exec/instructions.html#xref-syntax-instructions-syntax-instr-control-mathsf-br-l
         br_with(branch_target_label.label().try_into().unwrap())
     }
 }
 
-advice! { br_if (path_continuation: ParameterBrIfCondition, target_label: ParameterBrIfLabel) {
+advice! { br_if (
+        path_continuation: ParameterBrIfCondition,
+        target_label: ParameterBrIfLabel,
+        _location: Location,
+    ) {
         println!("br_if ({path_continuation:?}: ParameterBrIfCondition, {target_label:?}: ParameterBrIfLabel) [taking ~> {taking}]", taking = if path_continuation.is_then() { "then" } else { "else" });
         // https://webassembly.github.io/spec/core/exec/instructions.html#xref-syntax-instructions-syntax-instr-control-mathsf-br-if-l
         // 1. Assert: due to validation, a value of value type `i32` is on the top of the stack.
@@ -350,7 +349,8 @@ advice! { br_if (path_continuation: ParameterBrIfCondition, target_label: Parame
 advice! { br_table (
         branch_table_target: BranchTableTarget,
         branch_table_effective: BranchTableEffective,
-        branch_table_default: BranchTableDefault
+        branch_table_default: BranchTableDefault,
+        _location: Location,
     ) {
         println!("br_table ({branch_table_target:?}: BranchTableTarget, {branch_table_effective:?}: BranchTableEffective, {branch_table_default:?}: BranchTableDefault)");
         // https://webassembly.github.io/spec/core/exec/instructions.html#xref-syntax-instructions-syntax-instr-control-mathsf-br-table-l-ast-l-n
@@ -372,7 +372,7 @@ advice! { br_table (
     }
 }
 
-advice! { select (path_continuation: PathContinuation) {
+advice! { select (path_continuation: PathContinuation, _location: Location) {
         println!("select ({path_continuation:?}: PathContinuation)");
         // https://webassembly.github.io/spec/core/exec/instructions.html#xref-syntax-instructions-syntax-instr-parametric-mathsf-select-t-ast
         // Assert: due to validation, a value of value type `i32` is on the top of the stack.
@@ -402,7 +402,11 @@ advice! { select (path_continuation: PathContinuation) {
     }
 }
 
-advice! { call_indirect pre (target_func: FunctionTableIndex, _func_table_ident: FunctionTable) {
+advice! { call_indirect pre (
+        target_func: FunctionTableIndex,
+        _func_table_ident: FunctionTable,
+        _location: Location,
+    ) {
         let FunctionTableIndex(i) = target_func;
 
         // https://webassembly.github.io/spec/core/exec/instructions.html#xref-syntax-instructions-syntax-instr-control-mathsf-call-indirect-x-y
@@ -455,22 +459,22 @@ advice! { call_indirect pre (target_func: FunctionTableIndex, _func_table_ident:
     }
 }
 
-advice! { call_indirect post (_target_func: FunctionTable) {
+advice! { call_indirect post (_target_func: FunctionTable, _location: Location) {
         "No particular semantics";
     }
 }
 
-advice! { call pre (_target_func: FunctionIndex) {
+advice! { call pre (_target_func: FunctionIndex, _location: Location) {
         "No particular semantics";
     }
 }
 
-advice! { call post (_target_func: FunctionIndex) {
+advice! { call post (_target_func: FunctionIndex, _location: Location) {
         "No particular semantics";
     }
 }
 
-advice! { unary generic (unop: UnaryOperator, c_1: WasmValue) {
+advice! { unary generic (unop: UnaryOperator, c_1: WasmValue, _location: Location) {
         println!("unary generic ({unop:?}: UnaryOperator, {c_1:?}: WasmValue)");
         // https://webassembly.github.io/spec/core/exec/instructions.html#t-mathsf-xref-syntax-instructions-syntax-unop-mathit-unop
         // 1. Assert: due to validation, a value of value type `t` is on the top of the stack.
@@ -491,7 +495,12 @@ advice! { unary generic (unop: UnaryOperator, c_1: WasmValue) {
     }
 }
 
-advice! { binary generic (binop: BinaryOperator, c_1: WasmValue, c_2: WasmValue) {
+advice! { binary generic (
+        binop: BinaryOperator,
+        c_1: WasmValue,
+        c_2: WasmValue,
+        _location: Location,
+    ) {
         println!("binary generic ({binop:?}: BinaryOperator, {c_1:?}: WasmValue, {c_2:?}: WasmValue)");
         // 1. Assert: due to validation, two values of value type `t` are on the top of the stack.
         "handled by validation";
@@ -515,7 +524,7 @@ advice! { binary generic (binop: BinaryOperator, c_1: WasmValue, c_2: WasmValue)
     }
 }
 
-advice! { drop () {
+advice! { drop (_location: Location) {
         println!("drop ()");
         // https://webassembly.github.io/spec/core/exec/instructions.html#xref-syntax-instructions-syntax-instr-parametric-mathsf-drop
         // Assert: due to validation, a value is on the top of the stack.
@@ -527,7 +536,7 @@ advice! { drop () {
 }
 
 // https://webassembly.github.io/spec/core/exec/instructions.html#xref-syntax-instructions-syntax-instr-control-mathsf-return
-advice! { return_ () {
+advice! { return_ (_location: Location) {
         println!("return_ ()");
         set_jump_flag_true();
         //  1. Let {F} be the current frame.
@@ -541,7 +550,7 @@ advice! { return_ () {
         assert_at_least_n_values_on_stack(n);
         //  4. Pop the results {val^n} from the stack.
         println!("return_>>results>>pop_value_from_stack");
-        let mut results: Vec<WasmValue> = (0..n).into_iter().map(|_| pop_value_from_stack()).collect();
+        let mut results: Vec<WasmValue> = (0..n).map(|_| pop_value_from_stack()).collect();
         //  5. Assert: due to validation, the stack contains at least one frame.
         "skipped assertion";
         //  6. While the top of the stack is not a frame, do:
@@ -568,7 +577,7 @@ advice! { return_ () {
     }
 }
 
-advice! { const_ generic (value: WasmValue) {
+advice! { const_ generic (value: WasmValue, _location: Location) {
         println!("const_ generic (value: WasmValue) => {}", value.bytes_string());
         // https://webassembly.github.io/spec/core/exec/instructions.html#t-mathsf-xref-syntax-instructions-syntax-instr-numeric-mathsf-const-c
         // 1. Push the value `t.const c` to the stack.
@@ -595,7 +604,12 @@ fn local_set(x: usize, actual_value: &WasmValue) {
     F.replace_local_with(x, shadow_value);
 }
 
-advice! { local generic (value: WasmValue, index: LocalIndex, local_op: LocalOp) {
+advice! { local generic (
+        value: WasmValue,
+        index: LocalIndex,
+        local_op: LocalOp,
+        _location: Location,
+    ) {
         let x: usize = index.value().try_into().unwrap();
         match local_op {
             LocalOp::Get => {
@@ -637,7 +651,12 @@ advice! { local generic (value: WasmValue, index: LocalIndex, local_op: LocalOp)
     }
 }
 
-advice! { global generic (value: WasmValue, index: GlobalIndex, global_op: GlobalOp) {
+advice! { global generic (
+        value: WasmValue,
+        index: GlobalIndex,
+        global_op: GlobalOp,
+        _location: Location,
+    ) {
         let x: usize = index.value().try_into().unwrap();
         match global_op {
             GlobalOp::Get => {
@@ -688,7 +707,12 @@ advice! { global generic (value: WasmValue, index: GlobalIndex, global_op: Globa
     }
 }
 
-advice! { load generic (store_index: LoadIndex, offset: LoadOffset, operation: LoadOperation) {
+advice! { load generic (
+        store_index: LoadIndex,
+        offset: LoadOffset,
+        operation: LoadOperation,
+        _location: Location,
+    ) {
         println!("load generic ({store_index:?}: LoadIndex, {offset:?}: LoadOffset, {operation:?}: LoadOperation)");
         // https://webassembly.github.io/spec/core/exec/instructions.html#t-mathsf-xref-syntax-instructions-syntax-instr-memory-mathsf-load-xref-syntax-instructions-syntax-memarg-mathit-memarg-and-t-mathsf-xref-syntax-instructions-syntax-instr-memory-mathsf-load-n-mathsf-xref-syntax-instructions-syntax-sx-mathit-sx-xref-syntax-instructions-syntax-memarg-mathit-memarg
         // TODO: link to Wasm spec
@@ -706,7 +730,13 @@ advice! { load generic (store_index: LoadIndex, offset: LoadOffset, operation: L
     }
 }
 
-advice! { store generic (store_index: StoreIndex, value: WasmValue, offset: StoreOffset, operation: StoreOperation) {
+advice! { store generic (
+        store_index: StoreIndex,
+        value: WasmValue,
+        offset: StoreOffset,
+        operation: StoreOperation,
+        _location: Location,
+    ) {
         println!("store generic ({store_index:?}: StoreIndex, {value:?}: WasmValue, {offset:?}: StoreOffset, {operation:?}: StoreOperation)");
         // https://webassembly.github.io/spec/core/exec/instructions.html#t-mathsf-xref-syntax-instructions-syntax-instr-memory-mathsf-store-xref-syntax-instructions-syntax-memarg-mathit-memarg-and-t-mathsf-xref-syntax-instructions-syntax-instr-memory-mathsf-store-n-xref-syntax-instructions-syntax-memarg-mathit-memarg
         // TODO: link to Wasm spec
@@ -727,7 +757,11 @@ advice! { store generic (store_index: StoreIndex, value: WasmValue, offset: Stor
     }
 }
 
-advice! { memory_size (size: WasmValue, index: MemoryIndex) {
+advice! { memory_size (
+        size: WasmValue,
+        index: MemoryIndex,
+        _location: Location,
+    ) {
         println!("memory_size (size: WasmValue, index: MemoryIndex)");
         let _ = index;
         push_value_on_stack(size.clone());
@@ -735,7 +769,11 @@ advice! { memory_size (size: WasmValue, index: MemoryIndex) {
     }
 }
 
-advice! { memory_grow (amount: WasmValue, index: MemoryIndex) {
+advice! { memory_grow (
+        amount: WasmValue,
+        index: MemoryIndex,
+        _location: Location,
+    ) {
         println!("memory_grow ({amount:?}: WasmValue, {index:?}: MemoryIndex)");
         println!("memory_grow>>value_to_write>>pop_value_from_stack");
         let shadow_amount = pop_value_from_stack();
@@ -781,7 +819,7 @@ fn block_blocktype_instr_end(blocktype: BlockType) {
     assert_at_least_n_values_on_stack(m);
     // 6. Pop the values `val^{m}` from the stack.
     println!("block_pre>>pop_value_from_stack");
-    let mut val_m: Vec<WasmValue> = (0..m).into_iter().map(|_| pop_value_from_stack()).collect();
+    let mut val_m: Vec<WasmValue> = (0..m).map(|_| pop_value_from_stack()).collect();
     // 7. Enter the block `val^{m} instr^{*}` with label `L`.
     while let Some(val) = val_m.pop() {
         push_value_on_stack(val);
@@ -789,7 +827,11 @@ fn block_blocktype_instr_end(blocktype: BlockType) {
     enter_block_with_label(L);
 }
 
-advice! { block pre (block_input_count: BlockInputCount, block_arity: BlockArity) {
+advice! { block pre (
+        block_input_count: BlockInputCount,
+        block_arity: BlockArity,
+        _location: Location,
+    ) {
         let origin = LabelOrigin::Block;
         let arguments = block_input_count.value().try_into().unwrap();
         let results = block_arity.value().try_into().unwrap();
@@ -797,14 +839,18 @@ advice! { block pre (block_input_count: BlockInputCount, block_arity: BlockArity
     }
 }
 
-advice! { block post () {
+advice! { block post (_location: Location) {
         println!("block post ()");
         println!("block_post>>exit_instr_with_label");
         exit_instr_with_label();
     }
 }
 
-advice! { loop_ pre (loop_input_count: LoopInputCount, loop_arity: LoopArity) {
+advice! { loop_ pre (
+        loop_input_count: LoopInputCount,
+        loop_arity: LoopArity,
+        _location: Location,
+    ) {
         // https://webassembly.github.io/spec/core/exec/instructions.html#xref-syntax-instructions-syntax-instr-control-mathsf-loop-xref-syntax-instructions-syntax-blocktype-mathit-blocktype-xref-syntax-instructions-syntax-instr-mathit-instr-ast-xref-syntax-instructions-syntax-instr-control-mathsf-end
         println!("loop_ pre ({loop_input_count:?}: LoopInputCount, {loop_arity:?}: LoopArity)");
         // 1. Let `F` be the current frame.
@@ -825,7 +871,7 @@ advice! { loop_ pre (loop_input_count: LoopInputCount, loop_arity: LoopArity) {
         assert_at_least_n_values_on_stack(m);
         // 6. Pop the values `val^{m}` from the stack.
         println!("loop_pre>>pop_value_from_stack");
-        let mut val_m: Vec<WasmValue> = (0..m).into_iter().map(|_|  pop_value_from_stack() ).collect();
+        let mut val_m: Vec<WasmValue> = (0..m).map(|_|  pop_value_from_stack() ).collect();
         while let Some(val) = val_m.pop() {
             push_value_on_stack(val);
         }
@@ -834,7 +880,7 @@ advice! { loop_ pre (loop_input_count: LoopInputCount, loop_arity: LoopArity) {
     }
 }
 
-advice! { loop_ post () {
+advice! { loop_ post (_location: Location) {
         println!("loop_ post ()");
         println!("loop_post>>exit_instr_with_label");
         exit_instr_with_label();
