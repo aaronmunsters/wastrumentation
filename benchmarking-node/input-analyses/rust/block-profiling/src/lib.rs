@@ -27,9 +27,6 @@ pub fn get_count(function_index: i64, instruction_index: i64, target: i32) -> i6
 
 advice! { if_                (c: PathContinuation, _ic: IfThenElseInputCount, _ia: IfThenElseArity  , l: Location) { add_block_enter(l, c.value()); c  } }
 advice! { if_then            (c: PathContinuation, _ic: IfThenInputCount, _ia: IfThenArity          , l: Location) { add_block_enter(l, c.value()); c  } }
-advice! { br                 (_lbl: BranchTargetLabel                                               , l: Location) { add_block_enter(l, 0        );    } }
-advice! { br_if              (c : ParameterBrIfCondition, _l : ParameterBrIfLabel                   , l: Location) { add_block_enter(l, c.value()); c  } }
-advice! { br_table           (bt: BranchTableTarget, e: BranchTableEffective, _d: BranchTableDefault, l: Location) { add_block_enter(l, e.label()); bt } }
 advice! { call pre           (_t : FunctionIndex                                                    , l: Location) { add_block_enter(l, 0        );    } }
 advice! { call_indirect pre  (t: FunctionTableIndex, _f: FunctionTable                              , l: Location) { add_block_enter(l, t.value()); t  } }
 advice! { block pre          (_bi: BlockInputCount, _ba: BlockArity                                 , l: Location) { add_block_enter(l, 0        );    } }

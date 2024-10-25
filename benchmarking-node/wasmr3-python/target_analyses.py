@@ -52,7 +52,7 @@ analysis_names_primitive = [
         'block-profiling',
         # ✅✅✅   ✅✅✅
         ['begin'],
-        ['if-then', 'if-then-else', 'branch', 'branch-if', 'branch-table', 'call-pre', 'call-indirect-pre', 'block-pre', 'loop-pre'],
+        ['call-pre', 'call-indirect-pre', 'block-pre', 'loop-pre'],
     ],
     [
         'taint',
