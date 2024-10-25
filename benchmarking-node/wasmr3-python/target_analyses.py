@@ -61,6 +61,12 @@ analysis_names_primitive = [
         [               'nop', 'unreachable', 'if',                                                           'br',     'br_if',     'br_table',     'drop', 'select', 'memory_size', 'memory_grow', 'unary', 'binary', 'load', 'store', 'local', 'global', 'call',                                                             'const', 'begin', 'return'],
         ['generic-apply',                     'if-then', 'if-then-post', 'if-then-else', 'if-then-else-post', 'branch', 'branch-if', 'branch-table', 'drop', 'select', 'memory-size', 'memory-grow', 'unary', 'binary', 'load', 'store', 'local', 'global', 'call-pre', 'call-post', 'call-indirect-pre', 'call-indirect-post', 'const', 'return', 'block-pre', 'block-post', 'loop-pre', 'loop-post'],
     ],
+    [
+        'forward',
+        # ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅   ✅✅✅✅    ✅✅✅        ✅✅✅✅✅       ✅✅✅   ✅✅✅✅    ✅✅✅✅✅✅✅    ✅✅✅✅✅✅     ✅✅     ✅✅✅✅   ✅✅✅    ✅✅✅    ✅✅✅    ✅✅✅✅   ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅  ✅✅✅✅   ✅✅✅
+        ['if',                                                           'br',     'br_if',     'br_table',     'drop', 'select', 'memory_size', 'memory_grow', 'unary', 'binary', 'load', 'store', 'local', 'global', 'call',                                                             'const', 'return', 'begin'], # Note: begin is covered in many _pre traps
+        ['if-then', 'if-then-post', 'if-then-else', 'if-then-else-post', 'branch', 'branch-if', 'branch-table', 'drop', 'select', 'memory-size', 'memory-grow', 'unary', 'binary', 'load', 'store', 'local', 'global', 'call-pre', 'call-post', 'call-indirect-pre', 'call-indirect-post', 'const', 'return', 'block-pre', 'loop-pre', 'block-post', 'loop-post'],
+    ],
 ]
 
 # type: (AnalysisName, AnalysisPathWasabi, AnalysisPathWastrumentation, WasabiHooks, WastrumentationHooks)[]
