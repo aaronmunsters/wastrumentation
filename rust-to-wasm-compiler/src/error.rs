@@ -1,5 +1,6 @@
 use cargo::CliError;
 use std::io::Error as ErrorIO;
+use std::path::PathBuf;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -27,6 +28,8 @@ pub enum CompilationError {
     CreateTempLibraryFile(ErrorIO),
     #[error("Could not write to temp library file: {0}")]
     WriteTempLibraryFile(ErrorIO),
+    #[error("Cache files have been tampered with in {0}")]
+    CacheFilesTamperedWith(PathBuf),
     #[error("Could not create workspace: {0:?}")]
     WorkspaceCreationFailed(CliError),
     #[error("Could not create compile options: {0:?}")]

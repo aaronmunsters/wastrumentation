@@ -3,7 +3,12 @@ use cargo::core::Workspace;
 use cargo::ops::{compile, CompileOptions};
 use cargo::GlobalContext;
 
+use dirs::cache_dir;
+use sha256::digest;
+use tempfile::TempDir;
+
 use std::fs::{self, create_dir, File};
+use std::path::PathBuf;
 use std::{io::Write, path::Path};
 
 mod error;
@@ -107,26 +112,44 @@ impl RustToWasmCompiler {
         lib: &str,
         profile: Profile,
     ) -> Result<Vec<u8>, CompilationError> {
-        // temp/
-        let working_dir =
-            tempfile::TempDir::new().map_err(CompilationError::CreateTempWorkingDir)?;
+        let cache_dir: PathBuf = cache_dir().map(Ok).unwrap_or_else(|| {
+            tempfile::TempDir::new()
+                .map(TempDir::into_path)
+                .map_err(CompilationError::CreateTempWorkingDir)
+        })?;
+
+        let working_dir = cache_dir
+            .join("rust_to_wasm_compiler")
+            .join(digest(manifest))
+            .join(digest(lib));
+
+        dbg!(&working_dir);
+
+        std::fs::create_dir_all(&working_dir).map_err(CompilationError::CreateTempWorkingDir)?;
 
         // temp/Cargo.toml
-        let manifest_path = working_dir.path().join("Cargo.toml");
-        let mut manifest_file =
-            File::create_new(&manifest_path).map_err(CompilationError::CreateTempCargoManifest)?;
-        manifest_file
-            .write_all(manifest.as_bytes())
-            .map_err(CompilationError::WriteTempCargoManifest)?;
-
+        let manifest_path = working_dir.join("Cargo.toml");
         // temp/src/lib.rs
-        let src_path = working_dir.path().join("src");
-        create_dir(&src_path).map_err(CompilationError::CreateTempSourceDirectory)?;
-        let mut lib_file = File::create_new(src_path.join("lib.rs"))
-            .map_err(CompilationError::CreateTempLibraryFile)?;
-        lib_file
-            .write_all(lib.as_bytes())
-            .map_err(CompilationError::WriteTempLibraryFile)?;
+        let src_path = working_dir.join("src");
+
+        match (manifest_path.exists(), src_path.exists()) {
+            (false, false) => {
+                let mut manifest_file = File::create_new(&manifest_path)
+                    .map_err(CompilationError::CreateTempCargoManifest)?;
+                manifest_file
+                    .write_all(manifest.as_bytes())
+                    .map_err(CompilationError::WriteTempCargoManifest)?;
+
+                create_dir(&src_path).map_err(CompilationError::CreateTempSourceDirectory)?;
+                let mut lib_file = File::create_new(src_path.join("lib.rs"))
+                    .map_err(CompilationError::CreateTempLibraryFile)?;
+                lib_file
+                    .write_all(lib.as_bytes())
+                    .map_err(CompilationError::WriteTempLibraryFile)?;
+            }
+            (true, true) => (),
+            _ => return Err(CompilationError::CacheFilesTamperedWith(working_dir)),
+        }
 
         self.compile(wasi_support, &manifest_path, profile)
     }
