@@ -49,6 +49,14 @@
             if (instr >= 0) incInstr("return");
         },
 
-        // not hooked: end (not really executed anyway), start (no real instruction), call_post (already counted)
+        // not hooked: start (no real instruction)
+
+        // Added to account for benchmark against Wastrumentation's:
+        end(loc, type, end) {
+            if (type !== "if" && type !== "function") incInstr(type);
+        },
+        call_post(location, values) {
+            incInstr("call_post");
+        },
     };
 }

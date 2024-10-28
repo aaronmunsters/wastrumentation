@@ -11,18 +11,16 @@ import os
 # type: [AnalysisName, WasabiHooks, WastrumentationHooks][]
 analysis_names_primitive = [
     [
-        'instruction-mix',
-        #                                                                                                                                                                                                                                                                                                                  Note: begin is covered in many _pre traps
-        # ❌❌   ❌❌❌❌❌❌❌    ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅   ✅✅✅✅    ✅✅✅        ✅✅✅✅✅       ✅✅✅   ✅✅✅✅    ✅✅✅✅✅✅✅    ✅✅✅✅✅✅     ✅✅     ✅✅✅✅   ✅✅✅    ✅✅✅    ✅✅✅    ✅✅✅✅   ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅  ✅✅✅✅   ✅✅✅
-        ['nop', 'unreachable', 'if',                                                           'br',     'br_if',     'br_table',     'drop', 'select', 'memory_size', 'memory_grow', 'unary', 'binary', 'load', 'store', 'local', 'global', 'call',                                                             'const', 'begin', 'return'],
-        [                      'if-then', 'if-then-post', 'if-then-else', 'if-then-else-post', 'branch', 'branch-if', 'branch-table', 'drop', 'select', 'memory-size', 'memory-grow', 'unary', 'binary', 'load', 'store', 'local', 'global', 'call-pre', 'call-post', 'call-indirect-pre', 'call-indirect-post', 'const', 'return', 'block-pre', 'block-post', 'loop-pre', 'loop-post'],
+        'instruction-mix', # not included for Wasabi: nop, unreachable (neither for Wastrumentation)
+        # ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅   ✅✅✅✅    ✅✅✅        ✅✅✅✅✅       ✅✅✅   ✅✅✅✅    ✅✅✅✅✅✅✅    ✅✅✅✅✅✅     ✅✅     ✅✅✅✅   ✅✅✅    ✅✅✅    ✅✅✅    ✅✅✅✅   ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅  ✅✅✅✅   ✅✅✅   # Note: begin is covered in many _pre traps
+        ['if',                                                           'br',     'br_if',     'br_table',     'drop', 'select', 'memory_size', 'memory_grow', 'unary', 'binary', 'load', 'store', 'local', 'global', 'call',                                                             'const', 'return', 'begin', 'end'],
+        ['if-then', 'if-then-post', 'if-then-else', 'if-then-else-post', 'branch', 'branch-if', 'branch-table', 'drop', 'select', 'memory-size', 'memory-grow', 'unary', 'binary', 'load', 'store', 'local', 'global', 'call-pre', 'call-post', 'call-indirect-pre', 'call-indirect-post', 'const', 'return', 'block-pre', 'block-post', 'loop-pre', 'loop-post'],
     ],
     [
-        'coverage-instruction',
-        #                                                                                                                                                                                                                                                                                                                  Note: begin is covered in many _pre traps
-        # ❌❌   ❌❌❌❌❌❌❌    ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅   ✅✅✅✅    ✅✅✅        ✅✅✅✅✅       ✅✅✅   ✅✅✅✅    ✅✅✅✅✅✅✅    ✅✅✅✅✅✅     ✅✅     ✅✅✅✅   ✅✅✅    ✅✅✅    ✅✅✅    ✅✅✅✅   ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅  ✅✅✅✅   ✅✅✅
-        ['nop', 'unreachable', 'if',                                                           'br',     'br_if',     'br_table',     'drop', 'select', 'memory_size', 'memory_grow', 'unary', 'binary', 'load', 'store', 'local', 'global', 'call',                                                             'const', 'begin', 'return'],
-        [                      'if-then', 'if-then-post', 'if-then-else', 'if-then-else-post', 'branch', 'branch-if', 'branch-table', 'drop', 'select', 'memory-size', 'memory-grow', 'unary', 'binary', 'load', 'store', 'local', 'global', 'call-pre', 'call-post', 'call-indirect-pre', 'call-indirect-post', 'const', 'return', 'block-pre', 'block-post', 'loop-pre', 'loop-post'],
+        'coverage-instruction', # not included for Wasabi: nop, unreachable (neither for Wastrumentation)
+        # ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅   ✅✅✅✅    ✅✅✅        ✅✅✅✅✅       ✅✅✅   ✅✅✅✅    ✅✅✅✅✅✅✅    ✅✅✅✅✅✅     ✅✅     ✅✅✅✅   ✅✅✅    ✅✅✅    ✅✅✅    ✅✅✅✅   ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅  ✅✅✅✅   ✅✅✅   # Note: begin is covered in many _pre traps
+        ['if',                                                           'br',     'br_if',     'br_table',     'drop', 'select', 'memory_size', 'memory_grow', 'unary', 'binary', 'load', 'store', 'local', 'global', 'call',                                                             'const', 'return', 'begin', 'end'],
+        ['if-then', 'if-then-post', 'if-then-else', 'if-then-else-post', 'branch', 'branch-if', 'branch-table', 'drop', 'select', 'memory-size', 'memory-grow', 'unary', 'binary', 'load', 'store', 'local', 'global', 'call-pre', 'call-post', 'call-indirect-pre', 'call-indirect-post', 'const', 'return', 'block-pre', 'block-post', 'loop-pre', 'loop-post'],
     ],
     [
         'coverage-branch',
@@ -56,15 +54,14 @@ analysis_names_primitive = [
     ],
     [
         'taint',
-        #                                                                                                                                                                                                                                                                                                                                 Note: begin is covered in many _pre traps
-        # ❌❌❌❌❌❌❌❌  ❌❌   ❌❌❌❌❌❌❌    ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅   ✅✅✅✅    ✅✅✅        ✅✅✅✅✅       ✅✅✅   ✅✅✅✅    ✅✅✅✅✅✅✅    ✅✅✅✅✅✅     ✅✅     ✅✅✅✅   ✅✅✅    ✅✅✅    ✅✅✅    ✅✅✅✅   ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅  ✅✅✅✅   ✅✅✅
-        [               'nop', 'unreachable', 'if',                                                           'br',     'br_if',     'br_table',     'drop', 'select', 'memory_size', 'memory_grow', 'unary', 'binary', 'load', 'store', 'local', 'global', 'call',                                                             'const', 'begin', 'return'],
+        # ❌❌❌❌❌❌❌❌  ❌❌   ❌❌❌❌❌❌❌    ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅   ✅✅✅✅    ✅✅✅        ✅✅✅✅✅       ✅✅✅   ✅✅✅✅    ✅✅✅✅✅✅✅    ✅✅✅✅✅✅     ✅✅     ✅✅✅✅   ✅✅✅    ✅✅✅    ✅✅✅    ✅✅✅✅   ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅  ✅✅✅✅   ✅✅✅   # Note: begin is covered in many _pre traps
+        [               'nop', 'unreachable', 'if',                                                           'br',     'br_if',     'br_table',     'drop', 'select', 'memory_size', 'memory_grow', 'unary', 'binary', 'load', 'store', 'local', 'global', 'call',                                                             'const', 'return', 'begin', 'end'],
         ['generic-apply',                     'if-then', 'if-then-post', 'if-then-else', 'if-then-else-post', 'branch', 'branch-if', 'branch-table', 'drop', 'select', 'memory-size', 'memory-grow', 'unary', 'binary', 'load', 'store', 'local', 'global', 'call-pre', 'call-post', 'call-indirect-pre', 'call-indirect-post', 'const', 'return', 'block-pre', 'block-post', 'loop-pre', 'loop-post'],
     ],
     [
         'forward',
-        # ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅   ✅✅✅✅    ✅✅✅        ✅✅✅✅✅       ✅✅✅   ✅✅✅✅    ✅✅✅✅✅✅✅    ✅✅✅✅✅✅     ✅✅     ✅✅✅✅   ✅✅✅    ✅✅✅    ✅✅✅    ✅✅✅✅   ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅  ✅✅✅✅   ✅✅✅
-        ['if',                                                           'br',     'br_if',     'br_table',     'drop', 'select', 'memory_size', 'memory_grow', 'unary', 'binary', 'load', 'store', 'local', 'global', 'call',                                                             'const', 'return', 'begin'], # Note: begin is covered in many _pre traps
+        # ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅   ✅✅✅✅    ✅✅✅        ✅✅✅✅✅       ✅✅✅   ✅✅✅✅    ✅✅✅✅✅✅✅    ✅✅✅✅✅✅     ✅✅     ✅✅✅✅   ✅✅✅    ✅✅✅    ✅✅✅    ✅✅✅✅   ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅  ✅✅✅✅   ✅✅✅   # Note: begin is covered in many _pre traps
+        ['if',                                                           'br',     'br_if',     'br_table',     'drop', 'select', 'memory_size', 'memory_grow', 'unary', 'binary', 'load', 'store', 'local', 'global', 'call',                                                             'const', 'return', 'begin', 'end'],
         ['if-then', 'if-then-post', 'if-then-else', 'if-then-else-post', 'branch', 'branch-if', 'branch-table', 'drop', 'select', 'memory-size', 'memory-grow', 'unary', 'binary', 'load', 'store', 'local', 'global', 'call-pre', 'call-post', 'call-indirect-pre', 'call-indirect-post', 'const', 'return', 'block-pre', 'loop-pre', 'block-post', 'loop-post'],
     ],
 ]
