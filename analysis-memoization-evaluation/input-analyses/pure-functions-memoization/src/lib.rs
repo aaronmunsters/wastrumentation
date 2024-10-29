@@ -1,7 +1,6 @@
 extern crate wastrumentation_rs_stdlib;
 
 use lazy_static::lazy_static;
-use ordered_float::OrderedFloat;
 use std::collections::HashMap;
 use std::sync::atomic::AtomicUsize;
 use std::sync::Mutex;
@@ -9,7 +8,7 @@ use wastrumentation_rs_stdlib::{advice, MutDynArgs, MutDynResults, WasmFunction,
 
 // Global cache structure using a Mutex and AtomicUsize for thread safety
 lazy_static! {
-    static ref CACHE: Mutex<HashMap<CacheKey, Vec<WasmValueEq>>> = Mutex::new(HashMap::new());
+    static ref CACHE: Mutex<HashMap<CacheKey, Vec<WasmValue>>> = Mutex::new(HashMap::new());
     static ref CACHE_SIZE: AtomicUsize = AtomicUsize::new(0);
 }
 
@@ -25,41 +24,23 @@ pub extern "C" fn CACHE_HIT_REPORT() -> i32 {
     unsafe { CACHE_HITS }
 }
 
+type BitPattern = [u8; 8];
+fn to_bit_pattern(value: WasmValue) -> BitPattern {
+    let mut pattern = [0; 8];
+    match value {
+        WasmValue::I32(v) => pattern[..4].copy_from_slice(&v.to_le_bytes()),
+        WasmValue::F32(v) => pattern[..4].copy_from_slice(&v.to_le_bytes()),
+        WasmValue::I64(v) => pattern[..].copy_from_slice(&v.to_le_bytes()),
+        WasmValue::F64(v) => pattern[..].copy_from_slice(&v.to_le_bytes()),
+    }
+    pattern
+}
+
 // Define a CacheKey structure to uniquely identify cached function calls
 #[derive(Eq, PartialEq, Hash)]
 struct CacheKey {
     instr_f_idx: i32,
-    args: Vec<WasmValueEq>,
-}
-
-#[derive(Eq, PartialEq, Hash, Clone)]
-enum WasmValueEq {
-    I32(i32),
-    F32(OrderedFloat<f32>),
-    I64(i64),
-    F64(OrderedFloat<f64>),
-}
-
-impl Into<WasmValueEq> for WasmValue {
-    fn into(self) -> WasmValueEq {
-        match self {
-            WasmValue::I32(v) => WasmValueEq::I32(v),
-            WasmValue::F32(v) => WasmValueEq::F32(v.into()),
-            WasmValue::I64(v) => WasmValueEq::I64(v),
-            WasmValue::F64(v) => WasmValueEq::F64(v.into()),
-        }
-    }
-}
-
-impl Into<WasmValue> for &WasmValueEq {
-    fn into(self) -> WasmValue {
-        match self {
-            WasmValueEq::I32(v) => WasmValue::I32(*v),
-            WasmValueEq::F32(OrderedFloat(v)) => WasmValue::F32(*v),
-            WasmValueEq::I64(v) => WasmValue::I64(*v),
-            WasmValueEq::F64(OrderedFloat(v)) => WasmValue::F64(*v),
-        }
-    }
+    args: Vec<BitPattern>,
 }
 
 fn cache_hit(key: &CacheKey) -> bool {
@@ -67,40 +48,26 @@ fn cache_hit(key: &CacheKey) -> bool {
 }
 
 fn cache_retrieve(key: &CacheKey, results: &mut MutDynResults) {
-    if let Some(cached_results) = CACHE.lock().unwrap().get(&key) {
-        for (index, wasm_value) in cached_results.iter().enumerate() {
-            results.set_res(i32::try_from(index).unwrap(), wasm_value.into());
-        }
-    } else {
-        unreachable!()
-    }
+    let cache = CACHE.lock().unwrap();
+    let cached_results = cache.get(&key).unwrap();
+    cached_results
+        .into_iter()
+        .enumerate()
+        .for_each(|(index, wasm_value)| {
+            results.set_res(i32::try_from(index).unwrap(), wasm_value.to_owned())
+        });
 }
 
 fn cache_insert(key: CacheKey, results: &MutDynResults) {
-    let mut cached_results: Vec<WasmValueEq> =
-        Vec::with_capacity(usize::try_from(results.resc).unwrap());
-
-    for index in 0..results.resc {
-        cached_results.push(results.get_res(index).into())
-    }
-
-    if cached_results.len() != usize::try_from(results.resc).unwrap() {
-        unreachable!()
-    }
-
+    let cached_results: Vec<WasmValue> = results.ress_iter().collect();
+    assert_eq!(cached_results.len(), usize::try_from(results.resc).unwrap());
     CACHE.lock().unwrap().insert(key, cached_results);
 }
 
 advice! { apply (func: WasmFunction, args: MutDynArgs, results: MutDynResults) {
-        let mut wasm_value_vec: Vec<WasmValueEq> = Vec::with_capacity(usize::try_from(args.argc).unwrap());
-
-        for index in 0..args.argc {
-            wasm_value_vec.push(args.get_arg(index).into())
-        }
-
         let key = CacheKey {
             instr_f_idx: func.instr_f_idx,
-            args: wasm_value_vec,
+            args: args.args_iter().map(to_bit_pattern).collect(),
         };
 
         if cache_hit(&key) {
