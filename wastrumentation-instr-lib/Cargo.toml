@@ -19,4 +19,6 @@ rayon = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 wat = { workspace = true }
-wasmtime-wasi = "28.0"
+wasmtime-wasi = "25.0"
+wastrumentation-static-analysis = { path = "../wastrumentation-static-analysis" }
+regex = "1.11.1"
