@@ -34,3 +34,4 @@ bench_suite_benchmarks_path_wastrumentation = os.path.join(bench_suite_path, 'be
 timeout = 10 # seconds
 EXIT_STATUS_TIMEOUT = 124
 minimum_major_node_version = 22
+minimum_major_wasm_merge_version = 119
