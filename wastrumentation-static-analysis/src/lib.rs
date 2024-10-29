@@ -23,6 +23,11 @@ pub struct AnalysisTargetFunction {
     purity: Purity,
 }
 
+pub fn immutable_functions_from_binary(module: &[u8]) -> Option<HashSet<u32>> {
+    let (module, _, _) = wasabi_wasm::Module::from_bytes(module).ok()?;
+    Some(immutable_functions(&module))
+}
+
 pub fn immutable_functions(module: &Module) -> HashSet<u32> {
     let mut high_level_functions: Vec<AnalysisTargetFunction> = module
         .functions()
@@ -111,12 +116,8 @@ pub fn immutable_functions(module: &Module) -> HashSet<u32> {
 // - Do not access tables/memory &&
 // - Does not perform call indirect (here's potential room for improvement)
 fn is_pure(
-<<<<<<< HEAD
-    high_level_body: &Vec<TypedHighLevelInstr>,
-=======
     index: Idx<Function>,
-    high_level_body: &Vec<Instr>,
->>>>>>> 78015e7 (Add static analysis CLI support & improve static analysis)
+    high_level_body: &Vec<TypedHighLevelInstr>,
     analysis_target_functions: &Vec<AnalysisTargetFunction>,
 ) -> PurityEstimate {
     for instr in high_level_body {

@@ -91,9 +91,7 @@ fn cache_insert(key: CacheKey, results: &MutDynResults) {
     CACHE.lock().unwrap().insert(key, cached_results);
 }
 
-advice! {
-    advice apply
-    (func: WasmFunction, args: MutDynArgs, results: MutDynResults) {
+advice! { apply (func: WasmFunction, args: MutDynArgs, results: MutDynResults) {
         let mut wasm_value_vec: Vec<WasmValueEq> = Vec::with_capacity(usize::try_from(args.argc).unwrap());
 
         for index in 0..args.argc {

@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 wastrumentation = { path = "../wastrumentation" }
 serde_json = { workspace = true }
-anyhow = { workspace = true }
+anyhow = "1.0"
 
 # TODO: move these to workspace
 wasabi_wasm = { git = "https://github.com/aaronmunsters/wasabi.git", branch = "candidate" }
