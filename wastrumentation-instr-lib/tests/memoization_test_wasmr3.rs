@@ -41,6 +41,11 @@ const BENCHMARK_ITERATIONS: i32 = 2; // CHANGE to a higher number when executing
 Execution on release:
     cargo test --release --package wastrumentation-instr-lib --test memoization_test_wasmr3 -- test_basic --exact --show-output
 */
+
+// TODO: change this test that it either:
+// * downloads the input programs if not found (-> internet connection dependent tests; flakey)
+// * includes the input programs in the repo (-> grows the repo size with +50mb)
+#[ignore]
 #[test]
 fn test_basic() {
     for name in [
@@ -95,7 +100,7 @@ impl MemoizationBenches {
             ..
         } = self;
 
-        if runtime_target_functions.len() == 0 {
+        if runtime_target_functions.is_empty() {
             println!("This input program does not apply; not reporting further details.",);
             return;
         }
@@ -141,7 +146,7 @@ fn report_memoization_benches_for(
     let timestamp_before_uninstrumented_call = Instant::now();
 
     let engine = Engine::default();
-    let module = Module::from_binary(&engine, &input_program).unwrap();
+    let module = Module::from_binary(&engine, input_program).unwrap();
 
     // Invoke few times
     for _ in 0..BENCHMARK_ITERATIONS {
@@ -161,7 +166,7 @@ fn report_memoization_benches_for(
     ///////////////////////////
     // 3. FIND PURE FUNCTONS //
     ///////////////////////////
-    let immutable_set = immutable_functions_from_binary(&input_program).unwrap();
+    let immutable_set = immutable_functions_from_binary(input_program).unwrap();
 
     ///////////////////////////
     // 4. PROFILE PURE FUNCS //
@@ -199,18 +204,18 @@ fn report_memoization_benches_for(
         (
             map_increment_target,
             Box::new(|capture: &regex::Captures| {
-                let space_group = &capture[1];
-                let map_increment_code = immutable_set
+                immutable_set
                     .iter()
                     .enumerate()
                     .map(|(map_index, function_index)| {
                         format!(
-                        "{space_group}{function_index} => map[{map_index}] = map[{map_index}] + 1,"
+                        "{space_group}{function_index} => map[{map_index}] = map[{map_index}] + 1,",
+                        space_group = &capture[1],
                     )
                     })
                     .collect::<Vec<String>>()
-                    .join("\n");
-                format!("{map_increment_code}")
+                    .join("\n")
+                    .to_string()
             }),
         ),
     ]
@@ -258,13 +263,13 @@ fn report_memoization_benches_for(
     let analysis = RustAnalysisSpec { source, hooks }.into();
 
     let configuration = Configuration {
-        target_indices: Some(immutable_set.iter().map(|v| *v).collect()),
+        target_indices: Some(immutable_set.iter().copied().collect()),
         primary_selection: Some(PrimaryTarget::Analysis),
     };
 
     let wastrumenter = Wastrumenter::new(instrumentation_compiler.into(), analysis_compiler.into());
     let wastrumented = wastrumenter
-        .wastrument(&input_program, analysis, &configuration)
+        .wastrument(input_program, analysis, &configuration)
         .expect("Wastrumentation should succeed");
 
     // Perform profiling instrumentation

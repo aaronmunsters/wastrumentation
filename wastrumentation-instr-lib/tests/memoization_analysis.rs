@@ -82,7 +82,7 @@ fn report_memoization_benches_for(
 
     // Execute & check instrumentation
     let mut store = Store::<()>::default();
-    let module = Module::from_binary(store.engine(), &input_program).unwrap();
+    let module = Module::from_binary(store.engine(), input_program).unwrap();
     let instance = Instance::new(&mut store, &module, &[]).unwrap();
 
     // Fetch `fib` export
@@ -110,7 +110,7 @@ fn report_memoization_benches_for(
     ///////////////////////////
     // 3. FIND PURE FUNCTONS //
     ///////////////////////////
-    let immutable_set = immutable_functions_from_binary(&input_program).unwrap();
+    let immutable_set = immutable_functions_from_binary(input_program).unwrap();
 
     ///////////////////////////
     // 4. PROFILE PURE FUNCS //
@@ -148,18 +148,18 @@ fn report_memoization_benches_for(
         (
             map_increment_target,
             Box::new(|capture: &regex::Captures| {
-                let space_group = &capture[1];
-                let map_increment_code = immutable_set
+                immutable_set
                     .iter()
                     .enumerate()
                     .map(|(map_index, function_index)| {
                         format!(
-                        "{space_group}{function_index} => map[{map_index}] = map[{map_index}] + 1,"
+                        "{space_group}{function_index} => map[{map_index}] = map[{map_index}] + 1,",
+                        space_group = &capture[1],
                     )
                     })
                     .collect::<Vec<String>>()
-                    .join("\n");
-                format!("{map_increment_code}")
+                    .join("\n")
+                    .to_string()
             }),
         ),
     ]
@@ -206,13 +206,13 @@ fn report_memoization_benches_for(
     let analysis = RustAnalysisSpec { source, hooks }.into();
 
     let configuration = Configuration {
-        target_indices: Some(immutable_set.iter().map(|v| *v).collect()),
+        target_indices: Some(immutable_set.iter().copied().collect()),
         primary_selection: Some(PrimaryTarget::Analysis),
     };
 
     let wastrumenter = Wastrumenter::new(instrumentation_compiler.into(), analysis_compiler.into());
     let wastrumented = wastrumenter
-        .wastrument(&input_program, analysis, &configuration)
+        .wastrument(input_program, analysis, &configuration)
         .expect("Wastrumentation should succeed");
 
     // Perform profiling instrumentation
