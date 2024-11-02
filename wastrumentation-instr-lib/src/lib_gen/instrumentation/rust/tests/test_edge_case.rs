@@ -64,7 +64,10 @@ fn assert_lib_with_use_case(instrumentation_wasm_library: Vec<u8>) {
     // [_123_, _456_] [_0_, _3_]
     let (types_buff_ptr_1,) = wasm_call! {store, allocate_types_ret_i32_i64_arg, ()};
     // [_123_, _456_]
-    assert_eq! {wasm_call!(store, free_types_ret_i32_i64_arg, (types_buff_ptr_1,)), ()};
+    assert!(matches!(
+        wasm_call!(store, free_types_ret_i32_i64_arg, (types_buff_ptr_1,)),
+        ()
+    ));
 
     let (values_buff_ptr_2,) = wasm_call!(store, allocate_ret_i32_i64_arg, ());
     // [_123_, _456_] [_i32_, _i64_]
