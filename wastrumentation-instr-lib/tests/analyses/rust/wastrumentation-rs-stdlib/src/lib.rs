@@ -466,6 +466,22 @@ impl RuntimeValues {
     pub fn ress_iter(&self) -> RuntimeValuesIterator<'_> {
         RuntimeValuesIterator::new(self, RuntimeValuesIteratorTarget::Results)
     }
+
+    pub fn update_each_arg(&mut self, f: fn(i32, WasmValue) -> WasmValue) {
+        for index in 0..self.argc {
+            let value = self.get_arg(index);
+            let updated_value = f(index, value);
+            self.set_arg(index, updated_value);
+        }
+    }
+
+    pub fn update_each_res(&mut self, f: fn(i32, WasmValue) -> WasmValue) {
+        for index in 0..self.resc {
+            let value = self.get_res(index);
+            let updated_value = f(index, value);
+            self.set_res(index, updated_value);
+        }
+    }
 }
 
 pub struct RuntimeValuesIterator<'a> {
