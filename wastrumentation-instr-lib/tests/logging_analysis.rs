@@ -15,6 +15,9 @@ use wasmtime::{Engine, Linker, Module, Store};
 use wasmtime_wasi::preview1::{self, WasiP1Ctx};
 use wasmtime_wasi::WasiCtxBuilder;
 
+// Bring macros in scope
+mod wasmtime_macros;
+
 const MANIFEST_SOURCE: &str = r#"
 package.name = "demo"
 lib.crate-type = ["cdylib"]
@@ -250,24 +253,15 @@ fn test_analysis() {
 
     linker.module(&mut store, "main", &module).unwrap();
 
-    // Get function
-    let f_function = &linker
-        .get(&mut store, "main", "f")
-        .unwrap()
-        .into_func()
-        .unwrap()
-        .typed::<i32, i32>(&store)
-        .unwrap();
+    // Get & invoke function
+    declare_fns_from_linker! {linker, store, "main", f [i32] [i32]}
 
-    // Invoke
-    let result_from_123 = f_function.call(&mut store, 123).unwrap();
-    assert_eq!(result_from_123, 1555009);
+    assert_eq!(wasm_call!(store, f, 123), 1555009);
 
     assert_eq!(
         EXPECTED_ANALYSIS_STDOUT,
         String::from_utf8_lossy(&stdout.contents())
     );
 
-    let result_from_123 = f_function.call(&mut store, 0).unwrap();
-    assert_eq!(result_from_123, 12345);
+    assert_eq!(wasm_call!(store, f, 0), 12345);
 }
