@@ -35,6 +35,10 @@ generate_wrapper!(StoreOffset wrapping i64 accessed-using .value());
 generate_wrapper!(LoadIndex   wrapping i32 accessed-using .value());
 generate_wrapper!(MemoryIndex wrapping i64 accessed-using .value());
 
+pub fn base_memory_size(index: i32) -> i32 {
+    unsafe { crate::instrumented_memory_size(index) }
+}
+
 impl MemoryIndex {
     pub fn grow(&self, amount: WasmValue) -> WasmValue {
         let amount = amount.as_i32();

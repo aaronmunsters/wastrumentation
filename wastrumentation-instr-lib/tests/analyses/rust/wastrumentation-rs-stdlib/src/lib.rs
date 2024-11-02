@@ -14,8 +14,8 @@ pub use binary::BinaryOperator;
 
 mod memory;
 pub use memory::{
-    Deserialize, LoadIndex, LoadOffset, LoadOperation, MemoryIndex, StoreIndex, StoreOffset,
-    StoreOperation,
+    base_memory_size, Deserialize, LoadIndex, LoadOffset, LoadOperation, MemoryIndex, StoreIndex,
+    StoreOffset, StoreOperation,
 };
 
 extern crate alloc;
@@ -63,6 +63,7 @@ extern "C" {
     fn instrumented_base_store_i64_32(ptr: i32, value: i64, offset: i32);
     // Base memory grow
     fn instrumented_memory_grow(amount: i32, idx: i32) -> i32;
+    fn instrumented_memory_size(idx: i32) -> i32;
 }
 
 #[link(wasm_import_module = "wastrumentation_stack")]

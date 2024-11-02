@@ -289,6 +289,7 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
     memory::inject_memory_loads(&mut module);
     memory::inject_memory_stores(&mut module);
     memory::inject_memory_grow(&mut module);
+    memory::inject_memory_size(&mut module);
 
     Ok(Instrumented {
         module: module

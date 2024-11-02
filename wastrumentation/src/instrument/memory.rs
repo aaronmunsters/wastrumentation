@@ -515,3 +515,31 @@ pub fn inject_memory_grow(module: &mut Module) {
         .export
         .push("instrumented_memory_grow".to_string());
 }
+
+pub fn inject_memory_size(module: &mut Module) {
+    use wasabi_wasm::Instr::{Const, End, MemorySize};
+    assert!(module.memories.len() <= 1);
+
+    let function_type = FunctionType::new(&[ValType::I32], &[ValType::I32]);
+    let body = if module.memories.is_empty() {
+        vec![
+            // []
+            Const(Val::I32(0)),
+            // [value]
+            End,
+        ]
+    } else {
+        vec![
+            // []
+            MemorySize(0_u32.into()),
+            // [size_in_pages:i32]
+            End,
+        ]
+    };
+
+    let memory_function_idx: Idx<Function> = module.add_function(function_type, vec![], body);
+    module
+        .function_mut(memory_function_idx)
+        .export
+        .push("instrumented_memory_size".to_string());
+}
