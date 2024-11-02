@@ -413,7 +413,7 @@ const PURE_FUNCTIONS_PROFILER_PROGRAM: &str = r#"
 ///          that  comes before  this  dynamic
 ///          analysis execution.
 
-extern crate wastrumentation_rs_stdlib;
+use core::ptr::addr_of_mut;
 use wastrumentation_rs_stdlib::*;
 
 const MAP_SIZE: usize = 0; // <TO_CODE_GEN {MAP_SIZE}>
@@ -425,7 +425,7 @@ pub extern "C" fn get_calls_for(index: i32) -> i32 {
 }
 
 advice! { apply (func: WasmFunction, _args: MutDynArgs, _results: MutDynResults) {
-        let map = unsafe { MAP.as_mut() };
+        let map = unsafe { addr_of_mut!(MAP).as_mut().unwrap() };
 
         match func.instr_f_idx {
             // <TO_CODE_GEN {MAP_INCREMENT}>
