@@ -18,6 +18,9 @@ use wasmtime::{Config, Engine, Linker, Module, Store};
 use wasmtime_wasi::preview1::{self, WasiP1Ctx};
 use wasmtime_wasi::WasiCtxBuilder;
 
+// Bring macro's in scope
+mod wasmtime_macros;
+
 fn compile_input_program() -> Vec<u8> {
     Compiler::setup_compiler()
         .unwrap()
@@ -121,17 +124,9 @@ fn test_analysis() {
 
     linker.module(&mut store, "main", &module).unwrap();
 
-    // Get function
-    let entry_point_function = &linker
-        .get(&mut store, "main", "f")
-        .unwrap()
-        .into_func()
-        .unwrap()
-        .typed::<i32, i32>(&store)
-        .unwrap();
-
-    // Invoke
-    assert_eq!(entry_point_function.call(&mut store, 10).unwrap(), 13689);
+    // Fetch & Invoke
+    declare_fns_from_linker! { linker, store, "main", f [i32] [i32]};
+    assert_eq!(wasm_call! {store, f, 10}, 13689);
 }
 
 const INPUT_PROGRAM_SOURCE: &str = r#"
