@@ -2,6 +2,7 @@ use std::{collections::HashSet, marker::PhantomData, ops::Deref, vec};
 
 use crate::lib_compile::rust::options::{ManifestSource, RustSource, RustSourceCode};
 use crate::lib_compile::rust::Rust;
+use std::iter;
 use rust_to_wasm_compiler::WasiSupport;
 use wastrumentation::{
     compiler::{LibGeneratable, Library},
@@ -118,11 +119,13 @@ impl RustSignature<'_> {
         if rets_count + args_count == 0 {
             "0".to_string()
         } else {
-            Self::rust_generics(rets_count, args_count)
-                .iter()
-                .map(|ty| format!("size_of::<{ty}>()"))
-                .collect::<Vec<String>>()
-                .join(" + ")
+            let tys = Self::rust_generics(rets_count, args_count);
+            // types shifted with an offset of 1
+            let tys1 = &tys.as_slice()[1..];
+            tys.iter()
+                .zip(tys1.iter().chain(iter::once(&"()".to_string())))
+                .fold("0".to_string(), |state, (ty, ty1)|
+                    format!("{state} + size_of::<{ty}>() + roundup::<{ty1}>(size_of::<{ty}>() + {state})"))
         }
     }
 }
@@ -131,19 +134,15 @@ fn generics_offset(position: usize, rets_count: usize, args_offset: usize) -> St
     if position == 0 {
         return "0".into();
     };
-    let ret_offsets: Vec<String> = (0..rets_count)
-        .map(|n| format!("size_of::<R{n}>()"))
-        .collect();
-    let arg_offsets: Vec<String> = (0..args_offset)
-        .map(|n| format!("size_of::<T{n}>()"))
-        .collect();
 
-    ret_offsets
-        .into_iter()
-        .chain(arg_offsets)
+    let ret_names  =  (0..rets_count).map(|n| format!("R{n}")).collect::<Vec<String>>();
+    let ret_names1 = &ret_names.as_slice()[1..];
+    let arg_names = (0..args_offset).map(|n| format!("T{n}")).collect::<Vec<String>>();
+
+    ret_names.iter().chain(arg_names.iter())
+        .zip(ret_names1.iter().chain(arg_names.iter()).chain(iter::once(&"()".to_string())))
         .take(position)
-        .collect::<Vec<String>>()
-        .join(" + ")
+        .fold("0".to_string(), |state, (ty, ty1)| format!("{state} + size_of::<{ty}>() + roundup::<{ty1}>(size_of::<{ty}>() + {state})"))
 }
 
 fn arg_offset(arg_pos: usize, rets_count: usize, args_count: usize) -> String {
@@ -585,6 +584,12 @@ fn wastrumentation_memory_store<T>(stack_ptr: usize, value: T, offset: usize) {
     unsafe {
         *(ptr.offset(offset as isize) as *mut T) = value;
     }
+}
+
+#[inline(always)]
+fn roundup<T2>(siz: usize) -> usize {
+    if siz % align_of::<T2>() == 0 { return 0; }
+    align_of::<T2>() - (siz % align_of::<T2>())
 }
 
 #[inline(always)]
