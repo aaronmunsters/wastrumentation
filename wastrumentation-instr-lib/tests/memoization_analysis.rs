@@ -1,22 +1,20 @@
-// Rust STD
 use std::time::Instant;
 use std::{path::absolute, time::Duration};
 
-use regex::Regex;
+use indoc::indoc;
 use rust_to_wasm_compiler::WasiSupport;
+
 // Wastrumentation imports
 use wastrumentation::{compiler::Compiles, Configuration, PrimaryTarget, Wastrumenter};
 use wastrumentation_instr_lib::lib_compile::rust::{
     compiler::Compiler,
     options::{CompilerOptions, ManifestSource, RustSource, RustSourceCode},
 };
-use wastrumentation_instr_lib::lib_gen::analysis::rust::Hook;
-use wastrumentation_instr_lib::lib_gen::analysis::rust::RustAnalysisSpec;
+use wastrumentation_instr_lib::lib_gen::analysis::rust::{Hook, RustAnalysisSpec};
+use wastrumentation_static_analysis::immutable_functions_from_binary;
 
 // Wasmtime imports
 use wasmtime::{Instance, Module, Store};
-
-use wastrumentation_static_analysis::immutable_functions_from_binary;
 
 fn compile_input_program(manifest: impl Into<String>, source: impl Into<String>) -> Vec<u8> {
     Compiler::setup_compiler()
@@ -117,60 +115,43 @@ fn report_memoization_benches_for(
     ///////////////////////////
     let map_size = immutable_set.len();
 
-    let map_target =
-        Regex::new(r"(const MAP_SIZE: usize = )(\d+)(; \/\/ <TO_CODE_GEN \{MAP_SIZE\}>)").unwrap();
-    //                   <-----------G1----------><-G2-><---------------G3--------------->
+    let pure_functions_profiler_program = format!(
+        indoc! { r#"
+            #![no_std]
+            use core::ptr::addr_of_mut;
+            use wastrumentation_rs_stdlib::*;
 
-    //                                                 <-G1-->
-    let map_increment_target = Regex::new(r"((\s)*)\/\/ <TO_CODE_GEN \{MAP_INCREMENT\}>").unwrap();
+            const MAP_SIZE: usize = {map_size};
+            static mut MAP: &mut [i32] = &mut [0; MAP_SIZE]; // Maps [FunctionIndex -> CallCount]
 
-    assert!(
-        map_target.is_match(PURE_FUNCTIONS_PROFILER_PROGRAM),
-        "Could not find gen location to allocate static map: ${map_target}"
+            #[no_mangle]
+            pub extern "C" fn get_calls_for(index: i32) -> i32 {{
+                unsafe {{ MAP[index as usize] }}
+            }}
+
+            advice! {{ apply (func: WasmFunction, _args: MutDynArgs, _results: MutDynResults) {{
+                    let map = unsafe {{ addr_of_mut!(MAP).as_mut().unwrap() }};
+
+                    match func.instr_f_idx {{
+                        {map_increment_instructions}
+                        _ => (), // core::panic!(),
+                    }}
+
+                    func.apply();
+                }}
+            }}"#
+        },
+        map_size = map_size,
+        map_increment_instructions = immutable_set
+            .iter()
+            .enumerate()
+            .map(|(map_index, function_index)| {
+                format!("            {function_index} => map[{map_index}] = map[{map_index}] + 1,",)
+            })
+            .collect::<Vec<String>>()
+            .join("\n")
+            .to_string(),
     );
-    assert!(
-        map_increment_target.is_match(PURE_FUNCTIONS_PROFILER_PROGRAM),
-        "Could not find gen location to inject increment instructions: ${map_target}"
-    );
-
-    let pure_functions_profiler_program = ([
-        // Rewrite the allocation map into a concrete allocation
-        (
-            map_target,
-            Box::new(|capture: &regex::Captures| {
-                format!(
-                    "{map_size_assignment} {map_size};",
-                    map_size_assignment = &capture[1]
-                )
-            }),
-        ),
-        // Rewrite the function call with a map increment
-        (
-            map_increment_target,
-            Box::new(|capture: &regex::Captures| {
-                immutable_set
-                    .iter()
-                    .enumerate()
-                    .map(|(map_index, function_index)| {
-                        format!(
-                        "{space_group}{function_index} => map[{map_index}] = map[{map_index}] + 1,",
-                        space_group = &capture[1],
-                    )
-                    })
-                    .collect::<Vec<String>>()
-                    .join("\n")
-                    .to_string()
-            }),
-        ),
-    ]
-        as [(Regex, Box<dyn Fn(&regex::Captures) -> String>); 2])
-        .iter()
-        .fold(
-            String::from(PURE_FUNCTIONS_PROFILER_PROGRAM),
-            |analysis_source_code, (regex, replacer)| {
-                regex.replace_all(&analysis_source_code, replacer).into()
-            },
-        );
 
     // Perform profiling instrumentation
     let analysis_compiler = Compiler::setup_compiler().expect("Setup Rust compiler");
@@ -399,40 +380,5 @@ pub extern "C" fn compute_recursive(n: i32) -> i32 {
 
     let [_, _, _, _, l1, l2, l3, l4] = total.to_le_bytes();
     i32::from_le_bytes([l1, l2, l3, l4])
-}
-"#;
-
-const PURE_FUNCTIONS_PROFILER_PROGRAM: &str = r#"
-#![no_std]
-
-/// WARNING: This program is still a template.
-///          This  program  contains  template
-///          snippets  like  <TO_CODE_GEN {x}>
-///          that   will  be  filled  in  with
-///          results from the  static analysis
-///          that  comes before  this  dynamic
-///          analysis execution.
-
-use core::ptr::addr_of_mut;
-use wastrumentation_rs_stdlib::*;
-
-const MAP_SIZE: usize = 0; // <TO_CODE_GEN {MAP_SIZE}>
-static mut MAP: &mut [i32] = &mut [0; MAP_SIZE]; // Maps [FunctionIndex -> CallCount]
-
-#[no_mangle]
-pub extern "C" fn get_calls_for(index: i32) -> i32 {
-    unsafe { MAP[index as usize] }
-}
-
-advice! { apply (func: WasmFunction, _args: MutDynArgs, _results: MutDynResults) {
-        let map = unsafe { addr_of_mut!(MAP).as_mut().unwrap() };
-
-        match func.instr_f_idx {
-            // <TO_CODE_GEN {MAP_INCREMENT}>
-            _ => (), // core::panic!(),
-        }
-
-        func.apply();
-    }
 }
 "#;
