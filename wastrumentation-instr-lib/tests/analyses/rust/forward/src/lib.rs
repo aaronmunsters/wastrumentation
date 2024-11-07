@@ -11,7 +11,7 @@ advice! { apply (function : WasmFunction, args : MutDynArgs, ress : MutDynResult
     }
 }
 
-advice! { if_ (
+advice! { if_then_else (
         path_continuation: PathContinuation,
         if_then_else_input_c: IfThenElseInputCount,
         if_then_else_arity: IfThenElseArity,
@@ -24,7 +24,7 @@ advice! { if_ (
     }
 }
 
-advice! { if_post (
+advice! { if_then_else_post (
         location: Location,
     ) {
         let _ = location;
@@ -131,7 +131,7 @@ advice! { call_indirect post (
     }
 }
 
-advice! { unary generic (
+advice! { unary(
         operator: UnaryOperator,
         operand: WasmValue,
         location: Location,
@@ -141,7 +141,7 @@ advice! { unary generic (
     }
 }
 
-advice! { binary generic (
+advice! { binary(
         operator: BinaryOperator,
         l_operand: WasmValue,
         r_operand: WasmValue,
@@ -166,7 +166,7 @@ advice! { return_ (
     }
 }
 
-advice! { const_ generic (
+advice! { const_(
         value: WasmValue,
         location: Location,
     ) {
@@ -175,7 +175,7 @@ advice! { const_ generic (
     }
 }
 
-advice! { local generic (
+advice! { local(
         value: WasmValue,
         index: LocalIndex,
         local_op: LocalOp,
@@ -188,7 +188,7 @@ advice! { local generic (
     }
 }
 
-advice! { global generic (
+advice! { global(
         value: WasmValue,
         index: GlobalIndex,
         global_op: GlobalOp,
@@ -201,7 +201,7 @@ advice! { global generic (
     }
 }
 
-advice! { load generic (
+advice! { load(
         store_index: LoadIndex,
         offset: LoadOffset,
         operation: LoadOperation,
@@ -212,7 +212,7 @@ advice! { load generic (
     }
 }
 
-advice! { store generic (
+advice! { store(
         store_index: StoreIndex,
         value: WasmValue,
         offset: StoreOffset,

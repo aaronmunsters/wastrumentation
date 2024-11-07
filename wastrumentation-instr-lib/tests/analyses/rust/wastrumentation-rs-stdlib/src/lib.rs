@@ -741,7 +741,7 @@ macro_rules! advice {
             $body
         }
     };
-    (if_
+    (if_then_else
         (
             $path_continuation: ident: PathContinuation,
             $if_then_else_input_c: ident: IfThenElseInputCount,
@@ -749,7 +749,6 @@ macro_rules! advice {
             $location_ident: ident: Location $(,)?
         ) $body:block
     ) => {
-        // TODO: rename this macro to if_then_else
         #[no_mangle]
         pub extern "C"
         fn specialized_if_then_else_k (
@@ -791,7 +790,7 @@ macro_rules! advice {
             path_continuation
         }
     };
-    (if_post (
+    (if_then_else_post (
         $location_ident: ident: Location $(,)?
     ) $body:block) => {
         #[no_mangle]
@@ -884,7 +883,7 @@ macro_rules! advice {
     ///////////
     // UNARY //
     ///////////
-    (unary generic
+    (unary
         (
             $operator: ident: UnaryOperator,
             $operand: ident: WasmValue,
@@ -941,7 +940,7 @@ macro_rules! advice {
             let location = Location::new(funct_index, instr_index);
             let outcome = $generic_unary_trap(operator, operand, location);
             let WasmValue::$outcome_type_wasm_value(outcome) = outcome else {
-                panic!("Attempted to convert {outcome:?} to $outcome_type_wasm_value"); // TODO: stringify!
+                panic!(concat!("Attempted to convert {:?} to ", stringify!($outcome_type_wasm_value)), outcome);
             };
             outcome
         }
@@ -949,7 +948,7 @@ macro_rules! advice {
     ///////////
     // BINARY //
     ///////////
-    (binary generic
+    (binary
         (
             $operator: ident: BinaryOperator,
             $l: ident: WasmValue,
@@ -1000,7 +999,7 @@ macro_rules! advice {
             let location = Location::new(funct_index, instr_index);
             let outcome = $generic_binary_trap(operator, l_op, r_op, location);
             let WasmValue::$outcome_type_wasm_value(outcome) = outcome else {
-                panic!("Attempted to convert {outcome:?} to $outcome_type_wasm_value"); // TODO: stringify!
+                panic!(concat!("Attempted to convert {:?} to ", stringify!($outcome_type_wasm_value)), outcome);
             };
             outcome
         }
@@ -1029,7 +1028,7 @@ macro_rules! advice {
             $body
         }
     };
-    (const_ generic
+    (const_
         (
             $value: ident: WasmValue,
             $location_ident: ident: Location $(,)?
@@ -1067,12 +1066,12 @@ macro_rules! advice {
             let location = Location::new(funct_index, instr_index);
             let outcome = $generic_const_trap(const_, location);
             let WasmValue::$const_type_wasm_value(outcome) = outcome else {
-                panic!("Attempted to convert {outcome:?} to $const_type_wasm_value"); // TODO: stringify!
+                panic!(concat!("Attempted to convert {:?} to ", stringify!($const_type_wasm_value)), outcome);
             };
             outcome
         }
     };
-    (local generic (
+    (local (
         $value: ident: WasmValue,
         $index: ident: LocalIndex,
         $local_op: ident: LocalOp,
@@ -1126,12 +1125,12 @@ macro_rules! advice {
             let location = Location::new(funct_index, instr_index);
             let outcome = $generic_local_trap(operand, index, local_op, location);
             let WasmValue::$value_type_wasm_value(outcome) = outcome else {
-                panic!("Attempted to convert {outcome:?} to $value_type_wasm_value"); // TODO: stringify!
+                panic!(concat!("Attempted to convert {:?} to ", stringify!($value_type_wasm_value)), outcome);
             };
             outcome
         }
     };
-    (global generic (
+    (global (
         $value: ident: WasmValue,
         $index: ident: GlobalIndex,
         $global_op: ident: GlobalOp,
@@ -1180,13 +1179,13 @@ macro_rules! advice {
             let location = Location::new(funct_index, instr_index);
             let outcome = $generic_global_trap(operand, index, global_op, location);
             let WasmValue::$value_type_wasm_value(outcome) = outcome else {
-                panic!("Attempted to convert {outcome:?} to $value_type_wasm_value"); // TODO: stringify!
+                panic!(concat!("Attempted to convert {:?} to ", stringify!($value_type_wasm_value)), outcome);
             };
             outcome
         }
     };
     // LOAD
-    (load generic (
+    (load (
         $load_index: ident: LoadIndex,
         $offset: ident: LoadOffset,
         $operation: ident: LoadOperation,
@@ -1231,13 +1230,13 @@ macro_rules! advice {
             let location = Location::new(funct_index, instr_index);
             let outcome = $generic_load_trap(load_index, offset, operation, location);
             let WasmValue::$load_type_wasm_value(outcome) = outcome else {
-                panic!("Attempted to convert {outcome:?} to $value_type_wasm_value"); // TODO: stringify!
+                panic!(concat!("Attempted to convert {:?} to ", stringify!($value_type_wasm_value)), outcome);
             };
             outcome
         }
     };
     // STORE
-    (store generic (
+    (store (
         $store_index: ident: StoreIndex,
         $value: ident: WasmValue,
         $offset: ident: StoreOffset,
@@ -1392,5 +1391,11 @@ macro_rules! advice {
             let $location_ident = Location::new(funct_index, instr_index);
             $body
         }
+    };
+    // General pattern to allow multiple advices in a single `advice! {...}`
+    ($(
+        $($advice_keyword:ident)+ ($($formal_arg:ident : $formal_type:ident),* $(,)?) $body:block
+    )+) => {
+        $(advice! { $($advice_keyword)+ ($($formal_arg:$formal_type),*) $body })+
     };
 }

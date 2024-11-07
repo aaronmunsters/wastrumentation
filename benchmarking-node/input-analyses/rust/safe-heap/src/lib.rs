@@ -43,10 +43,10 @@ fn safe_store(i: StoreIndex, v: WasmValue, o: StoreOffset, op: StoreOperation) -
 }
 
 // Target program events: loads & stores
-advice! { load generic (i: LoadIndex, o: LoadOffset, op: LoadOperation, _l: Location) {
-/* */ safe_load(i, o, op)  } }
-advice! { store generic (i: StoreIndex, v: WasmValue, o: StoreOffset, op: StoreOperation, _l: Location) {
-/* */ safe_store(i, v, o, op); } }
+advice! {
+    load (i: LoadIndex, o: LoadOffset, op: LoadOperation, _l: Location) { safe_load(i, o, op)  }
+    store (i: StoreIndex, v: WasmValue, o: StoreOffset, op: StoreOperation, _l: Location) { safe_store(i, v, o, op); }
+}
 
 // In `SafeHeap.cpp` the inspiration source for `fn bounds_check` is `makeBoundsCheck`
 // https://github.com/WebAssembly/binaryen/blob/39bf87eb39543ca14198a16533f262a147816793/src/passes/SafeHeap.cpp#L396
