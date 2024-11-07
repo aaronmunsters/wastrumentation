@@ -7,7 +7,7 @@ THIS IS A TEMPLATE; THE FOLLOWING TEMPS WILL BE REPLACED BY A PRE-PROCESSOR:
 
 const { performance, PerformanceObserver } = require("node:perf_hooks");
 const readFileSync = require("fs").readFileSync;
-const input_program = readFileSync("./INPUT_NAME.wasm");
+const input_program = readFileSync("INPUT_PROGRAM_PATH");
 
 const observer = new PerformanceObserver((performance_observer_entry_list) => {
     for (const performance_entry of performance_observer_entry_list.getEntries()) {

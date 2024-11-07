@@ -3,90 +3,81 @@ import os
 import re
 import shutil
 import subprocess
+import logging
 
-from config import bench_suite_benchmarks_path, bench_suite_benchmarks_path_wasabi
-from config import NODE_BENCHMARK_RUNS
+from config import bench_suite_benchmarks_path_wasabi
 
 def setup_benchmarks_wasabi(
     node_wasm_wrap_path: str,
-    input_programs: list[str],
+    benchmark: str,
+    benchmark_path: str,
     analysis_name: str,
     analysis_path: str,
     analysis_hooks: list[str],
+    intra_vm_runs: int,
 ):
+    # Create bench suite dir if not exists
     os.makedirs(bench_suite_benchmarks_path_wasabi, exist_ok=True)
-    for input_program in input_programs:
-        # Input path of [benchmark directory / program]
-        benchmark_directory = os.path.join(bench_suite_benchmarks_path, input_program)
-        benchmark_path = os.path.join(benchmark_directory, f'{input_program}.wasm')
-        # Output path of [benchmark directory / program]
-        benchmark_directory_wasabi_instrumented = os.path.join(bench_suite_benchmarks_path_wasabi, analysis_name, input_program)
-        os.makedirs(benchmark_directory_wasabi_instrumented, exist_ok=True)
-        benchmark_path_wasabi_instrumented = os.path.join(benchmark_directory_wasabi_instrumented, f'{input_program}.wasm')
 
-        if os.path.exists(benchmark_path_wasabi_instrumented):
-            print(f'[WASABI INSTRUMENTATION PHASE] instrumented already exists; skipping: {analysis_name}/{input_program}.wasm')
-            continue
+    # Output path of [benchmark directory / program]
+    benchmark_directory_wasabi_instrumented = os.path.join(bench_suite_benchmarks_path_wasabi, analysis_name, benchmark)
+    os.makedirs(benchmark_directory_wasabi_instrumented, exist_ok=True)
+    benchmark_path_wasabi_instrumented = os.path.join(benchmark_directory_wasabi_instrumented, f'{benchmark}.wasm')
 
-        # copy over input.wasm
-        shutil.copy(benchmark_path, benchmark_path_wasabi_instrumented)
+    # Setup default wrapper [uninstrumented]
+    wrapper_output_path = os.path.join(benchmark_directory_wasabi_instrumented, f'{benchmark}.cjs')
+    shutil.copy(node_wasm_wrap_path, wrapper_output_path)
 
-        # Setup wasabi instrumentation infrastructure
+    # Replace the template with actual values
+    wrapper_content_template_filled = open(wrapper_output_path, 'r').read()
+    for pattern, replacement in [
+        [r'INPUT_PROGRAM_PATH', f'{benchmark_path_wasabi_instrumented}'],
+        [r'INPUT_NAME', f'{benchmark}'],
+        [r'NODE_BENCHMARK_RUNS', f'{intra_vm_runs}'],
+    ]: wrapper_content_template_filled = re.sub(pattern, replacement, wrapper_content_template_filled)
 
-        # The following command:
-        #
-        #   wasabi --node --output-dir [dir] [<input>.wasm]
-        #
-        # will output a `<input>.wasabi.js` file and
-        # an instrumented `<input>.wasm` file in the
-        # output directory [dir]
-        hooks = ' '.join(map(lambda hook: f'--hooks {hook}', analysis_hooks))
+    # Inject call to wasabi
+    wrapper_content = ''
+    wrapper_content += f'globalThis.Wasabi = require("./{benchmark}.wasabi.cjs");\n'
+    wrapper_content += f'const user_hooks = require("{analysis_path}");\n'
+    wrapper_content += wrapper_content_template_filled
 
-        subprocess.run([
-            'bash', '-c', f"""                                  \
-            wasabi                                              \
-                --node                                          \
-                --output-dir                                    \
-                    "{benchmark_directory_wasabi_instrumented}" \
-                {hooks}                                         \
-                "{benchmark_path_wasabi_instrumented}"
-            """
-        ])
+    # write to template
+    open(wrapper_output_path, 'w').write(wrapper_content)
 
-        wasabi_generated_script_path_old = os.path.join(benchmark_directory_wasabi_instrumented, f'{input_program}.wasabi.js')
-        wasabi_generated_script_path = os.path.join(benchmark_directory_wasabi_instrumented, f'{input_program}.wasabi.cjs')
-        shutil.move(wasabi_generated_script_path_old, wasabi_generated_script_path)
+    if os.path.exists(benchmark_path_wasabi_instrumented):
+        logging.info(f'[WASABI INSTRUMENTATION PHASE] instrumented already exists; skipping: {analysis_name}/{benchmark}.wasm')
+        return
 
-        # Setup default wrapper [uninstrumented]
-        wrapper_output_path = os.path.join(benchmark_directory_wasabi_instrumented, f'{input_program}.cjs')
-        shutil.copy(node_wasm_wrap_path, wrapper_output_path)
+    # copy over input.wasm
+    shutil.copy(benchmark_path, benchmark_path_wasabi_instrumented)
 
-        patch_js_to_cjs(benchmark_directory_wasabi_instrumented, wasabi_generated_script_path)
+    # Setup wasabi instrumentation infrastructure
 
-        # Replace the template with actual values
-        wrapper_content_template_filled = open(wrapper_output_path, 'r').read()
-        for pattern, replacement in [
-            [r'INPUT_NAME', f'{input_program}'],
-            [r'NODE_BENCHMARK_RUNS', f'{NODE_BENCHMARK_RUNS}'],
-        ]: wrapper_content_template_filled = re.sub(pattern, replacement, wrapper_content_template_filled)
+    # The following shell command: `wasabi --node --output-dir [dir] [<input>.wasm]`
+    # will output a `<input>.wasabi.js` file and an instrumented `<input>.wasm` file
+    # in the output directory [dir]
+    hooks = ' '.join(map(lambda hook: f'--hooks {hook}', analysis_hooks))
 
-        # Inject call to wasabi
-        wrapper_content = ''
-        wrapper_content += f'globalThis.Wasabi = require("./{input_program}.wasabi.cjs");\n'
-        wrapper_content += f'const user_hooks = require("{analysis_path}");\n'
-        wrapper_content += wrapper_content_template_filled
+    wasabi_execute_result = subprocess.run([
+        'bash', '-c', f"""                                  \
+        wasabi                                              \
+            --node                                          \
+            --output-dir                                    \
+                "{benchmark_directory_wasabi_instrumented}" \
+            {hooks}                                         \
+            "{benchmark_path_wasabi_instrumented}"
+        """
+    ])
 
-        # write to template
-        open(wrapper_output_path, 'w').write(wrapper_content)
+    if wasabi_execute_result.returncode != 0:
+        # TODO: this should be reported to a file somehow ...
+        logging.warning(f'[WASABI INSTRUMENTATION PHASE] instrumentation for "{benchmark}" failed')
 
-
-        wrapper_content = open(wrapper_output_path, 'r').read()
-        for pattern, replacement in [
-            [r'INPUT_NAME', f'{input_program}'],
-            [r'NODE_BENCHMARK_RUNS', f'{NODE_BENCHMARK_RUNS}'],
-        ]: wrapper_content = re.sub(pattern, replacement, wrapper_content)
-        # write to template
-        open(wrapper_output_path, 'w').write(wrapper_content)
+    wasabi_generated_script_path_old = os.path.join(benchmark_directory_wasabi_instrumented, f'{benchmark}.wasabi.js')
+    wasabi_generated_script_path = os.path.join(benchmark_directory_wasabi_instrumented, f'{benchmark}.wasabi.cjs')
+    shutil.move(wasabi_generated_script_path_old, wasabi_generated_script_path)
+    patch_js_to_cjs(benchmark_directory_wasabi_instrumented, wasabi_generated_script_path)
 
 def patch_js_to_cjs(
     benchmark_directory_wasabi_instrumented: str,
@@ -102,7 +93,7 @@ def patch_js_to_cjs(
     open(long_path, 'w').write(long_content)
     shutil.move(long_path, long_new_path)
 
-    # Replace in {input_program}.wasabi.cjs
+    # Replace in {benchmark}.wasabi.cjs
     wasabi_generated_script_content = open(wasabi_generated_script_path, 'r').read()
     wasabi_generated_script_content = re.sub(js_pattern, cjs_replacement, wasabi_generated_script_content)
     open(wasabi_generated_script_path, 'w').write(wasabi_generated_script_content)

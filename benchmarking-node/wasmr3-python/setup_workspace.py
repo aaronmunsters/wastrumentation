@@ -3,6 +3,7 @@ from config import working_directory, minimum_major_node_version, minimum_major_
 import os
 import subprocess
 import re
+import logging
 
 def setup_workspace():
     # Setup directories
@@ -27,3 +28,8 @@ def setup_workspace():
     [major] = [wasm_merge_version_pattern_match.group(i) for i in [1]]
     minimum_major = minimum_major_wasm_merge_version
     assert int(major) >= minimum_major, f'Version of wasm-merge {wasm_merge_version} too low; found {major} but requires {minimum_major}'
+
+
+    # Setup logging infrastructure
+    logging_output_file = os.path.join(working_directory, 'benchmark_evaluation.log')
+    logging.basicConfig(filename=logging_output_file, level=logging.INFO)
