@@ -37,6 +37,7 @@ bench_suite_benchmarks_path_wastrumentation = os.path.join(bench_suite_path, 'be
 
 # Timeout and exit status
 timeout = 300 # seconds
+timeout_treshold = 3 # after timing out `timeout_treshold` times, quit this benchmark!
 EXIT_STATUS_SUCCESS = 0
 minimum_major_node_version = 22
 minimum_major_wasm_merge_version = 119

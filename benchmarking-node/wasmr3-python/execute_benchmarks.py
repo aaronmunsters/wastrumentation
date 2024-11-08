@@ -4,7 +4,7 @@ import re
 import logging
 import subprocess
 
-from config import timeout, benchmark_runs, NODE_BENCHMARK_RUNS
+from config import timeout, timeout_treshold, benchmark_runs, NODE_BENCHMARK_RUNS
 
 def execute_benchmarks(
     setup_name: str,
@@ -15,8 +15,14 @@ def execute_benchmarks(
 ):
     with open(results_file_path, 'a') as results_file:
         benchmark_path = os.path.join(target_build_directory, input_program, f'{input_program}.cjs')
+        times_this_combination_timed_out = 0
+
         for run in range(benchmark_runs):
             logging.info(f"[BENCHMARK PROGRESS {setup_name}]: PROGRAM '{input_program}' - RUN [{run+1}/{benchmark_runs}]")
+
+            if times_this_combination_timed_out >= timeout_treshold:
+                logging.warning(f"[BENCHMARK PROGRESS {setup_name}]: PROGRAM '{input_program}' - at run {run+1} I decide to quit (timed out more than {timeout_treshold} times!)]")
+                return
 
             try:
                 # run benchmark & write to file
@@ -31,6 +37,7 @@ def execute_benchmarks(
                 logging.warning(f'[setup:{setup_name},benchmark:{input_program},runtime:{runtime_name}] timeout - {timeout}')
                 results_file.write(f'"{setup_name}","{runtime_name}","{input_program}","0", "timeout {timeout}", "s"\n')
                 results_file.flush()
+                times_this_combination_timed_out += 1
                 continue
 
             # At this point the run was a success, assert stdout reports run result
