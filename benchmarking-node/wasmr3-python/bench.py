@@ -74,7 +74,7 @@ for results_file_path in [
     path_executes_once_results_file_wastrumentation,
 ]:
     results_file = open(results_file_path, 'w')
-    results_file.write('setup,runtime,input_program,executes_once,reason\n')
+    results_file.write('setup,runtime,input_program,executes_once,time,unit,reason\n')
     results_file.flush()
 
 # Execute all once, report if execution is a success

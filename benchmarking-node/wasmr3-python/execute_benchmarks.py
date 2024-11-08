@@ -53,7 +53,7 @@ def execute_benchmarks(
                 captured_lines += [bench_run_result_stdout_line]
 
             # assert exactly 'benchmark_runs' amount of lines are kept as 'relevant' here!
-            assert len(captured_lines) == NODE_BENCHMARK_RUNS
+            assert len(captured_lines) == NODE_BENCHMARK_RUNS, f'captured_lines:{captured_lines}\nNODE_BENCHMARK_RUNS:{NODE_BENCHMARK_RUNS}'
             total_time = 0
             time_unit = 'ms'
             for benchmark_report_line in captured_lines:
