@@ -4,7 +4,7 @@ import re
 import logging
 import subprocess
 
-from config import timeout, timeout_treshold, benchmark_runs, NODE_BENCHMARK_RUNS
+from config import timeout, timeout_treshold, benchmark_runs, NODE_BENCHMARK_RUNS, EXIT_STATUS_SUCCESS
 
 def execute_benchmarks(
     setup_name: str,
@@ -39,6 +39,12 @@ def execute_benchmarks(
                 results_file.flush()
                 times_this_combination_timed_out += 1
                 continue
+
+            if bench_run_result.returncode is not EXIT_STATUS_SUCCESS:
+                logging.warning(f'[setup:{setup_name},benchmark:{input_program},runtime:{runtime_name}] error!')
+                results_file.write(f'"{setup_name}","{runtime_name}","{input_program}","0", "error", "s"\n')
+                results_file.flush()
+                return
 
             # At this point the run was a success, assert stdout reports run result
 

@@ -29,7 +29,7 @@ def report_executes_once(
         except subprocess.TimeoutExpired:
             logging.warning(f'[setup:{setup_name},benchmark:{input_program},runtime:{runtime_name}] timeout - {timeout}')
             #                     setup,         runtime_name,    input_program,    executes_once,time,unit, reason
-            results_file.write(f'"{setup_name}","{runtime_name}","{input_program}","0","{timeout}","s","timeout""\n')
+            results_file.write(f'"{setup_name}","{runtime_name}","{input_program}","0","{timeout}","s","timeout"\n')
             results_file.flush()
             return False
 
@@ -71,10 +71,6 @@ def report_executes_once(
             assert benchmark_report_line == f'{re_input_program} (run {re_run}): {re_performance}'
 
             total_time += float(re_performance)
-
-            #                     'setup ✅,      runtime ✅,      input_program ✅, run-iter ✅, performance ✅,   time-unit ✅\n'
-            results_file.write(f'"{setup_name}","{runtime_name}","{input_program}","{re_run}","{re_performance}","{time_unit}"\n')
-            results_file.flush()
 
         #                     setup,         runtime_name,    input_program,    executes_once,time, unit,        reason
         results_file.write(f'"{setup_name}","{runtime_name}","{input_program}","1","{total_time}","{time_unit}","success"\n')
