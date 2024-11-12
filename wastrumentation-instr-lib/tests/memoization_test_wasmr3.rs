@@ -22,19 +22,6 @@ use wasmtime::{Engine, Instance, Module, Store};
 
 const BENCHMARK_ITERATIONS: i32 = 2; // CHANGE to a higher number when executing on 'release'!
 
-// "commanderkeen", // CRASH on Wastrumentation: `Invalid input WebAssembly code at offset 3779369: data count section required`
-// "jsc",           // CRASH on Wastrumentation: `Invalid input WebAssembly code at offset 4656677: data count section required`
-// "pacalc",        // CRASH on Wastrumentation: `Invalid input WebAssembly code at offset 257212: data count section required`
-// "rguilayout",    // CRASH on Wastrumentation: `Invalid input WebAssembly code at offset 431386: data count section required`
-// "riconpacker",   // CRASH on Wastrumentation: `Invalid input WebAssembly code at offset 429128: data count section required`
-// "bullet",        // CRASH on Wastrumentation: `Invalid input WebAssembly code at offset 580908: data count section required`
-// "sqlgui",        // CRASH on Wastrumentation: `Invalid input WebAssembly code at offset 652424: data count section required`
-// "funky-kart",    // CRASH on Wastrumentation: `Invalid input WebAssembly code at offset 681830: data count section required`
-// "guiicons",      // CRASH on Wastrumentation: `Invalid input WebAssembly code at offset 303497: data count section required`
-// "rfxgen",        // CRASH on Wastrumentation: `Invalid input WebAssembly code at offset 393847: data count section required`
-// "rguistyler",    // CRASH on Wastrumentation: `Invalid input WebAssembly code at offset 442789: data count section required`
-// "mandelbrot",    // CRASH on Wastrumentation: `Invalid input WebAssembly code at offset 72321: data count section required`
-
 /*
 Execution on release:
     cargo test --release --package wastrumentation-instr-lib --test memoization_test_wasmr3 -- test_basic --exact --show-output
@@ -62,6 +49,18 @@ fn test_basic() {
         "multiplyDouble",
         "fib",
         "multiplyInt",
+        "commanderkeen",
+        "jsc",
+        "pacalc",
+        "rguilayout",
+        "riconpacker",
+        "bullet",
+        "sqlgui",
+        "funky-kart",
+        "guiicons",
+        "rfxgen",
+        "rguistyler",
+        "mandelbrot",
     ] {
         // Read input program
         let mut input_program: Vec<u8> = Vec::new();
