@@ -60,7 +60,7 @@ fn transform(body: &BodyInner, target: Target, module: &mut Module) -> BodyInner
                     );
                     // STACK: [label]
                     result.extend_from_slice(&typed_instr.to_trap_call(&br_trap_idx));
-                    // STACK: [table_target_index]
+                    // STACK: []
                     result.push(typed_instr.place_original(instr.clone()));
                     continue;
                 }
