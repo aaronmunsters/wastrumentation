@@ -179,7 +179,7 @@ where
             ),
             None => (
                 None,
-                vec![input_instrumentation(), input_target(), input_analysis()],
+                vec![input_target(), input_instrumentation(), input_analysis()],
             ),
         };
 
@@ -189,6 +189,7 @@ where
             no_validate: true,
             rename_export_conflicts: true,
             enable_multi_memory: true,
+            enable_bulk_memory: true,
             primary,
             input_modules,
         };

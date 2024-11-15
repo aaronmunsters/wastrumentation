@@ -30,6 +30,7 @@ pub struct MergeOptions {
     pub no_validate: bool,
     pub rename_export_conflicts: bool,
     pub enable_multi_memory: bool,
+    pub enable_bulk_memory: bool,
     /// Optionally a primary module is declared.
     /// The primary module receives index 0, which
     /// may be important e.g. for the WASI interface
@@ -103,17 +104,25 @@ pub fn merge(merge_options: &MergeOptions) -> Result<Vec<u8>, Error> {
         ""
     };
 
+    let flag_enable_bulk_memory = if merge_options.enable_bulk_memory {
+        " --enable-bulk-memory "
+    } else {
+        ""
+    };
+
     let merge_command = format!(
         concat!(
             "wasm-merge",
             "{flag_no_validate}",
             "{flag_rename_export_conflicts}",
             "{flag_enable_multi_memory}",
+            "{flag_enable_bulk_memory}",
             "{merge_name_combinations} -o {output_file_path}",
         ),
         flag_no_validate = flag_no_validate,
         flag_rename_export_conflicts = flag_rename_export_conflicts,
         flag_enable_multi_memory = flag_enable_multi_memory,
+        flag_enable_bulk_memory = flag_enable_bulk_memory,
         merge_name_combinations = merge_name_combinations,
         output_file_path = output_file_path,
     );
@@ -189,6 +198,7 @@ mod tests {
     fn test_merge() {
         let merge_options = MergeOptions {
             enable_multi_memory: false,
+            enable_bulk_memory: false,
             no_validate: true,
             rename_export_conflicts: true,
             primary: None,
@@ -231,6 +241,7 @@ mod tests {
     fn test_merge_fail() {
         let merge_options = MergeOptions {
             enable_multi_memory: true,
+            enable_bulk_memory: true,
             no_validate: false,
             rename_export_conflicts: false,
             primary: None,
@@ -256,6 +267,7 @@ mod tests {
             no_validate: false,
             rename_export_conflicts: false,
             enable_multi_memory: false,
+            enable_bulk_memory: false,
             primary: None,
             input_modules: vec![],
         };
@@ -271,6 +283,7 @@ mod tests {
                 /**/ "no_validate: false, ",
                 /**/ "rename_export_conflicts: false, ",
                 /**/ "enable_multi_memory: false, ",
+                /**/ "enable_bulk_memory: false, ",
                 /**/ "primary: None, ",
                 /**/ "input_modules: [] ",
                 "}"
