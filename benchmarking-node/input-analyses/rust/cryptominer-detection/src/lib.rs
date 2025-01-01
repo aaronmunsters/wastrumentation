@@ -15,27 +15,18 @@ pub fn get_signature(index: i32) -> i64 {
     unsafe { SIGNATURE[index] }
 }
 
-advice! { binary generic (
-        operator: BinaryOperator,
-        l: WasmValue,
-        r: WasmValue,
-        _location: Location,
-    ) {
+advice! { binary (operator: BinaryOperator, l: WasmValue, r: WasmValue, _location: Location) {
+        use wastrumentation_rs_stdlib::BinaryOperator::*;
         let target_increment = match operator {
-            BinaryOperator::I32Add | BinaryOperator::I64Add | BinaryOperator::F32Add | BinaryOperator::F64Add     => Some(INDEX_ADD__),
-            BinaryOperator::I32And | BinaryOperator::I64And => Some(INDEX_AND__),
-            BinaryOperator::I32Shl | BinaryOperator::I64Shl => Some(INDEX_SHL__),
-            BinaryOperator::I32ShrU | BinaryOperator::I64ShrU => Some(INDEX_SHR_U),
-            BinaryOperator::I32Xor | BinaryOperator::I64Xor => Some(INDEX_XOR__),
+            I32Add  | I64Add | F32Add | F64Add => Some(INDEX_ADD__),
+            I32And  | I64And                   => Some(INDEX_AND__),
+            I32Shl  | I64Shl                   => Some(INDEX_SHL__),
+            I32ShrU | I64ShrU                  => Some(INDEX_SHR_U),
+            I32Xor  | I64Xor                   => Some(INDEX_XOR__),
             _ => None,
         };
-        match target_increment {
-            Some(index) => {
-                unsafe { SIGNATURE[index] += 1 }
-            },
-            None => {},
-        }
 
+        target_increment.map(|idx| unsafe { SIGNATURE[idx] += 1 });
         operator.apply(l, r)
     }
 }

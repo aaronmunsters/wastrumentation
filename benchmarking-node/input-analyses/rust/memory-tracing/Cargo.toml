@@ -8,9 +8,8 @@ crate-type = ["cdylib"]
 
 [dependencies]
 wee_alloc = "0.4.5"
-wastrumentation-rs-stdlib = { path = "../wastrumentation-rs-stdlib", features = [
-    "std",
-] }
+wastrumentation-rs-stdlib = { path = "../wastrumentation-rs-stdlib" }
+circular-buffer = { version = "0.1.9", default-features = false }
 
 [profile.release]
 strip = true

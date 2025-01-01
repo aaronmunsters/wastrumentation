@@ -23,8 +23,8 @@ pub fn get_coverage(function_index: i64, instruction_index: i64) -> i32 {
     function_index_coverage.map(|_| 1).unwrap_or(0)
 }
 
-advice! { if_                (c: PathContinuation, _ic: IfThenElseInputCount, _ia: IfThenElseArity   , l: Location) { add_location(l); c                         } }
-advice! { if_post            (                                                                         l: Location) { add_location(l);                           } }
+advice! { if_then_else       (c: PathContinuation, _ic: IfThenElseInputCount, _ia: IfThenElseArity   , l: Location) { add_location(l); c                         } }
+advice! { if_then_else_post  (                                                                         l: Location) { add_location(l);                           } }
 advice! { if_then            (c: PathContinuation, _ic: IfThenInputCount, _ia: IfThenArity           , l: Location) { add_location(l); c                         } }
 advice! { if_then_post       (                                                                         l: Location) { add_location(l);                           } }
 advice! { br                 (_l: BranchTargetLabel                                                  , l: Location) { add_location(l);                           } }
@@ -35,15 +35,15 @@ advice! { call pre           (_t : FunctionIndex                                
 advice! { call post          (_t : FunctionIndex                                                     , l: Location) { add_location(l);                           } }
 advice! { call_indirect pre  (t: FunctionTableIndex, _f: FunctionTable                               , l: Location) { add_location(l); t                         } }
 advice! { call_indirect post (_t: FunctionTable                                                      , l: Location) { add_location(l);                           } }
-advice! { unary generic      (opt: UnaryOperator, opnd: WasmValue                                    , l: Location) { add_location(l); opt.apply(opnd)           } }
-advice! { binary generic     ( opt: BinaryOperator, l_opnd: WasmValue, r_opnd: WasmValue             , l: Location) { add_location(l); opt.apply(l_opnd, r_opnd) } }
+advice! { unary              (opt: UnaryOperator, opnd: WasmValue                                    , l: Location) { add_location(l); opt.apply(opnd)           } }
+advice! { binary             ( opt: BinaryOperator, l_opnd: WasmValue, r_opnd: WasmValue             , l: Location) { add_location(l); opt.apply(l_opnd, r_opnd) } }
 advice! { drop               (                                                                         l: Location) { add_location(l);                           } }
 advice! { return_            (                                                                         l: Location) { add_location(l);                           } }
-advice! { const_ generic     (v: WasmValue                                                           , l: Location) { add_location(l); v                         } }
-advice! { local generic      (v: WasmValue, _i: LocalIndex, _l: LocalOp                              , l: Location) { add_location(l); v                         } }
-advice! { global generic     (v: WasmValue, _i: GlobalIndex, _g: GlobalOp                            , l: Location) { add_location(l); v                         } }
-advice! { load generic       (i: LoadIndex, o: LoadOffset, op: LoadOperation                         , l: Location) { add_location(l); op.perform(&i, &o)        } }
-advice! { store generic      (i: StoreIndex, v: WasmValue, o: StoreOffset, op: StoreOperation        , l: Location) { add_location(l); op.perform(&i, &v, &o);   } }
+advice! { const_             (v: WasmValue                                                           , l: Location) { add_location(l); v                         } }
+advice! { local              (v: WasmValue, _i: LocalIndex, _l: LocalOp                              , l: Location) { add_location(l); v                         } }
+advice! { global             (v: WasmValue, _i: GlobalIndex, _g: GlobalOp                            , l: Location) { add_location(l); v                         } }
+advice! { load               (i: LoadIndex, o: LoadOffset, op: LoadOperation                         , l: Location) { add_location(l); op.perform(&i, &o)        } }
+advice! { store              (i: StoreIndex, v: WasmValue, o: StoreOffset, op: StoreOperation        , l: Location) { add_location(l); op.perform(&i, &v, &o);   } }
 advice! { memory_size        (s: WasmValue, _i: MemoryIndex                                          , l: Location) { add_location(l); s                         } }
 advice! { memory_grow        (a: WasmValue, i: MemoryIndex                                           , l: Location) { add_location(l); i.grow(a)                 } }
 advice! { block pre          (_bi: BlockInputCount, _ba: BlockArity                                  , l: Location) { add_location(l);                           } }

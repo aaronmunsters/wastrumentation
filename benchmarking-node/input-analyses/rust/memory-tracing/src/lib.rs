@@ -1,14 +1,14 @@
-extern crate wastrumentation_rs_stdlib;
-
-use std::ptr::{addr_of, addr_of_mut};
+#![no_std]
+use circular_buffer::CircularBuffer;
+use core::ptr::{addr_of, addr_of_mut};
 use wastrumentation_rs_stdlib::*;
 
 #[derive(Clone)]
 struct Access {
-    pub funct_index: i64,
-    pub instr_index: i64,
-    pub address: i32,
-    pub access_kind: AccessKind,
+    funct_index: u32,
+    instr_index: u32,
+    address: i64,
+    access_kind: AccessKind,
 }
 
 #[derive(Clone)]
@@ -17,11 +17,16 @@ enum AccessKind {
     Read,
 }
 
-static mut ACCESSES: Vec<Access> = Vec::new();
+const CIRCULAR_BUFFER_CAPACITY: usize = 1_000_000;
+static mut ACCESSES: CircularBuffer<CIRCULAR_BUFFER_CAPACITY, Access> = CircularBuffer::new();
+static mut ACCESSES_COUNT: i64 = 0;
 
-fn add_access(funct_index: i64, instr_index: i64, address: i32, access_kind: AccessKind) {
+fn add_access(funct_index: u32, instr_index: u32, address: i64, access_kind: AccessKind) {
+    let accesses_count = unsafe { addr_of_mut!(ACCESSES_COUNT).as_mut().unwrap() };
     let accesses = unsafe { addr_of_mut!(ACCESSES).as_mut().unwrap() };
-    accesses.push(Access {
+
+    *accesses_count += 1;
+    accesses.push_back(Access {
         funct_index,
         instr_index,
         address,
@@ -36,24 +41,29 @@ fn get_nth_access(index: i32) -> Access {
 }
 
 #[no_mangle]
-pub fn get_total_accesses() -> i32 {
+pub fn total_accesses() -> i64 {
+    *unsafe { addr_of!(ACCESSES_COUNT).as_ref().unwrap() }
+}
+
+#[no_mangle]
+pub fn get_total_accesses_from_buffer() -> i32 {
     let accesses = unsafe { addr_of!(ACCESSES).as_ref().unwrap() };
     accesses.len().try_into().unwrap()
 }
 
 #[no_mangle]
 pub fn get_nth_funct_index(index: i32) -> i64 {
-    get_nth_access(index).funct_index
+    get_nth_access(index).funct_index.into()
 }
 
 #[no_mangle]
 pub fn get_nth_instr_index(index: i32) -> i64 {
-    get_nth_access(index).instr_index
+    get_nth_access(index).instr_index.into()
 }
 
 #[no_mangle]
-pub fn get_nth_address(index: i32) -> i32 {
-    get_nth_access(index).address
+pub fn get_nth_address(index: i32) -> i64 {
+    get_nth_access(index).address.into()
 }
 
 #[no_mangle]
@@ -64,29 +74,31 @@ pub fn get_nth_operation(index: i32) -> i32 {
     }
 }
 
-advice! { store generic (store_index: StoreIndex, value: WasmValue, offset: StoreOffset, operation: StoreOperation, location: Location) {
+advice! {
+    store (store_index: StoreIndex, value: WasmValue, offset: StoreOffset, operation: StoreOperation, location: Location) {
         // perform unaltered operation
         operation.perform(&store_index, &value, &offset);
 
         // perform analysis
-        let offset: i32 = offset.value().try_into().unwrap();
-        let address = store_index.value() + offset;
-        let funct_index = location.function_index();
-        let instr_index = location.instruction_index();
+        let offset = offset.value();
+        let address = store_index.value() as i64 + offset;
+        let funct_index = location.function_index().try_into().unwrap();
+        let instr_index = location.instruction_index().try_into().unwrap();
+
         let access_kind = AccessKind::Write;
         add_access(funct_index, instr_index, address, access_kind);
     }
-}
 
-advice! { load generic (load_index: LoadIndex, offset: LoadOffset, operation: LoadOperation, location: Location) {
+    load (load_index: LoadIndex, offset: LoadOffset, operation: LoadOperation, location: Location) {
         // perform unaltered operation
         let outcome = operation.perform(&load_index, &offset);
 
-        // perform analysis
-        let offset: i32 = offset.value().try_into().unwrap();
-        let address = load_index.value() + offset;
-        let funct_index = location.function_index();
-        let instr_index = location.instruction_index();
+        // // perform analysis
+        let offset = offset.value();
+        let address = load_index.value() as i64 + offset;
+        let funct_index = location.function_index().try_into().unwrap();
+        let instr_index = location.instruction_index().try_into().unwrap();
+
         let access_kind = AccessKind::Read;
         add_access(funct_index, instr_index, address, access_kind);
 

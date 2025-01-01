@@ -25,7 +25,7 @@ pub fn get_count(function_index: i64, instruction_index: i64, target: i32) -> i6
     *function_index_coverage.unwrap_or(&0)
 }
 
-advice! { if_                (c: PathContinuation, _ic: IfThenElseInputCount, _ia: IfThenElseArity  , l: Location) { add_block_enter(l, c.value()); c  } }
+advice! { if_then_else       (c: PathContinuation, _ic: IfThenElseInputCount, _ia: IfThenElseArity  , l: Location) { add_block_enter(l, c.value()); c  } }
 advice! { if_then            (c: PathContinuation, _ic: IfThenInputCount, _ia: IfThenArity          , l: Location) { add_block_enter(l, c.value()); c  } }
 advice! { call pre           (_t : FunctionIndex                                                    , l: Location) { add_block_enter(l, 0        );    } }
 advice! { call_indirect pre  (t: FunctionTableIndex, _f: FunctionTable                              , l: Location) { add_block_enter(l, t.value()); t  } }

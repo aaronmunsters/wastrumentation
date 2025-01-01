@@ -23,8 +23,8 @@ pub fn get_coverage(function_index: i64, instruction_index: i64) -> i32 {
     function_index_coverage.map(|v| *v).unwrap_or(-1)
 }
 
-advice! { if_ (c: PathContinuation, _ic: IfThenElseInputCount, _ia: IfThenElseArity, l: Location)       { add_location(l, c.value()); c } }
-advice! { if_then (c: PathContinuation, _ic: IfThenInputCount, _ia: IfThenArity, l: Location)           { add_location(l, c.value()); c } }
-advice! { br_if (c : ParameterBrIfCondition, _l : ParameterBrIfLabel, l: Location)                      { add_location(l, c.value()); c } }
-advice! { br_table (t: BranchTableTarget, e: BranchTableEffective, _d: BranchTableDefault, l: Location) { add_location(l, e.label()); t } }
-advice! { select (c: PathContinuation, l: Location)                                                     { add_location(l, c.value()); c } }
+advice! { if_then_else (c: PathContinuation, _ic: IfThenElseInputCount, _ia: IfThenElseArity, l: Location) { add_location(l, c.value()); c } }
+advice! { if_then (c: PathContinuation, _ic: IfThenInputCount, _ia: IfThenArity, l: Location)              { add_location(l, c.value()); c } }
+advice! { br_if (c : ParameterBrIfCondition, _l : ParameterBrIfLabel, l: Location)                         { add_location(l, c.value()); c } }
+advice! { br_table (t: BranchTableTarget, e: BranchTableEffective, _d: BranchTableDefault, l: Location)    { add_location(l, e.label()); t } }
+advice! { select (c: PathContinuation, l: Location)                                                        { add_location(l, c.value()); c } }
