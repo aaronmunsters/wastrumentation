@@ -9,7 +9,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: "-Dwarnings"
-  BINARYEN_VERSION: 119
+  BINARYEN_VERSION: 120
   RUST_CHANNEL: "nightly"
 
 jobs:
