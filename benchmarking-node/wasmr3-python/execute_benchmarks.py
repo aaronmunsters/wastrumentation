@@ -1,82 +1,139 @@
 # -*- coding: utf-8 -*-
 import os
+import csv
 import re
 import logging
 import subprocess
 
+from allowed_failures import identify_error
 from config import timeout, timeout_treshold, benchmark_runs, NODE_BENCHMARK_RUNS, EXIT_STATUS_SUCCESS
 
 def execute_benchmarks(
-    setup_name: str,
-    runtime_name: str,
+    runtime: str,
+    platform: str,
+    analysis: str | None,
     input_program: str,
+    csv_writer: csv.DictWriter,
     target_build_directory: str,
-    results_file_path: str,
 ):
-    with open(results_file_path, 'a') as results_file:
-        benchmark_path = os.path.join(target_build_directory, input_program, f'{input_program}.cjs')
-        times_this_combination_timed_out = 0
+    benchmark_path = os.path.join(target_build_directory, input_program, f'{input_program}.cjs')
+    times_this_combination_timed_out = 0
 
-        for run in range(benchmark_runs):
-            logging.info(f"[BENCHMARK PROGRESS {setup_name}]: PROGRAM '{input_program}' - RUN [{run+1}/{benchmark_runs}]")
+    for run in range(benchmark_runs):
+        default_csv_report = {
+            'runtime': runtime,
+            'platform': platform,
+            'analysis': analysis,
+            'input_program': input_program,
+        }
 
-            if times_this_combination_timed_out >= timeout_treshold:
-                logging.warning(f"[BENCHMARK PROGRESS {setup_name}]: PROGRAM '{input_program}' - at run {run+1} I decide to quit (timed out more than {timeout_treshold} times!)]")
-                return
+        logging.info(f"[BENCHMARK PROGRESS {platform}-{analysis}]: PROGRAM '{input_program}' - RUN [{run+1}/{benchmark_runs}]")
 
-            try:
-                # run benchmark & write to file
-                bench_run_result = subprocess.run(
-                    ['bash', '-c', f'node --experimental-wasm-multi-memory {benchmark_path}'],
-                    capture_output=True,
-                    text=True,
-                    timeout=timeout,
-                )
+        if times_this_combination_timed_out >= timeout_treshold:
+            logging.warning(f"[BENCHMARK PROGRESS {platform}-{analysis}]: PROGRAM '{input_program}' - at run {run+1} I decide to quit (timed out more than {timeout_treshold} times!)]")
+            return
 
-            except subprocess.TimeoutExpired:
-                logging.warning(f'[setup:{setup_name},benchmark:{input_program},runtime:{runtime_name}] timeout - {timeout}')
-                results_file.write(f'"{setup_name}","{runtime_name}","{input_program}","0", "timeout {timeout}", "s"\n')
-                results_file.flush()
-                times_this_combination_timed_out += 1
-                continue
+        try:
+            # run benchmark & write to file
+            bench_run_result = subprocess.run(
+                ['bash', '-c', f'node --experimental-wasm-multi-memory {benchmark_path}'],
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            )
 
-            if bench_run_result.returncode is not EXIT_STATUS_SUCCESS:
-                logging.warning(f'[setup:{setup_name},benchmark:{input_program},runtime:{runtime_name}] error!')
-                results_file.write(f'"{setup_name}","{runtime_name}","{input_program}","0", "error", "s"\n')
-                results_file.flush()
-                return
+        except subprocess.TimeoutExpired:
+            logging.warning(f'[platform:{platform},analysis:{analysis},benchmark:{input_program},runtime:{runtime}] timeout - {timeout}')
+            csv_values = default_csv_report.copy()
+            csv_values['memory_usage'] = None
+            csv_values['completion_time'] = None
+            csv_values['time_unit'] = None
+            csv_values['exception'] = False
+            csv_values['exception_reason'] = None
+            csv_values['timeout'] = True
+            csv_values['timeout_amount'] = timeout
+            csv_values['runtime_iteration'] = 0,
 
-            # At this point the run was a success, assert stdout reports run result
+            csv_writer.writerow(csv_values)
+            times_this_combination_timed_out += 1
+            continue
 
-            allowed_ignore_pattern = r'Wasabi: hook [\w-]+ not provided by Wasabi.analysis, I will use an empty function as a fallback'
-            bench_run_result_stdout_lines = bench_run_result.stdout.strip().split('\n')
+        if bench_run_result.returncode is not EXIT_STATUS_SUCCESS:
+            identified_error = identify_error(bench_run_result.stderr)
+            logging.warning(f'[platform:{platform},analysis:{analysis},benchmark:{input_program},runtime:{runtime}] error!')
+            csv_values = default_csv_report.copy()
+            csv_values['memory_usage'] = None
+            csv_values['completion_time'] = None
+            csv_values['time_unit'] = None
+            csv_values['exception'] = True
+            csv_values['exception_reason'] = identified_error
+            csv_values['timeout'] = False
+            csv_values['timeout_amount'] = timeout
+            csv_values['runtime_iteration'] = 0
 
-            # Now walk over subprocess' stdout, filter 'ignore pattern'
-            captured_lines = []
-            for bench_run_result_stdout_line in bench_run_result_stdout_lines:
-                if len(bench_run_result_stdout_line) == 0: continue
-                if re.match(allowed_ignore_pattern, bench_run_result_stdout_line): continue
-                captured_lines += [bench_run_result_stdout_line]
+            csv_writer.writerow(csv_values)
+            return
 
-            # assert exactly 'benchmark_runs' amount of lines are kept as 'relevant' here!
-            assert len(captured_lines) == NODE_BENCHMARK_RUNS, f'captured_lines:{captured_lines}\nNODE_BENCHMARK_RUNS:{NODE_BENCHMARK_RUNS}'
-            total_time = 0
-            time_unit = 'ms'
-            for benchmark_report_line in captured_lines:
-                benchmark_report_line = benchmark_report_line.strip()
-                #                           input_program      run            performance
-                #                             <------>        <--->     <-------------------->
-                performance_regex_pattern = r'([\w-]+)\ \(run (\d+)\): ((?:\d)+(?:\.(?:\d)+)?)'
-                pattern_match = re.match(performance_regex_pattern, benchmark_report_line)
-                assert pattern_match is not None
-                [re_input_program, re_run, re_performance] = [pattern_match.group(i) for i in [1, 2, 3]]
+        # At this point the run was a success, assert stdout reports run result
+        allowed_ignore_pattern = r'Wasabi: hook [\w-]+ not provided by Wasabi.analysis, I will use an empty function as a fallback'
+        bench_run_result_stdout_lines = bench_run_result.stdout.strip().split('\n')
+
+        # Now walk over subprocess' stdout, filter 'ignore pattern'
+        captured_lines = []
+        for bench_run_result_stdout_line in bench_run_result_stdout_lines:
+            if len(bench_run_result_stdout_line) == 0: continue
+            if re.match(allowed_ignore_pattern, bench_run_result_stdout_line): continue
+            captured_lines += [bench_run_result_stdout_line]
+
+        # assert `benchmark_runs + 1` lines are kept as relevant here; `benchmark_runs` reporting performance and one reporting memory
+        assert len(captured_lines) == NODE_BENCHMARK_RUNS + 1, f'captured_lines:{captured_lines}\nNODE_BENCHMARK_RUNS:{NODE_BENCHMARK_RUNS}'
+        execution_times: list[float] = []
+        total_time = 0
+        time_unit = 'ms'
+        memory_usage_after_one_run = None
+        for benchmark_report_line in captured_lines:
+            benchmark_report_line = benchmark_report_line.strip()
+            #                           input_program      run            performance
+            #                             <------>        <--->     <-------------------->
+            pattern_performance_regex = r'([\w-]+)\ \(run (\d+)\): ((?:\d)+(?:\.(?:\d)+)?)'
+            #                                               bytes
+            #                                               <--->
+            pattern_memory_regex = r'([\w-]+) memory usage in bytes: (\d+)'
+
+            pattern_match_performance = re.match(pattern_performance_regex, benchmark_report_line)
+            pattern_match_memory = re.match(pattern_memory_regex, benchmark_report_line)
+
+
+            # assert line matches at least performance or memory report
+            assert pattern_match_performance is not None or pattern_match_memory is not None
+
+            if pattern_match_performance is not None:
+                [re_input_program, re_run, re_performance] = [pattern_match_performance.group(i) for i in [1, 2, 3]]
                 assert input_program == re_input_program
                 assert benchmark_report_line == f'{re_input_program} (run {re_run}): {re_performance}'
+                execution_time = float(re_performance)
+                total_time += execution_time
+                execution_times += [execution_time]
+                logging.info(f' -> single run took {execution_time}{time_unit}')
 
-                total_time += float(re_performance)
+                continue
 
-                #                     'setup ✅,      runtime ✅,      input_program ✅, run-iter ✅, performance ✅,   time-unit ✅\n'
-                results_file.write(f'"{setup_name}","{runtime_name}","{input_program}","{re_run}","{re_performance}","{time_unit}"\n')
-                results_file.flush()
+            if pattern_match_memory is not None:
+                [re_input_program, re_bytes] = [pattern_match_memory.group(i) for i in [1, 2]]
+                assert input_program == re_input_program
+                assert benchmark_report_line == f'{re_input_program} memory usage in bytes: {re_bytes}'
+                memory_usage_after_one_run = int(re_bytes)
+                continue
 
-            logging.info(f' -> {NODE_BENCHMARK_RUNS} took in total {total_time}{time_unit}')
+        logging.info(f' -> {NODE_BENCHMARK_RUNS} took in total {total_time}{time_unit}')
+        for iteration, execution_time in enumerate(execution_times):
+            csv_values = default_csv_report.copy()
+            csv_values['memory_usage'] = memory_usage_after_one_run
+            csv_values['completion_time'] = execution_time
+            csv_values['time_unit'] = time_unit
+            csv_values['exception'] = False
+            csv_values['exception_reason'] = None
+            csv_values['timeout'] = False
+            csv_values['timeout_amount'] = timeout
+            csv_values['runtime_iteration'] = iteration
+            csv_writer.writerow(csv_values)

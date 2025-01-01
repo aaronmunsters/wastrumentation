@@ -2,15 +2,24 @@
 import re
 
 known_patterns: list[str] = [
-    r'Node\.js v(\d+)\.(\d+)\.(\d+)', # NodeJS Version Pattern
-    r'node:internal/process/promises:(\d+)', # NodeJS module reference for promises
-    r'triggerUncaughtException\(err, true /\* fromPromise \*/\);', # NodeJS promise failure
-    r'\^', # Error pointer
+    # NodeJS Version Pattern
+    r'Node\.js v(\d+)\.(\d+)\.(\d+)',
+    # NodeJS module reference for promises
+    r'node:internal/process/promises:(\d+)',
+    # NodeJS promise failure
+    r'triggerUncaughtException\(err, true /\* fromPromise \*/\);',
+    # Error pointer
+    r'\^',
+    # Wasm Unreachable Instruction Location
+    r'wasm://wasm/[\d\w]+:[\d\w]+',
+    # Wasm Exception Stack Trace
+    r'at wasm:\/\/wasm\/[\d\w]+:wasm-function\[\d+\]:[\d\w]+',
 ]
 
 known_errors: list[tuple[str, str]] = [
     ('Invalid data segment',  r'\[CompileError: WebAssembly\.instantiate\(\): Compiling function #(\d+)(:"[a-z_]+")? failed: invalid data segment index: (\d+) @\+(\d+)\]'),
     ('Local count too large', r'\[CompileError: WebAssembly\.instantiate\(\): Compiling function #(\d+)(:"[a-z0-9_]+")? failed: local count too large @\+(\d+)\]'),
+    ('Wasm - Unreachable trap', r'RuntimeError: unreachable'),
 ]
 
 def identify_error(stderr: str) -> str:
