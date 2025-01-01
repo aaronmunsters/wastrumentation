@@ -131,7 +131,7 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
         .filter(|index| {
             target_indices
                 .as_ref()
-                .map_or(true, |ts| ts.contains(&index.to_u32()))
+                .is_none_or(|ts| ts.contains(&index.to_u32()))
         })
         .collect();
 
@@ -143,7 +143,7 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
         .filter(|index| {
             target_indices
                 .as_ref()
-                .map_or(true, |ts| ts.contains(&index.to_u32()))
+                .is_none_or(|ts| ts.contains(&index.to_u32()))
         })
         .collect();
 
