@@ -70,16 +70,16 @@ impl From<&WaspRoot> for AnalysisInterface {
                             Some(AnalysisInterface::interface_call_indirect_post());
                     }
                     TrapSignature::TrapBlockPre(TrapBlockPre { .. }) => {
-                        wasp_interface.pre_block = Some(AnalysisInterface::interface_block_pre());
+                        wasp_interface.pre_block = Some(AnalysisInterface::interface_pre_block());
                     }
                     TrapSignature::TrapBlockPost(TrapBlockPost { .. }) => {
-                        wasp_interface.post_block = Some(AnalysisInterface::interface_block_post());
+                        wasp_interface.post_block = Some(AnalysisInterface::interface_post_block());
                     }
                     TrapSignature::TrapLoopPre(TrapLoopPre { .. }) => {
-                        wasp_interface.pre_loop = Some(AnalysisInterface::interface_loop_pre());
+                        wasp_interface.pre_loop = Some(AnalysisInterface::interface_pre_loop());
                     }
                     TrapSignature::TrapLoopPost(TrapLoopPost { .. }) => {
-                        wasp_interface.post_loop = Some(AnalysisInterface::interface_loop_post());
+                        wasp_interface.post_loop = Some(AnalysisInterface::interface_post_loop());
                     }
                     TrapSignature::TrapSelect(TrapSelect { .. }) => {
                         wasp_interface.select = Some(AnalysisInterface::interface_select());

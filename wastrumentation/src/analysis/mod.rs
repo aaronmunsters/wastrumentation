@@ -1,9 +1,5 @@
-pub const FUNCTION_NAME_BLOCK_PRE: &str = "block_pre";
-pub const FUNCTION_NAME_BLOCK_POST: &str = "block_post";
 pub const FUNCTION_NAME_CALL_BASE: &str = "call_base";
 pub const FUNCTION_NAME_GENERIC_APPLY: &str = "generic_apply";
-pub const FUNCTION_NAME_LOOP_PRE: &str = "loop_pre";
-pub const FUNCTION_NAME_LOOP_POST: &str = "loop_post";
 pub const FUNCTION_NAME_SELECT: &str = "specialized_select";
 pub const FUNCTION_NAME_SPECIALIZED_BR: &str = "specialized_br";
 pub const FUNCTION_NAME_SPECIALIZED_BR_IF: &str = "specialized_br_if";
@@ -263,10 +259,6 @@ simple_interfaces! {
     interface_call_post             FUNCTION_NAME_SPECIALIZED_CALL_POST          :                                                      /*f_tgt:*/ I32 /*fidx*/ I64 /*iidx*/ I64 =>                /*void*/,
     interface_call_indirect_pre     FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_PRE  :                                 /*fn_tbl_idx:*/ I32 /*fn_tbl:*/ I32 /*fidx*/ I64 /*iidx*/ I64 =>    /*fn_tbl_idx:*/ I32 ,
     interface_call_indirect_post    FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_POST :                                                     /*fn_tbl:*/ I32 /*fidx*/ I64 /*iidx*/ I64 =>                /*void*/,
-    interface_block_pre             FUNCTION_NAME_BLOCK_PRE                      :                                                            /*void*/ /*fidx*/ I64 /*iidx*/ I64 =>                /*void*/,
-    interface_block_post            FUNCTION_NAME_BLOCK_POST                     :                                                            /*void*/ /*fidx*/ I64 /*iidx*/ I64 =>                /*void*/,
-    interface_loop_pre              FUNCTION_NAME_LOOP_PRE                       :                                                            /*void*/ /*fidx*/ I64 /*iidx*/ I64 =>                /*void*/,
-    interface_loop_post             FUNCTION_NAME_LOOP_POST                      :                                                            /*void*/ /*fidx*/ I64 /*iidx*/ I64 =>                /*void*/,
     interface_select                FUNCTION_NAME_SELECT                         :                                                       /*cndt:*/ I32 /*fidx*/ I64 /*iidx*/ I64 =>           /*cont:*/ I32,
     interface_return                TRAP_NAME_RETURN                             :                                                            /*void*/ /*fidx*/ I64 /*iidx*/ I64 =>                /*void*/,
     interface_drop                  TRAP_NAME_DROP                               :                                                            /*void*/ /*fidx*/ I64 /*iidx*/ I64 =>                /*void*/,

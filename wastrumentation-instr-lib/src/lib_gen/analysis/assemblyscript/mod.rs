@@ -21,13 +21,12 @@ use wasp_compiler::ast::wasp::{
 };
 use wasp_compiler::wasp_interface::{WasmExport, WasmImport};
 use wastrumentation::analysis::{
-    FUNCTION_NAME_BLOCK_POST, FUNCTION_NAME_BLOCK_PRE, FUNCTION_NAME_GENERIC_APPLY,
-    FUNCTION_NAME_LOOP_POST, FUNCTION_NAME_LOOP_PRE, FUNCTION_NAME_SELECT,
-    FUNCTION_NAME_SPECIALIZED_BR_IF, FUNCTION_NAME_SPECIALIZED_BR_TABLE,
-    FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_POST, FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_PRE,
-    FUNCTION_NAME_SPECIALIZED_CALL_POST, FUNCTION_NAME_SPECIALIZED_CALL_PRE,
-    FUNCTION_NAME_SPECIALIZED_IF_THEN, FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE,
-    NAMESPACE_TRANSFORMED_INPUT,
+    FUNCTION_NAME_GENERIC_APPLY, FUNCTION_NAME_SELECT, FUNCTION_NAME_SPECIALIZED_BR_IF,
+    FUNCTION_NAME_SPECIALIZED_BR_TABLE, FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_POST,
+    FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_PRE, FUNCTION_NAME_SPECIALIZED_CALL_POST,
+    FUNCTION_NAME_SPECIALIZED_CALL_PRE, FUNCTION_NAME_SPECIALIZED_IF_THEN,
+    FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE, NAMESPACE_TRANSFORMED_INPUT, TRAP_NAME_POST_BLOCK,
+    TRAP_NAME_POST_LOOP, TRAP_NAME_PRE_BLOCK, TRAP_NAME_PRE_LOOP,
 };
 
 const STD_ANALYSIS_LIB_GENRIC_APPLY: &str = include_str!("std_analysis_lib_gen_apply.ts");
@@ -632,6 +631,8 @@ impl Display for ASTrapBlockPre<'_> {
             f,
             indoc! { r#"
             export function {FUNCTION_NAME_BLOCK_PRE}(
+                input_count: i32,
+                arity: i32,
                 func_index: i64,
                 istr_index: i64,
             ): void {{
@@ -639,7 +640,7 @@ impl Display for ASTrapBlockPre<'_> {
             }}
             "#
             },
-            FUNCTION_NAME_BLOCK_PRE = FUNCTION_NAME_BLOCK_PRE,
+            FUNCTION_NAME_BLOCK_PRE = TRAP_NAME_PRE_BLOCK,
             body = body,
         )
     }
@@ -659,7 +660,7 @@ impl Display for ASTrapBlockPost<'_> {
                 {body}
             }}
             "# },
-            FUNCTION_NAME_BLOCK_POST = FUNCTION_NAME_BLOCK_POST,
+            FUNCTION_NAME_BLOCK_POST = TRAP_NAME_POST_BLOCK,
             body = body,
         )
     }
@@ -673,13 +674,15 @@ impl Display for ASTrapLoopPre<'_> {
             f,
             indoc! { r#"
             export function {FUNCTION_NAME_LOOP_PRE}(
+                input_count: i32,
+                arity: i32,
                 func_index: i64,
                 istr_index: i64,
             ): void {{
                 {body}
             }}
             "# },
-            FUNCTION_NAME_LOOP_PRE = FUNCTION_NAME_LOOP_PRE,
+            FUNCTION_NAME_LOOP_PRE = TRAP_NAME_PRE_LOOP,
             body = body,
         )
     }
@@ -699,7 +702,7 @@ impl Display for ASTrapLoopPost<'_> {
                 {body}
             }}
             "# },
-            FUNCTION_NAME_LOOP_POST = FUNCTION_NAME_LOOP_POST,
+            FUNCTION_NAME_LOOP_POST = TRAP_NAME_POST_LOOP,
             body = body,
         )
     }
