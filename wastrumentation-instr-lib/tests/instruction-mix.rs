@@ -176,5 +176,7 @@ strip = true
 lto = true
 panic = "abort"
 [dependencies]
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(test)'] }
 [workspace]
 "#;
