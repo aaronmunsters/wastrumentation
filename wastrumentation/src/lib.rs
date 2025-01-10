@@ -16,6 +16,10 @@ use instrument::function_application::INSTRUMENTATION_ANALYSIS_MODULE;
 use instrument::function_application::INSTRUMENTATION_INSTRUMENTED_MODULE;
 use instrument::function_application::INSTRUMENTATION_STACK_MODULE;
 pub use stack_library::ModuleLinkedStackHooks;
+use wasm_merge::options::BulkMemory;
+use wasm_merge::options::Multimemory;
+use wasm_merge::options::NoValidate;
+use wasm_merge::options::RenameExportConflicts;
 use wasm_merge::{InputModule, MergeOptions};
 
 use crate::error::Error;
@@ -186,13 +190,14 @@ where
         let input_modules = input_modules.into_iter().flatten().collect();
 
         let merge_options = MergeOptions {
-            no_validate: true,
-            rename_export_conflicts: true,
-            enable_multi_memory: true,
-            enable_bulk_memory: true,
             primary,
             input_modules,
+            no_validation: NoValidate::Enable,
+            rename_export_conflicts: RenameExportConflicts::Enable,
+            multimemory: Multimemory::Enable,
+            bulk_memory: BulkMemory::Enable,
+            ..Default::default()
         };
-        wasm_merge::merge(&merge_options).map_err(Error::MergeError)
+        merge_options.merge().map_err(Error::MergeError)
     }
 }
