@@ -25,8 +25,6 @@ pub static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 // Optionally use primitives from core::arch::wasm
 // https://doc.rust-lang.org/stable/core/arch/wasm/index.html
-
-#[cfg(not(test))]
 #[cfg(target_arch = "wasm32")]
 #[panic_handler]
 fn panic(_panic: &core::panic::PanicInfo<'_>) -> ! {

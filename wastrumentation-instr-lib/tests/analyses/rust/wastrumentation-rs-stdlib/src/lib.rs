@@ -24,9 +24,7 @@ use core::mem::size_of;
 
 // Optionally use primitives from core::arch::wasm
 // https://doc.rust-lang.org/stable/core/arch/wasm/index.html
-#[cfg(not(feature = "std"))]
-#[cfg(not(test))]
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(not(feature = "std"), target_arch = "wasm32"))]
 #[panic_handler]
 fn panic(_panic: &core::panic::PanicInfo<'_>) -> ! {
     core::arch::wasm32::unreachable()

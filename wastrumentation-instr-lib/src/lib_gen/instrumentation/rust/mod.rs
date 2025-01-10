@@ -552,7 +552,7 @@ pub fn {mangled_name}({total_signature}) {{
 }
 
 const LIB_BOILERPLATE: &str = r#"
-#![cfg_attr(not(test), no_std)]
+#![no_std]
 
 use core::mem::{size_of, align_of};
 use core::alloc::{GlobalAlloc, Layout};
@@ -564,7 +564,6 @@ pub static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 // Optionally use primitives from core::arch::wasm
 // https://doc.rust-lang.org/stable/core/arch/wasm/index.html
 
-#[cfg(not(test))]
 #[panic_handler]
 fn panic(_panic: &core::panic::PanicInfo<'_>) -> ! {
     #[cfg(not(target_arch = "wasm32"))]
