@@ -1,5 +1,5 @@
 [package]
-name = "rust-wasp-call-stack"
+name = "rust-wasp-call-stack-no-std"
 version = "0.1.0"
 edition = "2021"
 
