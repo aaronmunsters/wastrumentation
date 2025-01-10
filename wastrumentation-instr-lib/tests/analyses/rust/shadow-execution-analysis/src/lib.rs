@@ -234,7 +234,7 @@ fn br_with(l: usize) {
     }
 }
 
-advice! { if_ (
+advice! { if_then_else (
         path_continuation: PathContinuation,
         if_then_else_input_c: IfThenElseInputCount,
         if_then_else_arity: IfThenElseArity,
@@ -298,7 +298,7 @@ advice! { if_then (
     }
 }
 
-advice! { if_post (_location: Location) {
+advice! { if_then_else_post (_location: Location) {
         println!("if_post ()");
         println!("if_post>>exit_instr_with_label");
         exit_instr_with_label();
@@ -474,8 +474,8 @@ advice! { call post (_target_func: FunctionIndex, _location: Location) {
     }
 }
 
-advice! { unary generic (unop: UnaryOperator, c_1: WasmValue, _location: Location) {
-        println!("unary generic ({unop:?}: UnaryOperator, {c_1:?}: WasmValue)");
+advice! { unary (unop: UnaryOperator, c_1: WasmValue, _location: Location) {
+        println!("unary ({unop:?}: UnaryOperator, {c_1:?}: WasmValue)");
         // https://webassembly.github.io/spec/core/exec/instructions.html#t-mathsf-xref-syntax-instructions-syntax-unop-mathit-unop
         // 1. Assert: due to validation, a value of value type `t` is on the top of the stack.
         assert!(matches!(top_of_stack(), StackEntry::Value(_)));
@@ -495,13 +495,13 @@ advice! { unary generic (unop: UnaryOperator, c_1: WasmValue, _location: Locatio
     }
 }
 
-advice! { binary generic (
+advice! { binary (
         binop: BinaryOperator,
         c_1: WasmValue,
         c_2: WasmValue,
         _location: Location,
     ) {
-        println!("binary generic ({binop:?}: BinaryOperator, {c_1:?}: WasmValue, {c_2:?}: WasmValue)");
+        println!("binary ({binop:?}: BinaryOperator, {c_1:?}: WasmValue, {c_2:?}: WasmValue)");
         // 1. Assert: due to validation, two values of value type `t` are on the top of the stack.
         "handled by validation";
         // 2. Pop the value `t.const c_{2}` from the stack.
@@ -577,8 +577,8 @@ advice! { return_ (_location: Location) {
     }
 }
 
-advice! { const_ generic (value: WasmValue, _location: Location) {
-        println!("const_ generic (value: WasmValue) => {}", value.bytes_string());
+advice! { const_ (value: WasmValue, _location: Location) {
+        println!("const_ (value: WasmValue) => {}", value.bytes_string());
         // https://webassembly.github.io/spec/core/exec/instructions.html#t-mathsf-xref-syntax-instructions-syntax-instr-numeric-mathsf-const-c
         // 1. Push the value `t.const c` to the stack.
         push_value_on_stack(value.clone());
@@ -604,7 +604,7 @@ fn local_set(x: usize, actual_value: &WasmValue) {
     F.replace_local_with(x, shadow_value);
 }
 
-advice! { local generic (
+advice! { local (
         value: WasmValue,
         index: LocalIndex,
         local_op: LocalOp,
@@ -651,7 +651,7 @@ advice! { local generic (
     }
 }
 
-advice! { global generic (
+advice! { global (
         value: WasmValue,
         index: GlobalIndex,
         global_op: GlobalOp,
@@ -707,13 +707,13 @@ advice! { global generic (
     }
 }
 
-advice! { load generic (
+advice! { load (
         store_index: LoadIndex,
         offset: LoadOffset,
         operation: LoadOperation,
         _location: Location,
     ) {
-        println!("load generic ({store_index:?}: LoadIndex, {offset:?}: LoadOffset, {operation:?}: LoadOperation)");
+        println!("load ({store_index:?}: LoadIndex, {offset:?}: LoadOffset, {operation:?}: LoadOperation)");
         // https://webassembly.github.io/spec/core/exec/instructions.html#t-mathsf-xref-syntax-instructions-syntax-instr-memory-mathsf-load-xref-syntax-instructions-syntax-memarg-mathit-memarg-and-t-mathsf-xref-syntax-instructions-syntax-instr-memory-mathsf-load-n-mathsf-xref-syntax-instructions-syntax-sx-mathit-sx-xref-syntax-instructions-syntax-memarg-mathit-memarg
         // TODO: link to Wasm spec
         // offset is a constant
@@ -730,24 +730,24 @@ advice! { load generic (
     }
 }
 
-advice! { store generic (
+advice! { store (
         store_index: StoreIndex,
         value: WasmValue,
         offset: StoreOffset,
         operation: StoreOperation,
         _location: Location,
     ) {
-        println!("store generic ({store_index:?}: StoreIndex, {value:?}: WasmValue, {offset:?}: StoreOffset, {operation:?}: StoreOperation)");
+        println!("store ({store_index:?}: StoreIndex, {value:?}: WasmValue, {offset:?}: StoreOffset, {operation:?}: StoreOperation)");
         // https://webassembly.github.io/spec/core/exec/instructions.html#t-mathsf-xref-syntax-instructions-syntax-instr-memory-mathsf-store-xref-syntax-instructions-syntax-memarg-mathit-memarg-and-t-mathsf-xref-syntax-instructions-syntax-instr-memory-mathsf-store-n-xref-syntax-instructions-syntax-memarg-mathit-memarg
         // TODO: link to Wasm spec
         // offset is a constant
         // store_index = dynamic address
         let pointer = WasmValue::from(store_index.value());
         // Value to write
-        println!("store_generic>>value_to_write>>pop_value_from_stack");
+        println!("store>>value_to_write>>pop_value_from_stack");
         let shadow_value = pop_value_from_stack();
         // Pointer
-        println!("store_generic>>pointer>>pop_value_from_stack");
+        println!("store>>pointer>>pop_value_from_stack");
         let shadow_pointer = pop_value_from_stack();
         assert_eq!(pointer, shadow_pointer);
         assert_eq!(value, shadow_value);
