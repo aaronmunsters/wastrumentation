@@ -95,6 +95,8 @@ impl Compiler {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::options::CompilerRuntime;
+    use strum::IntoEnumIterator;
     use wasmtime::{Engine, Instance, Module, Store};
 
     #[test]
@@ -126,32 +128,38 @@ mod tests {
         "#;
 
         let compiler = Compiler::new().unwrap();
-        let compile_options = CompilerOptions::default_for(source_code);
-        let wasm_module = compiler.compile(&compile_options).unwrap();
+        let mut compile_options = CompilerOptions::default_for(source_code);
+        for compiler_runtime in CompilerRuntime::iter() {
+            compile_options.compiler_runtime = compiler_runtime;
+            let wasm_module = compiler.compile(&compile_options).unwrap();
 
-        let engine = Engine::default();
-        let module = Module::from_binary(&engine, &wasm_module).unwrap();
-        let mut store = Store::new(&engine, ());
+            let engine = Engine::default();
+            let module = Module::from_binary(&engine, &wasm_module).unwrap();
+            let mut store = Store::new(&engine, ());
 
-        let instance = Instance::new(&mut store, &module, &[]).unwrap();
-        let run = instance
-            .get_typed_func::<(i32, i32, i32), i32>(&mut store, "add_to_fac")
-            .unwrap();
+            let instance = Instance::new(&mut store, &module, &[]).unwrap();
+            let run = instance
+                .get_typed_func::<(i32, i32, i32), i32>(&mut store, "add_to_fac")
+                .unwrap();
 
-        // And last but not least we can call it!
-        assert_eq!(run.call(&mut store, (1, 2, 3)).unwrap(), 9);
+            // And last but not least we can call it!
+            assert_eq!(run.call(&mut store, (1, 2, 3)).unwrap(), 9);
+        }
     }
 
     #[test]
     fn test_assemblyscript_faulty_compilation() {
         let compiler = Compiler::new().unwrap();
-        let compiler_options =
-            CompilerOptions::default_for("this is not valid assemblyscript code");
+        for compiler_runtime in CompilerRuntime::iter() {
+            let mut compiler_options =
+                CompilerOptions::default_for("this is not valid assemblyscript code");
+            compiler_options.compiler_runtime = compiler_runtime;
 
-        assert!(compiler
-            .compile(&compiler_options)
-            .unwrap_err()
-            .to_string()
-            .contains("ERROR"));
+            assert!(compiler
+                .compile(&compiler_options)
+                .unwrap_err()
+                .to_string()
+                .contains("ERROR"));
+        }
     }
 }

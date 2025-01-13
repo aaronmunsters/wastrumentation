@@ -10,6 +10,8 @@ env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: "-Dwarnings"
   BINARYEN_VERSION: 121
+  BUN_VERSION: "v1.1.43"
+  ASSEMBLYSCRIPT_VERSION: "0.27.27"
   RUST_CHANNEL: "nightly"
 
 jobs:
@@ -48,6 +50,12 @@ jobs:
           echo "$HOME/binaryen/bin" >> $GITHUB_PATH
       - name: Verify Binaryen installation
         run: wasm-merge --version
+      - name: Install Bun
+        run: curl -fsSL https://bun.sh/install | bash -s "bun-${BUN_VERSION}"
+      - name: Verify Bun installation
+        run: ~/.bun/bin/bun --version
+      - name: Install Assemblyscript compiler
+        run: ~/.bun/bin/bun install assemblyscript@${ASSEMBLYSCRIPT_VERSION}/asc
       - name: Build all targets with all features
         run: cargo build
         shell: bash

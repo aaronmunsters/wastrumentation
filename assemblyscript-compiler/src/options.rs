@@ -1,7 +1,19 @@
 use std::{collections::HashMap, path::Path};
 
+#[cfg(test)]
+use strum::EnumIter;
+
+#[derive(Default, Debug, PartialEq, Eq)]
+#[cfg_attr(test, derive(EnumIter))]
+pub enum CompilerRuntime {
+    #[default]
+    NodeJS,
+    Bun,
+}
+
 #[allow(clippy::struct_excessive_bools)]
 pub struct CompilerOptions {
+    pub compiler_runtime: CompilerRuntime,
     pub optimization_strategy: OptimizationStrategy,
     pub enable_bulk_memory: bool,
     pub enable_sign_extension: bool,
@@ -16,6 +28,7 @@ pub struct CompilerOptions {
 impl CompilerOptions {
     pub fn default_for(library_source: impl Into<String>) -> Self {
         Self {
+            compiler_runtime: CompilerRuntime::default(),
             source: library_source.into(),
             // By default, trap on abort.
             // This makes that the module has no 'env' dependency to handle failure.
@@ -113,10 +126,15 @@ impl CompilerOptions {
             }
         };
 
+        let compiler_runtime_command = match self.compiler_runtime {
+            CompilerRuntime::NodeJS => "node ./node_modules/assemblyscript/bin/asc.js",
+            CompilerRuntime::Bun => "~/.bun/bin/bunx assemblyscript@0.27.27/asc",
+        };
+
         format!(
             concat!(
                 // Pass input file & output file to command
-                "node ./node_modules/assemblyscript/bin/asc.js {source_path:?} -o {output_path:?} ",
+                "{compiler_runtime_command} {source_path:?} -o {output_path:?} ",
                 // Pas additional options to command
                 "{flag_optimization}",
                 "{flag_bulk_memory}",
@@ -126,6 +144,7 @@ impl CompilerOptions {
                 "{flag_export_memory}",
                 "{flag_use}",
             ),
+            compiler_runtime_command = compiler_runtime_command,
             source_path = &source_path,
             output_path = &output_path,
             flag_bulk_memory = flag_bulk_memory,
@@ -170,6 +189,7 @@ mod tests {
     #[test]
     fn test_to_npx() {
         let mut options = CompilerOptions {
+            compiler_runtime: CompilerRuntime::default(),
             optimization_strategy: OptimizationStrategy::O1,
             enable_bulk_memory: true,
             enable_sign_extension: true,
@@ -195,6 +215,7 @@ mod tests {
         );
 
         options = CompilerOptions {
+            compiler_runtime: CompilerRuntime::default(),
             optimization_strategy: OptimizationStrategy::O2,
             enable_bulk_memory: false,
             enable_sign_extension: false,

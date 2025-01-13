@@ -9,3 +9,4 @@ thiserror = { workspace = true }
 
 [dev-dependencies]
 wasmtime = { workspace = true }
+strum = { version = "0.26.3", features = ["derive"] }
