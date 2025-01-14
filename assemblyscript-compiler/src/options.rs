@@ -9,6 +9,7 @@ pub enum CompilerRuntime {
     #[default]
     NodeJS,
     Bun,
+    Deno,
 }
 
 #[allow(clippy::struct_excessive_bools)]
@@ -129,6 +130,9 @@ impl CompilerOptions {
         let compiler_runtime_command = match self.compiler_runtime {
             CompilerRuntime::NodeJS => "node ./node_modules/assemblyscript/bin/asc.js",
             CompilerRuntime::Bun => "~/.bun/bin/bunx assemblyscript@0.27.27/asc",
+            CompilerRuntime::Deno => {
+                "deno run --allow-read --allow-write --allow-env 'npm:assemblyscript@0.27.27/asc'"
+            }
         };
 
         format!(

@@ -50,6 +50,10 @@ jobs:
           echo "$HOME/binaryen/bin" >> $GITHUB_PATH
       - name: Verify Binaryen installation
         run: wasm-merge --version
+      - name: Install Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v2.1.5
       - name: Install Bun
         run: curl -fsSL https://bun.sh/install | bash -s "bun-${BUN_VERSION}"
       - name: Verify Bun installation
