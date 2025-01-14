@@ -8,7 +8,6 @@ wastrumentation = { path = "../wastrumentation" }
 serde_json = { workspace = true }
 anyhow = "1.0"
 
-# TODO: move these to workspace
 wasabi_wasm = { git = "https://github.com/aaronmunsters/wasabi.git", branch = "candidate" }
 clap = { version = "4.5", features = ["derive"] }
 clio = { version = "0.3.5", features = ["clap-parse"] }
