@@ -1,5 +1,8 @@
-use std::time::Instant;
-use std::{path::absolute, time::Duration};
+use std::{
+    collections::HashSet,
+    path::absolute,
+    time::{Duration, Instant},
+};
 
 use indoc::indoc;
 use rust_to_wasm_compiler::WasiSupport;
@@ -59,13 +62,14 @@ fn test_basic() {
     println!("Elapsed (instrumented): {time_elapsed_after_instrumented_call:.2?}",);
 }
 
-struct MemoizationBenches {
-    uninstrumented_duration: Duration,
-    instrumented_duration: Duration,
-    runtime_pure_function_calls: Vec<(u32, i32)>,
-    runtime_target_functions: Vec<u32>,
-    cache_size_report: i32,
-    cache_hit_report: i32,
+pub struct MemoizationBenches {
+    pub uninstrumented_duration: Duration,
+    pub instrumented_duration: Duration,
+    pub pure_functions: HashSet<u32>,
+    pub runtime_pure_function_calls: Vec<(u32, i32)>,
+    pub runtime_target_functions: Vec<u32>,
+    pub cache_size_report: i32,
+    pub cache_hit_report: i32,
 }
 
 // TODO: change Vec into &[u8]
@@ -305,6 +309,7 @@ fn report_memoization_benches_for(
         runtime_target_functions: pure_functions_of_interest,
         cache_size_report,
         cache_hit_report,
+        pure_functions: immutable_set,
     }
 }
 

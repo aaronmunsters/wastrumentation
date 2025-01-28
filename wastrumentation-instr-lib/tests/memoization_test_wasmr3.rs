@@ -1,8 +1,7 @@
-use std::collections::HashSet;
 use std::fs::File;
 use std::io::Read;
+use std::path::absolute;
 use std::time::Instant;
-use std::{path::absolute, time::Duration};
 
 use indoc::indoc;
 use rust_to_wasm_compiler::WasiSupport;
@@ -34,33 +33,39 @@ Execution on release:
 #[test]
 fn test_basic() {
     for name in [
+        //
+        // Memoization does not apply:
         "factorial",
-        "figma-startpage",
         "game-of-life",
         "rtexviewer",
         "jqkungfu",
         "parquet",
         "rtexpacker",
-        "hydro",
-        "boa",
         "ffmpeg",
         "pathfinding",
         "sandspiel",
+        "commanderkeen",
+        "riconpacker",
+        "guiicons",
+        "mandelbrot",
+        //
+        // Memoization does apply, and speedup / slowdown is most significant
+        "boa",
         "multiplyDouble",
         "fib",
         "multiplyInt",
-        "commanderkeen",
-        "jsc",
         "pacalc",
+        "funky-kart",
+        //
+        // Memoization does apply, but speedup / slowdown is not significant
+        "figma-startpage",
+        "hydro",
+        "jsc",
         "rguilayout",
-        "riconpacker",
         "bullet",
         "sqlgui",
-        "funky-kart",
-        "guiicons",
         "rfxgen",
         "rguistyler",
-        "mandelbrot",
     ] {
         // Read input program
         let mut input_program: Vec<u8> = Vec::new();
@@ -74,15 +79,8 @@ fn test_basic() {
     }
 }
 
-struct MemoizationBenches {
-    uninstrumented_duration: Duration,
-    instrumented_duration: Duration,
-    pure_functions: HashSet<u32>,
-    runtime_pure_functions_calls: Vec<(u32, i32)>,
-    runtime_target_functions: Vec<u32>,
-    cache_size_report: i32,
-    cache_hit_report: i32,
-}
+mod memoization_analysis;
+use memoization_analysis::MemoizationBenches;
 
 impl MemoizationBenches {
     fn summarize(&self) {
@@ -90,7 +88,7 @@ impl MemoizationBenches {
             uninstrumented_duration,
             instrumented_duration,
             pure_functions,
-            runtime_pure_functions_calls,
+            runtime_pure_function_calls,
             runtime_target_functions,
             cache_hit_report,
             cache_size_report,
@@ -119,7 +117,7 @@ impl MemoizationBenches {
             "# of runtime target functions: {}",
             runtime_target_functions.len()
         );
-        for (runtime_pure_function, calls) in runtime_pure_functions_calls {
+        for (runtime_pure_function, calls) in runtime_pure_function_calls {
             if *calls > 0 {
                 println!(" => Pure function {runtime_pure_function} was called {calls} times");
             };
@@ -360,7 +358,7 @@ fn report_memoization_benches_for(
     MemoizationBenches {
         uninstrumented_duration: time_elapsed_after_uninstrumented_call,
         instrumented_duration: time_elapsed_after_instrumented_call,
-        runtime_pure_functions_calls: runtime_profiled_pure_functions_calls,
+        runtime_pure_function_calls: runtime_profiled_pure_functions_calls,
         runtime_target_functions: pure_functions_of_interest,
         cache_size_report,
         cache_hit_report,
