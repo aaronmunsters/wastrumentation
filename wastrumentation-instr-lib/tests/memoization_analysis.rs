@@ -74,7 +74,7 @@ pub struct MemoizationBenches {
 
 // TODO: change Vec into &[u8]
 fn report_memoization_benches_for(
-    input_program: &Vec<u8>,
+    input_program: &[u8],
     threshold_pure_f: i32,
     entry_point: &'_ str,
 ) -> MemoizationBenches {

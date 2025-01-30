@@ -38,15 +38,17 @@ const WAT_EVEN: &str = r#"
 
 #[test]
 fn test_merge() {
+    let wat_even = wat2wasm(WAT_EVEN).unwrap();
+    let wat_odd = wat2wasm(WAT_ODD).unwrap();
     let merge_options = MergeOptions {
         primary: None,
         input_modules: vec![
             InputModule {
-                module: wat2wasm(WAT_EVEN).unwrap(),
+                module: &wat_even,
                 namespace: String::from("even"),
             },
             InputModule {
-                module: wat2wasm(WAT_ODD).unwrap(),
+                module: &wat_odd,
                 namespace: String::from("odd"),
             },
         ],
@@ -82,11 +84,11 @@ fn test_merge() {
 fn test_merge_fail() {
     let merge_options = MergeOptions {
         primary: Some(InputModule {
-            module: vec![99, 88, 77, 66],
+            module: &[99, 88, 77, 66],
             namespace: String::from("foo"),
         }),
         input_modules: vec![InputModule {
-            module: vec![99, 88, 77, 66],
+            module: &[99, 88, 77, 66],
             namespace: String::from("bar"),
         }],
         multimemory: options::Multimemory::Enable,
@@ -139,7 +141,7 @@ fn test_debug() {
     );
 
     let input_module = InputModule {
-        module: vec![],
+        module: &[],
         namespace: "namespace".into(),
     };
 

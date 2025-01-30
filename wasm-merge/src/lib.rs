@@ -20,8 +20,8 @@ use error::Error;
 use options::AsOption;
 
 #[derive(Debug)]
-pub struct InputModule {
-    pub module: Vec<u8>,
+pub struct InputModule<'a> {
+    pub module: &'a [u8],
     pub namespace: String,
 }
 
@@ -37,13 +37,13 @@ macro_rules! as_bash_args {
 }
 
 #[derive(Debug, Default)]
-pub struct MergeOptions {
+pub struct MergeOptions<'a> {
     /// Optionally a primary module is declared.
     /// The primary module receives index 0, which
     /// may be important e.g. for the WASI interface
     /// that reads IO buffers from memory 0.
-    pub primary: Option<InputModule>,
-    pub input_modules: Vec<InputModule>,
+    pub primary: Option<InputModule<'a>>,
+    pub input_modules: Vec<InputModule<'a>>,
 
     // Options:
     pub no_validation: options::NoValidate,
@@ -73,7 +73,7 @@ pub struct MergeOptions {
     pub typed_continuations: options::TypedContinuations,
 }
 
-impl MergeOptions {
+impl MergeOptions<'_> {
     /// # Errors
     /// When merging fails according to wasm-merge.
     ///

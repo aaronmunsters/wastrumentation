@@ -243,7 +243,7 @@ impl GlobalValueEquals {
 }
 
 impl Analysis {
-    fn instrument_for(&self, input_program: &Vec<u8>) -> Vec<u8> {
+    fn instrument_for(&self, input_program: &[u8]) -> Vec<u8> {
         // Language for Instrumentation: Currently alwasy Rust
         // Language for Analysis: Depends on input analysis
 

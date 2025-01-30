@@ -89,7 +89,7 @@ where
     /// Errors upon failing to compile, instrument or merge.
     pub fn wastrument(
         &self,
-        input_program: &WasmModule,
+        input_program: &[u8],
         analysis: ProcessedAnalysis<AnalysisLanguage>,
         configuration: &Configuration,
     ) -> Result<WasmModule, Error<AnalysisLanguage, InstrumentationLanguage>> {
@@ -134,9 +134,9 @@ where
         // 4. Merge them all together
         let instrumented_input = Self::merge(
             primary_selection,
-            instrumented_input,
-            analysis_wasm,
-            compiled_instrumentation_lib,
+            &instrumented_input,
+            &analysis_wasm,
+            compiled_instrumentation_lib.as_deref(),
         )?;
 
         // 5. Yield expected result
@@ -145,9 +145,9 @@ where
 
     fn merge(
         primary_selection: &Option<PrimaryTarget>,
-        instrumented_input: WasmModule,
-        compiled_analysis: WasmModule,
-        compiled_instrumentation_lib: Option<WasmModule>,
+        instrumented_input: &[u8],
+        compiled_analysis: &[u8],
+        compiled_instrumentation_lib: Option<&[u8]>,
     ) -> Result<WasmModule, Error<AnalysisLanguage, InstrumentationLanguage>> {
         let input_analysis = move || {
             Some(InputModule {
