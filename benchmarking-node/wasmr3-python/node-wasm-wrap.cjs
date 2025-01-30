@@ -19,15 +19,12 @@ const observer = new PerformanceObserver((performance_observer_entry_list) => {
 
 observer.observe({type: 'measure'});
 
-let reported = false;
-function report_memory_once() {
+function report_memory() {
     // Guard that report happens only once!
-    if (reported) return;
     const current_memory_usage_dictionary = process.memoryUsage();
     const {rss, heapTotal, heapUsed, external, arrayBuffers} = current_memory_usage_dictionary;
     const current_memory_usage = rss + heapTotal + heapUsed + external + arrayBuffers;
     console.log(`INPUT_NAME memory usage in bytes: ${current_memory_usage}`);
-    reported = true;
 }
 
 (async () => {
@@ -43,6 +40,6 @@ function report_memory_once() {
         performance.measure(mark_name, mark_name);
 
         // Report memory usage once
-        report_memory_once();
+        report_memory();
     }
 })()
