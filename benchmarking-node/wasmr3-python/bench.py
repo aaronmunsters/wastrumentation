@@ -6,9 +6,9 @@ import csv
 from identify_input_benchmarks import identify_input_benchmarks
 from setup_workspace import setup_workspace
 from fetch_benchmark_suite import fetch_benchmark_suite
-from setup_benchmarks_regular import setup_benchmarks_regular
-from setup_benchmarks_wasabi import setup_benchmarks_wasabi
-from setup_benchmarks_wastrumentation import setup_benchmarks_wastrumentation
+from setup_benchmarks.regular import setup_benchmarks_regular
+from setup_benchmarks.wasabi import setup_benchmarks_wasabi
+from setup_benchmarks.wastrumentation import setup_benchmarks_wastrumentation
 from execute_benchmarks import execute_benchmarks
 from report_executes_once import report_executes_once
 from report_code_size import report_code_size
