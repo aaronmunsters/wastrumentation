@@ -49,7 +49,7 @@ def setup_benchmarks_wastrumentation(
 
     subprocess.run([
         'bash', '-c', f"""                                                  \
-        cargo run  --                                                       \
+        cargo run --bin wastrumentation-cli --                              \
             --input-program-path "{benchmark_path}"                         \
             --rust-analysis-toml-path "{analysis_path}/Cargo.toml"          \
             --hooks {hooks}                                                 \
