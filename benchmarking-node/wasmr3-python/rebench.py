@@ -16,7 +16,7 @@ from report_code_size import report_code_size
 
 from config import node_wasm_wrap_path, path_executes_once, path_code_size, path_execution_bench
 from config import bench_suite_benchmarks_path, bench_suite_benchmarks_path_wasabi, bench_suite_benchmarks_path_wastrumentation
-from config import NODE_BENCHMARK_RUNS
+from input_programs_analysis_config import NODE_BENCHMARK_RUNS
 from config import executes_once_field_names, execution_bench_field_names, code_size_field_names
 from config import KEY_runtime, KEY_platform, KEY_analysis, KEY_input_program, KEY_memory_usage, KEY_completion_time, KEY_time_unit, KEY_exception, KEY_exception_reason, KEY_timeout, KEY_timeout_amount
 from config import timeout

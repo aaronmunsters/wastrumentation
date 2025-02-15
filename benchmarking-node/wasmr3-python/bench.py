@@ -15,7 +15,7 @@ from report_code_size import report_code_size
 
 from config import node_wasm_wrap_path, path_executes_once, path_code_size, path_execution_bench
 from config import bench_suite_benchmarks_path, bench_suite_benchmarks_path_wasabi, bench_suite_benchmarks_path_wastrumentation
-from config import NODE_BENCHMARK_RUNS
+from input_programs_analysis_config import NODE_BENCHMARK_RUNS, ANALYSIS_FORWARD
 
 from config import code_size_field_names
 from config import executes_once_field_names
@@ -38,7 +38,7 @@ setup_benchmarks_regular(node_wasm_wrap_path, candidate_input_benchmarks, intra_
 
 # Instrument the benchmarks, only for `forward analysis`
 # FIXME: hardcoded case
-forward_analysis = analysis_names_pathed[-1]
+forward_analysis = next(filter(lambda analysis_name_pathed: analysis_name_pathed[0] == ANALYSIS_FORWARD, analysis_names_pathed))
 (forward_analysis_name, _, _, _, _) = forward_analysis
 assert forward_analysis_name == 'forward', f"Assumption that last in analysis_names_pathed is 'forward' analysis violated"
 

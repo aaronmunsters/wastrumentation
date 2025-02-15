@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import os
 
+from input_programs_analysis_config import configured_analyses
+
 # type AnalysisName = str
 # type WasabiHooks = list[str]
 # type WastrumentationHooks = list[str]
@@ -8,58 +10,68 @@ import os
 # type AnalysisPathWasabi          = str
 # type AnalysisPathWastrumentation = str
 
+ANALYSIS_INSTRUCTION_MIX = 'instruction-mix'
+ANALYSIS_COVERAGE_INSTRUCTION = 'coverage-instruction'
+ANALYSIS_COVERAGE_BRANCH = 'coverage-branch'
+ANALYSIS_CALL_GRAPH = 'call-graph'
+ANALYSIS_MEMORY_TRACING = 'memory-tracing'
+ANALYSIS_CRYPTOMINER_DETECTION = 'cryptominer-detection'
+ANALYSIS_BLOCK_PROFILING = 'block-profiling'
+ANALYSIS_TAINT = 'taint'
+ANALYSIS_FORWARD = 'forward'
+
 # type: [AnalysisName, WasabiHooks, WastrumentationHooks][]
 analysis_names_primitive = [
     [
-        'instruction-mix', # not included for Wasabi: nop, unreachable (neither for Wastrumentation)
+        ANALYSIS_INSTRUCTION_MIX, # not included for Wasabi: nop, unreachable (neither for Wastrumentation)
         # ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅   ✅✅✅✅    ✅✅✅        ✅✅✅✅✅       ✅✅✅   ✅✅✅✅    ✅✅✅✅✅✅✅    ✅✅✅✅✅✅     ✅✅     ✅✅✅✅   ✅✅✅    ✅✅✅    ✅✅✅    ✅✅✅✅   ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅  ✅✅✅✅   ✅✅✅   # Note: begin is covered in many _pre traps
         ['if',                                                           'br',     'br_if',     'br_table',     'drop', 'select', 'memory_size', 'memory_grow', 'unary', 'binary', 'load', 'store', 'local', 'global', 'call',                                                             'const', 'return', 'begin', 'end'],
         ['if-then', 'if-then-post', 'if-then-else', 'if-then-else-post', 'branch', 'branch-if', 'branch-table', 'drop', 'select', 'memory-size', 'memory-grow', 'unary', 'binary', 'load', 'store', 'local', 'global', 'call-pre', 'call-post', 'call-indirect-pre', 'call-indirect-post', 'const', 'return', 'block-pre', 'block-post', 'loop-pre', 'loop-post'],
     ],
     [
-        'coverage-instruction', # not included for Wasabi: nop, unreachable (neither for Wastrumentation)
+        ANALYSIS_COVERAGE_BRANCH, # not included for Wasabi: nop, unreachable (neither for Wastrumentation)
         # ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅   ✅✅✅✅    ✅✅✅        ✅✅✅✅✅       ✅✅✅   ✅✅✅✅    ✅✅✅✅✅✅✅    ✅✅✅✅✅✅     ✅✅     ✅✅✅✅   ✅✅✅    ✅✅✅    ✅✅✅    ✅✅✅✅   ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅  ✅✅✅✅   ✅✅✅   # Note: begin is covered in many _pre traps
         ['if',                                                           'br',     'br_if',     'br_table',     'drop', 'select', 'memory_size', 'memory_grow', 'unary', 'binary', 'load', 'store', 'local', 'global', 'call',                                                             'const', 'return', 'begin', 'end'],
         ['if-then', 'if-then-post', 'if-then-else', 'if-then-else-post', 'branch', 'branch-if', 'branch-table', 'drop', 'select', 'memory-size', 'memory-grow', 'unary', 'binary', 'load', 'store', 'local', 'global', 'call-pre', 'call-post', 'call-indirect-pre', 'call-indirect-post', 'const', 'return', 'block-pre', 'block-post', 'loop-pre', 'loop-post'],
     ],
     [
-        'coverage-branch',
+        ANALYSIS_COVERAGE_BRANCH,
         # ✅                         ✅✅✅         ✅✅✅✅✅       ✅✅✅✅
         ['if',                      'br_if',     'br_table',     'select'],
         ['if-then-else', 'if-then', 'branch-if', 'branch-table', 'select'],
     ],
     [
-        'call-graph',
+        ANALYSIS_CALL_GRAPH,
         # ✅
         ['call'],
         ['call-pre'],
     ],
     [
-        'memory-tracing',
+        ANALYSIS_MEMORY_TRACING,
         # ✅✅✅   ✅✅✅
         ['load', 'store'],
         ['load', 'store'],
     ],
     [
-        'cryptominer-detection',
+        ANALYSIS_CRYPTOMINER_DETECTION,
         # ✅✅✅   ✅✅✅
         ['binary'],
         ['binary'],
     ],
     [
-        'block-profiling',
+        ANALYSIS_BLOCK_PROFILING,
         # ✅✅✅   ✅✅✅
         ['begin'],
         ['call-pre', 'call-indirect-pre', 'block-pre', 'loop-pre'],
     ],
     [
-        'taint',
+        ANALYSIS_TAINT,
         # ❌❌❌❌❌❌❌❌  ❌❌   ❌❌❌❌❌❌❌    ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅   ✅✅✅✅    ✅✅✅        ✅✅✅✅✅       ✅✅✅   ✅✅✅✅    ✅✅✅✅✅✅✅    ✅✅✅✅✅✅     ✅✅     ✅✅✅✅   ✅✅✅    ✅✅✅    ✅✅✅    ✅✅✅✅   ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅  ✅✅✅✅   ✅✅✅   # Note: begin is covered in many _pre traps
         [               'nop', 'unreachable', 'if',                                                           'br',     'br_if',     'br_table',     'drop', 'select', 'memory_size', 'memory_grow', 'unary', 'binary', 'load', 'store', 'local', 'global', 'call',                                                             'const', 'return', 'begin', 'end'],
         ['generic-apply',                     'if-then', 'if-then-post', 'if-then-else', 'if-then-else-post', 'branch', 'branch-if', 'branch-table', 'drop', 'select', 'memory-size', 'memory-grow', 'unary', 'binary', 'load', 'store', 'local', 'global', 'call-pre', 'call-post', 'call-indirect-pre', 'call-indirect-post', 'const', 'return', 'block-pre', 'block-post', 'loop-pre', 'loop-post'],
     ],
     [
-        'forward',
+        ANALYSIS_FORWARD,
         # ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅   ✅✅✅✅    ✅✅✅        ✅✅✅✅✅       ✅✅✅   ✅✅✅✅    ✅✅✅✅✅✅✅    ✅✅✅✅✅✅     ✅✅     ✅✅✅✅   ✅✅✅    ✅✅✅    ✅✅✅    ✅✅✅✅   ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅  ✅✅✅✅   ✅✅✅   # Note: begin is covered in many _pre traps
         ['if',                                                           'br',     'br_if',     'br_table',     'drop', 'select', 'memory_size', 'memory_grow', 'unary', 'binary', 'load', 'store', 'local', 'global', 'call',                                                             'const', 'return', 'begin', 'end'],
         ['if-then', 'if-then-post', 'if-then-else', 'if-then-else-post', 'branch', 'branch-if', 'branch-table', 'drop', 'select', 'memory-size', 'memory-grow', 'unary', 'binary', 'load', 'store', 'local', 'global', 'call-pre', 'call-post', 'call-indirect-pre', 'call-indirect-post', 'const', 'return', 'block-pre', 'loop-pre', 'block-post', 'loop-post'],
@@ -79,4 +91,6 @@ analysis_names_pathed = [
     analysis_name, wasabi_hooks, wastrumentation_hooks
     in
     analysis_names_primitive
+    if
+    analysis_name in configured_analyses
 ]

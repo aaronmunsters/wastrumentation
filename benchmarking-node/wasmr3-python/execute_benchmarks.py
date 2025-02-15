@@ -6,7 +6,8 @@ import logging
 import subprocess
 
 from allowed_failures import identify_error
-from config import timeout, timeout_treshold, benchmark_runs, NODE_BENCHMARK_RUNS, EXIT_STATUS_SUCCESS
+from config import timeout, timeout_treshold, EXIT_STATUS_SUCCESS
+from input_programs_analysis_config import benchmark_runs, NODE_BENCHMARK_RUNS
 
 def execute_benchmarks(
     runtime: str,
