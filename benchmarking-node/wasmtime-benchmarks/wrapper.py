@@ -28,7 +28,7 @@ result_file_field_names = [
 
 
 TIMEOUT_IN_SECONDS = 1 * 60 * 5
-TIMEOUT_THRESHOLD = 2
+TIMEOUT_THRESHOLD = 1
 RUNS = 30
 INPUT_PROGRAMS = [
     # "commanderkeen",   # CRASH ON Apply Silicon M2
@@ -76,7 +76,9 @@ for (platform, analysis, benchmarks_directory) in [
         input_program_path = path.join(benchmarks_directory, input_program, f"{input_program}.wasm")
         assert path.exists(input_program_path), input_program_path
         for iteration in range(RUNS):
-            if times_this_combination_timed_out > TIMEOUT_THRESHOLD: continue
+            if times_this_combination_timed_out >= TIMEOUT_THRESHOLD:
+                logging.warning(f'[platform:{platform},analysis:{analysis},benchmark:{input_program},runtime:{iteration}] SKIPPING DUE TO TIMEOUT')
+                continue
 
             try:
                 # run benchmark & write to file
