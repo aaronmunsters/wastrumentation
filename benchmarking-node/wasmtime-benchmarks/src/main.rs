@@ -74,23 +74,25 @@ fn main() {
         (baseline, "uninstrumented", None),
         (forward_wastrumentation, "Wastrumentation", Some("forward")),
     ] {
-        for benchmark_name in INPUT_PROGRAMS {
-            let mut benchmark_file_name = benchmark_name.to_string();
-            benchmark_file_name.push_str(".wasm");
+        for _run in 0..RUNS {
+            for benchmark_name in INPUT_PROGRAMS {
+                let mut benchmark_file_name = benchmark_name.to_string();
+                benchmark_file_name.push_str(".wasm");
 
-            let benchmark_path = directory.join(benchmark_name).join(benchmark_file_name);
+                let benchmark_path = directory.join(benchmark_name).join(benchmark_file_name);
 
-            // assert benchmark path is valid
-            assert!(fs::exists(&benchmark_path).unwrap());
+                // assert benchmark path is valid
+                assert!(fs::exists(&benchmark_path).unwrap());
 
-            run_benchmark(
-                platform,
-                benchmark_name,
-                &analysis,
-                &engine,
-                &benchmark_path,
-                &mut writer,
-            );
+                run_benchmark(
+                    platform,
+                    benchmark_name,
+                    &analysis,
+                    &engine,
+                    &benchmark_path,
+                    &mut writer,
+                );
+            }
         }
     }
 }
@@ -106,28 +108,26 @@ fn run_benchmark(
     let module = Module::from_file(&engine, benchmark_path).unwrap();
     let mut store = Store::new(&engine, ());
     let instance = Instance::new(&mut store, &module, &[]).unwrap();
-    println!("Running on {platform:?} benchmark for {benchmark_path:?}!");
+    println!("Running on {platform:?} benchmark for {program:?}!");
     let start_function = instance
         .get_typed_func::<(), ()>(&mut store, "_start")
         .unwrap();
 
-    for _ in 0..RUNS {
-        let now = Instant::now();
-        start_function.call(&mut store, ()).unwrap();
-        let elapsed_during_benchmark = now.elapsed();
+    let now = Instant::now();
+    start_function.call(&mut store, ()).unwrap();
+    let elapsed_during_benchmark = now.elapsed();
 
-        println!("{elapsed_during_benchmark:?}");
+    println!("{elapsed_during_benchmark:?}");
 
-        let record: Record = Record {
-            runtime: "Wasmtime".into(),
-            platform: platform.into(),
-            analysis: analysis.map(|v| v.to_string()).clone(),
-            input_program: program.into(),
-            completion_time: elapsed_during_benchmark.as_nanos(),
-            time_unit: "ns".into(),
-        };
+    let record: Record = Record {
+        runtime: "Wasmtime".into(),
+        platform: platform.into(),
+        analysis: analysis.map(|v| v.to_string()).clone(),
+        input_program: program.into(),
+        completion_time: elapsed_during_benchmark.as_nanos(),
+        time_unit: "ns".into(),
+    };
 
-        writer.serialize(record).unwrap();
-        writer.flush().unwrap();
-    }
+    writer.serialize(record).unwrap();
+    writer.flush().unwrap();
 }
