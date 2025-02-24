@@ -60,9 +60,6 @@ INPUT_PROGRAMS = [
     'multiplyDouble',  # 7099443958 ns
 ]
 
-def write_timeout():
-    ...
-
 benchmarks_containing_directory = path.join('..', 'wasmr3-python', 'working-dir', 'wasm-r3')
 baseline = path.join(benchmarks_containing_directory, 'benchmarks')
 forward_wastrumentation = path.join(benchmarks_containing_directory, 'benchmarks_wastrumentation', 'forward')
