@@ -25,6 +25,10 @@ struct Args {
     /// The input program path
     #[arg(short, long)]
     input_program_path: PathBuf,
+
+    /// Number of runs
+    #[arg(short, long)]
+    runs: usize,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -41,16 +45,16 @@ struct Record {
 
 fn main() {
     let Args {
-        platform,
-        analysis,
-        input_program,
+        ref platform,
+        ref analysis,
+        ref input_program,
         input_program_path: program_path,
+        runs,
     } = Args::parse();
 
     // Setup Engine
     let mut config = Config::default();
     config.cranelift_opt_level(wasmtime::OptLevel::SpeedAndSize);
-    let engine = Engine::new(&config).unwrap();
 
     // Setup CSV to report results
     // Open the CSV file, create a CSV writer with headers
@@ -65,31 +69,36 @@ fn main() {
         .has_headers(false) // Do not include headers
         .from_writer(file);
 
-    let module = Module::from_file(&engine, program_path).unwrap();
-    let mut store = Store::new(&engine, ());
-    let instance = Instance::new(&mut store, &module, &[]).unwrap();
-    println!("Running on {platform:?} benchmark for {input_program:?}!");
-    let start_function = instance
-        .get_typed_func::<(), ()>(&mut store, "_start")
-        .unwrap();
+    for _run in 0..runs {
+        let engine = Engine::new(&config).unwrap();
+        let module = Module::from_file(&engine, &program_path).unwrap();
+        let mut store = Store::new(&engine, ());
+        let instance = Instance::new(&mut store, &module, &[]).unwrap();
+        println!(
+            "Running on {platform:?} (analysis: {analysis:?}) benchmark for {input_program:?}!"
+        );
+        let start_function = instance
+            .get_typed_func::<(), ()>(&mut store, "_start")
+            .unwrap();
 
-    let now = Instant::now();
-    start_function.call(&mut store, ()).unwrap();
-    let elapsed_during_benchmark = now.elapsed();
+        let now = Instant::now();
+        start_function.call(&mut store, ()).unwrap();
+        let elapsed_during_benchmark = now.elapsed();
 
-    println!("{elapsed_during_benchmark:?}");
+        println!("{elapsed_during_benchmark:?}");
 
-    let record: Record = Record {
-        runtime: "Wasmtime".into(),
-        platform,
-        analysis,
-        input_program,
-        completion_time: elapsed_during_benchmark.as_nanos(),
-        time_unit: "ns".into(),
-        timeout: false,
-        timeout_amount: 0,
-    };
+        let record: Record = Record {
+            runtime: "Wasmtime".into(),
+            platform: platform.to_string(),
+            analysis: analysis.to_string(),
+            input_program: input_program.to_string(),
+            completion_time: elapsed_during_benchmark.as_nanos(),
+            time_unit: "ns".into(),
+            timeout: false,
+            timeout_amount: 0,
+        };
 
-    writer.serialize(record).unwrap();
-    writer.flush().unwrap();
+        writer.serialize(record).unwrap();
+        writer.flush().unwrap();
+    }
 }
