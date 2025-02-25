@@ -41,6 +41,8 @@ struct Record {
     time_unit: String,
     timeout: bool,
     timeout_amount: u128,
+    exception: bool,
+    exception_reason: Option<String>,
 }
 
 fn main() {
@@ -74,14 +76,15 @@ fn main() {
         let module = Module::from_file(&engine, &program_path).unwrap();
         let mut store = Store::new(&engine, ());
         let instance = Instance::new(&mut store, &module, &[]).unwrap();
-        println!(
-            "Running on {platform:?} (analysis: {analysis:?}) benchmark for {input_program:?}!"
-        );
         let start_function = instance
             .get_typed_func::<(), ()>(&mut store, "_start")
             .unwrap();
 
         let now = Instant::now();
+        let now_human_readable = chrono::Utc::now().to_utc();
+        println!(
+            "[{now_human_readable}] Running on {platform:?} (analysis: {analysis:?}) benchmark for {input_program:?}!"
+        );
         start_function.call(&mut store, ()).unwrap();
         let elapsed_during_benchmark = now.elapsed();
 
@@ -96,6 +99,8 @@ fn main() {
             time_unit: "ns".into(),
             timeout: false,
             timeout_amount: 0,
+            exception: false,
+            exception_reason: None,
         };
 
         writer.serialize(record).unwrap();
