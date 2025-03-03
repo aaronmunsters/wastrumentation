@@ -24,15 +24,13 @@ struct Args {
 
 fn main() -> anyhow::Result<()> {
     let Args {
-        input_program_path,
+        mut input_program_path,
         mut output_path,
         minimum_body,
     } = Args::parse();
 
-    let input_program: Vec<u8> = input_program_path
-        .bytes()
-        .map(std::io::Result::unwrap)
-        .collect();
+    let mut input_program = vec![];
+    input_program_path.read_to_end(&mut input_program)?;
 
     let (module, _, _) = wasabi_wasm::Module::from_bytes(&input_program)?;
     let set = immutable_functions(&module);
