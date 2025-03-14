@@ -37,7 +37,7 @@ def execute_benchmarks(
         try:
             # run benchmark & write to file
             bench_run_result = subprocess.run(
-                ['bash', '-c', f'node --experimental-wasm-multi-memory {benchmark_path}'],
+                ['bash', '-c', f'node --experimental-wasm-multi-memory {benchmark_path} {NODE_BENCHMARK_RUNS}'],
                 capture_output=True,
                 text=True,
                 timeout=timeout,

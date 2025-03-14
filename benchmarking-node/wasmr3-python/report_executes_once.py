@@ -10,6 +10,7 @@ from config import timeout, EXIT_STATUS_SUCCESS
 from config import KEY_timeout, KEY_exception, KEY_analysis, KEY_platform
 from config import KEY_runtime, KEY_input_program, KEY_memory_usage, KEY_completion_time, KEY_time_unit, KEY_exception_reason, KEY_timeout_amount
 from config import executes_once_field_names
+from input_programs_analysis_config import NODE_BENCHMARK_RUNS
 from util import parse_boolean
 
 def forward_success_runs_for(data_path):
@@ -54,7 +55,7 @@ def report_executes_once(
 
     try:
         bench_run_result = subprocess.run(
-            ['bash', '-c', f'node --experimental-wasm-multi-memory {benchmark_path}'],
+            ['bash', '-c', f'node --experimental-wasm-multi-memory {benchmark_path} {NODE_BENCHMARK_RUNS}'],
             capture_output=True,
             text=True,
             timeout=timeout,

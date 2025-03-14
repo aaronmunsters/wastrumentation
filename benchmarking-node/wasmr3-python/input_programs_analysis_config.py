@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 # DO NOT TOUCH VARIABLES BELOW
 # vvvvvvvvvvvvvvvvvvvvvvvvvvvv
-ANALYSIS_INSTRUCTION_MIX = 'instruction-mix'
-ANALYSIS_COVERAGE_INSTRUCTION = 'coverage-instruction'
-ANALYSIS_COVERAGE_BRANCH = 'coverage-branch'
-ANALYSIS_CALL_GRAPH = 'call-graph'
-ANALYSIS_MEMORY_TRACING = 'memory-tracing'
-ANALYSIS_CRYPTOMINER_DETECTION = 'cryptominer-detection'
-ANALYSIS_BLOCK_PROFILING = 'block-profiling'
+ANALYSIS_BRANCHES = 'branches'
+ANALYSIS_OPCODES = 'opcodes'
+ANALYSIS_ICOUNT = 'icount'
+ANALYSIS_GLOBALS = 'globals'
+ANALYSIS_LOOPS = 'loops'
+ANALYSIS_MEMSTATS = 'memstats'
+
 ANALYSIS_TAINT = 'taint'
 ANALYSIS_FORWARD = 'forward'
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -19,15 +19,14 @@ NODE_BENCHMARK_RUNS = 30 # How often to rerun within a NodeJS instance
 
 # CONFIGURE ANALYSES
 configured_analyses_slower_than_forward = [
-    (ANALYSIS_CALL_GRAPH,            0.02),
-    (ANALYSIS_BLOCK_PROFILING,       0.20),
-    (ANALYSIS_COVERAGE_BRANCH,       0.30),
-    (ANALYSIS_CRYPTOMINER_DETECTION, 0.50),
-    (ANALYSIS_MEMORY_TRACING,        0.90),
-    (ANALYSIS_FORWARD,               1.00), # <-- Do not disable
-    (ANALYSIS_INSTRUCTION_MIX,       1.20),
-    (ANALYSIS_TAINT,                 3.00),
-    (ANALYSIS_COVERAGE_INSTRUCTION,  5.00),
+    (ANALYSIS_BRANCHES, 1.00),
+    (ANALYSIS_OPCODES,  1.00),
+    (ANALYSIS_ICOUNT,   1.00),
+    (ANALYSIS_GLOBALS,  1.00),
+    (ANALYSIS_LOOPS,    1.00),
+    (ANALYSIS_FORWARD,  1.00), # <-- Do not disable
+    (ANALYSIS_MEMSTATS, 1.00),
+    (ANALYSIS_TAINT,    3.00),
 ]
 
 configured_analyses = list(map(lambda ca_s: ca_s[0], configured_analyses_slower_than_forward))

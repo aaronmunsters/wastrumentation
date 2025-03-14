@@ -14,7 +14,6 @@ def setup_benchmarks_wastrumentation(
     analysis_name: str,
     analysis_path: str,
     analysis_hooks: list[str],
-    intra_vm_runs: int,
 ):
     os.makedirs(bench_suite_benchmarks_path_wastrumentation, exist_ok=True)
 
@@ -32,7 +31,6 @@ def setup_benchmarks_wastrumentation(
     for pattern, replacement in [
         [r'INPUT_PROGRAM_PATH', f'{benchmark_path_wastrumentation_instrumented}'],
         [r'INPUT_NAME', f'{benchmark}'],
-        [r'NODE_BENCHMARK_RUNS', f'{intra_vm_runs}'],
     ]: wrapper_content = re.sub(pattern, replacement, wrapper_content)
     # write to template
     open(wrapper_output_path, 'w').write(wrapper_content)

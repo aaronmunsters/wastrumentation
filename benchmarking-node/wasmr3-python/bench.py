@@ -15,7 +15,7 @@ from report_code_size import report_code_size
 
 from config import node_wasm_wrap_path, path_executes_once, path_code_size, path_execution_bench
 from config import bench_suite_benchmarks_path, bench_suite_benchmarks_path_wasabi, bench_suite_benchmarks_path_wastrumentation
-from input_programs_analysis_config import NODE_BENCHMARK_RUNS, ANALYSIS_FORWARD
+from input_programs_analysis_config import ANALYSIS_FORWARD
 
 from config import code_size_field_names
 from config import executes_once_field_names
@@ -32,9 +32,8 @@ fetch_benchmark_suite()
 ###########################################
 
 # Setup benchmarks regular
-intra_vm_benchmark_runs = 1
 candidate_input_benchmarks = identify_input_benchmarks()
-setup_benchmarks_regular(node_wasm_wrap_path, candidate_input_benchmarks, intra_vm_benchmark_runs)
+setup_benchmarks_regular(node_wasm_wrap_path, candidate_input_benchmarks)
 
 # Instrument the benchmarks, only for `forward analysis`
 # FIXME: hardcoded case
@@ -52,7 +51,6 @@ for (analysis_name, wasabi_analysis_path, wastrumentation_analysis_path, wasabi_
             analysis_name,
             wasabi_analysis_path,
             wasabi_hooks,
-            intra_vm_benchmark_runs,
         )
         # Setup benchmarks wastrumentation
         setup_benchmarks_wastrumentation(
@@ -62,7 +60,6 @@ for (analysis_name, wasabi_analysis_path, wastrumentation_analysis_path, wasabi_
             analysis_name,
             wastrumentation_analysis_path,
             wastrumentation_hooks,
-            intra_vm_benchmark_runs,
         )
 
 ###############################################################
@@ -124,7 +121,7 @@ candidate_input_benchmarks = identify_input_benchmarks()
 input_programs = list(candidate_input_benchmarks.keys())
 
 # Setup benchmarks regular
-setup_benchmarks_regular(node_wasm_wrap_path, candidate_input_benchmarks, NODE_BENCHMARK_RUNS)
+setup_benchmarks_regular(node_wasm_wrap_path, candidate_input_benchmarks)
 
 for (analysis_name, wasabi_analysis_path, wastrumentation_analysis_path, wasabi_hooks, wastrumentation_hooks) in analysis_names_pathed:
     for (benchmark, benchmark_path) in candidate_input_benchmarks.items():
@@ -137,7 +134,6 @@ for (analysis_name, wasabi_analysis_path, wastrumentation_analysis_path, wasabi_
                 analysis_name,
                 wasabi_analysis_path,
                 wasabi_hooks,
-                NODE_BENCHMARK_RUNS,
             )
 
         if forward_success_runs[benchmark]['wastrumentation']:
@@ -149,7 +145,6 @@ for (analysis_name, wasabi_analysis_path, wastrumentation_analysis_path, wasabi_
                 analysis_name,
                 wastrumentation_analysis_path,
                 wastrumentation_hooks,
-                NODE_BENCHMARK_RUNS,
             )
 
 ######################################

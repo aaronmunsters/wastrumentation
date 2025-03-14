@@ -8,7 +8,6 @@ from config import bench_suite_benchmarks_path
 def setup_benchmarks_regular(
         node_wasm_wrap_path: str,
         benchmarks: dict[str, str],
-        intra_vm_runs: int,
 ):
     if len(benchmarks) == 0: return
 
@@ -25,9 +24,8 @@ def setup_benchmarks_regular(
         # Generate wrapper_content from template
         wrapper_content = wrapper_template
         for pattern, replacement in [
-            [r'INPUT_PROGRAM_PATH', f'{benchmark_path}'],
             [r'INPUT_NAME', f'{benchmark}'],
-            [r'NODE_BENCHMARK_RUNS', f'{intra_vm_runs}'],
+            [r'INPUT_PROGRAM_PATH', f'{benchmark_path}'],
         ]:
             if re.search(pattern, wrapper_content) is None:
                 logging.warning(f"Rewritting '{pattern}' to '{replacement}' will not happen since '{pattern}' did not occur in {wrapper_content}")
