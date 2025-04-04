@@ -44,23 +44,25 @@ assert forward_analysis_name == 'forward', f"Assumption that last in analysis_na
 for (analysis_name, wasabi_analysis_path, wastrumentation_analysis_path, wasabi_hooks, wastrumentation_hooks) in [forward_analysis]:
     for (benchmark, benchmark_path) in candidate_input_benchmarks.items():
         # Setup benchmarks wasabi
-        setup_benchmarks_wasabi(
-            node_wasm_wrap_path,
-            benchmark,
-            benchmark_path,
-            analysis_name,
-            wasabi_analysis_path,
-            wasabi_hooks,
-        )
+        if len(wasabi_hooks) != 0:
+            setup_benchmarks_wasabi(
+                node_wasm_wrap_path,
+                benchmark,
+                benchmark_path,
+                analysis_name,
+                wasabi_analysis_path,
+                wasabi_hooks,
+            )
         # Setup benchmarks wastrumentation
-        setup_benchmarks_wastrumentation(
-            node_wasm_wrap_path,
-            benchmark,
-            benchmark_path,
-            analysis_name,
-            wastrumentation_analysis_path,
-            wastrumentation_hooks,
-        )
+        if len(wastrumentation_hooks) != 0:
+            setup_benchmarks_wastrumentation(
+                node_wasm_wrap_path,
+                benchmark,
+                benchmark_path,
+                analysis_name,
+                wastrumentation_analysis_path,
+                wastrumentation_hooks,
+            )
 
 ###############################################################
 ###### REPORT SUCCESS RUNS FOR INSTRUMENTATION PLATFORMS ######

@@ -19,6 +19,8 @@ ANALYSIS_MEMSTATS = 'memstats'
 
 ANALYSIS_TAINT = 'taint'
 ANALYSIS_FORWARD = 'forward'
+ANALYSIS_SAFE_HEAP = 'safe-heap'
+ANALYSIS_DENAN = 'denan'
 
 # type: [AnalysisName, WasabiHooks, WastrumentationHooks][]
 analysis_names_primitive = [
@@ -107,6 +109,17 @@ analysis_names_primitive = [
     #     ['begin'],
     #     ['call-pre', 'call-indirect-pre', 'block-pre', 'loop-pre'],
     # ],
+    [
+        ANALYSIS_SAFE_HEAP,
+        # ✅✅✅   ✅✅✅
+        [],
+        ['load', 'store',],
+    ],
+    [
+        ANALYSIS_DENAN,
+        [],
+        ['generic-apply', 'unary', 'binary', 'const', 'local', 'global', 'load', 'store'],
+    ],
     [
         ANALYSIS_TAINT,
         # ❌❌❌❌❌❌❌❌  ❌❌   ❌❌❌❌❌❌❌    ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅   ✅✅✅✅    ✅✅✅        ✅✅✅✅✅       ✅✅✅   ✅✅✅✅    ✅✅✅✅✅✅✅    ✅✅✅✅✅✅     ✅✅     ✅✅✅✅   ✅✅✅    ✅✅✅    ✅✅✅    ✅✅✅✅   ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅  ✅✅✅✅   ✅✅✅   # Note: begin is covered in many _pre traps

@@ -10,12 +10,14 @@ ANALYSIS_MEMSTATS = 'memstats'
 
 ANALYSIS_TAINT = 'taint'
 ANALYSIS_FORWARD = 'forward'
+ANALYSIS_SAFE_HEAP = 'safe-heap'
+ANALYSIS_DENAN = 'denan'
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 # DO NOT TOUCH VARIABLES ABOVE
 
 # CONFIGURE ANALYSES BENCHMARK CONSTANTS
 benchmark_runs = 1 # How often to rerun each NodeJS instance
-NODE_BENCHMARK_RUNS = 30 # How often to rerun within a NodeJS instance
+NODE_BENCHMARK_RUNS = 1 # How often to rerun within a NodeJS instance
 
 # CONFIGURE ANALYSES
 configured_analyses_slower_than_forward = [
@@ -25,6 +27,8 @@ configured_analyses_slower_than_forward = [
     (ANALYSIS_GLOBALS,  1.00),
     (ANALYSIS_LOOPS,    1.00),
     (ANALYSIS_FORWARD,  1.00), # <-- Do not disable
+    (ANALYSIS_DENAN,    1.00),
+    (ANALYSIS_SAFE_HEAP,1.00),
     (ANALYSIS_MEMSTATS, 1.00),
     (ANALYSIS_TAINT,    3.00),
 ]
