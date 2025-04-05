@@ -1,8 +1,8 @@
 use super::*;
 
 use indoc::indoc;
-use wabt::wat2wasm;
 use wasmtime::*;
+use wat::parse_str;
 
 const WAT_ODD: &str = r#"
     (module
@@ -38,8 +38,8 @@ const WAT_EVEN: &str = r#"
 
 #[test]
 fn test_merge() {
-    let wat_even = wat2wasm(WAT_EVEN).unwrap();
-    let wat_odd = wat2wasm(WAT_ODD).unwrap();
+    let wat_even = parse_str(WAT_EVEN).unwrap();
+    let wat_odd = parse_str(WAT_ODD).unwrap();
     let merge_options = MergeOptions {
         primary: None,
         input_modules: vec![

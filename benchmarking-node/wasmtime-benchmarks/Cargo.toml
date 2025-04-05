@@ -1,0 +1,13 @@
+[package]
+name = "wasmtime-benchmarks"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+wasmtime = "30.0"
+csv = "1.3.1"
+serde = { version = "1.0", features = ["derive"] }
+clap = { version = "4.5.31", features = ["derive"] }
+chrono = { version = "0.4.39" }
+
+[workspace]

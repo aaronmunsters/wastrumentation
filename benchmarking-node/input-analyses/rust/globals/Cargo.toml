@@ -1,5 +1,5 @@
 [package]
-name = "rust-wasp-call-stack"
+name = "rust-coverage-globals"
 version = "0.1.0"
 edition = "2021"
 
@@ -11,8 +11,6 @@ wee_alloc = "0.4.5"
 wastrumentation-rs-stdlib = { path = "../wastrumentation-rs-stdlib", features = [
     "std",
 ] }
-lazy_static = "1.5.0"
-heapless = { version = "0.8.0", default-features = false }
 
 [profile.release]
 strip = true

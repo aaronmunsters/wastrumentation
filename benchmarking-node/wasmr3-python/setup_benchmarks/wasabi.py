@@ -14,7 +14,6 @@ def setup_benchmarks_wasabi(
     analysis_name: str,
     analysis_path: str,
     analysis_hooks: list[str],
-    intra_vm_runs: int,
 ):
     # Create bench suite dir if not exists
     os.makedirs(bench_suite_benchmarks_path_wasabi, exist_ok=True)
@@ -33,7 +32,6 @@ def setup_benchmarks_wasabi(
     for pattern, replacement in [
         [r'INPUT_PROGRAM_PATH', f'{benchmark_path_wasabi_instrumented}'],
         [r'INPUT_NAME', f'{benchmark}'],
-        [r'NODE_BENCHMARK_RUNS', f'{intra_vm_runs}'],
     ]: wrapper_content_template_filled = re.sub(pattern, replacement, wrapper_content_template_filled)
 
     # Inject call to wasabi

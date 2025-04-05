@@ -1,10 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
 
-# Benchmark constants
-benchmark_runs = 2
-NODE_BENCHMARK_RUNS = 2
-
 # Directory paths
 analyses_directory: str = os.path.abspath('analyses')
 working_directory: str = os.path.abspath('working-dir')
@@ -18,7 +14,7 @@ path_executes_once = os.path.join(working_directory, 'executes-once.csv')
 path_execution_bench = os.path.join(working_directory, 'executes-bench.csv')
 
 # Bench suite
-bench_suite_uri = 'git@github.com:sola-st/wasm-r3.git'
+bench_suite_uri = 'https://github.com/sola-st/wasm-r3.git'
 bench_suite_commit = '299be52000046e5d49248c4c66a21238855587d7'
 bench_suite_path = os.path.join(working_directory, 'wasm-r3')
 bench_suite_benchmarks_path = os.path.join(bench_suite_path, 'benchmarks')

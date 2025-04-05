@@ -6,7 +6,8 @@ import logging
 import subprocess
 
 from allowed_failures import identify_error
-from config import timeout, timeout_treshold, benchmark_runs, NODE_BENCHMARK_RUNS, EXIT_STATUS_SUCCESS
+from config import timeout, timeout_treshold, EXIT_STATUS_SUCCESS
+from input_programs_analysis_config import benchmark_runs, NODE_BENCHMARK_RUNS
 
 def execute_benchmarks(
     runtime: str,
@@ -36,7 +37,7 @@ def execute_benchmarks(
         try:
             # run benchmark & write to file
             bench_run_result = subprocess.run(
-                ['bash', '-c', f'node --experimental-wasm-multi-memory {benchmark_path}'],
+                ['bash', '-c', f'node --experimental-wasm-multi-memory {benchmark_path} {NODE_BENCHMARK_RUNS}'],
                 capture_output=True,
                 text=True,
                 timeout=timeout,
@@ -87,7 +88,8 @@ def execute_benchmarks(
 
         # assert `benchmark_runs * 2` lines are kept as relevant here; `benchmark_runs` reporting performance and memory
         assert len(captured_lines) == NODE_BENCHMARK_RUNS * 2, f'captured_lines:{captured_lines}\nNODE_BENCHMARK_RUNS:{NODE_BENCHMARK_RUNS}'
-        execution_bench: list[tuple[float, int]] = []
+        execution_times: list[float] = []
+        execution_memory: list[int] = []
 
         total_time = 0
         time_unit = 'ms'
@@ -113,24 +115,21 @@ def execute_benchmarks(
                 assert input_program == re_input_program
                 assert benchmark_report_line == f'{re_input_program} (run {re_run}): {re_performance}'
                 execution_time = float(re_performance)
+                execution_times += [execution_time]
                 total_time += execution_time
                 logging.info(f' -> single run took {execution_time}{time_unit}')
 
-            memory_usage_bytes = None
             if pattern_match_memory is not None:
                 [re_input_program, re_bytes] = [pattern_match_memory.group(i) for i in [1, 2]]
                 assert input_program == re_input_program
                 assert benchmark_report_line == f'{re_input_program} memory usage in bytes: {re_bytes}'
                 memory_usage_bytes = int(re_bytes)
-                logging.info(f' -> single run took {memory_usage_bytes} bytes of wokring memory')
-
-            if execution_time is None: continue
-            if memory_usage_bytes is None: continue
-            new_execution_bench: tuple[float, int] = (execution_time, memory_usage_bytes)
-            execution_bench += [new_execution_bench]
+                execution_memory += [memory_usage_bytes]
+                logging.info(f' -> single run took {memory_usage_bytes} bytes of working memory')
 
         logging.info(f' -> {NODE_BENCHMARK_RUNS} took in total {total_time}{time_unit}')
-        for iteration, (execution_time, memory_usage) in enumerate(execution_bench):
+        assert len(execution_times) == len(execution_memory)
+        for iteration, (execution_time, memory_usage) in enumerate(zip(execution_times, execution_memory)):
             csv_values = default_csv_report.copy()
             csv_values['memory_usage'] = memory_usage
             csv_values['completion_time'] = execution_time

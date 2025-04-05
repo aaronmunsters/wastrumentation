@@ -11,6 +11,8 @@ pub struct Compiler {
     working_dir: TempDir,
 }
 
+// FIXME: npm install only required when targetting NodeJS runtime
+
 impl Compiler {
     /// # Errors
     /// When setup of a temporary directory fails.

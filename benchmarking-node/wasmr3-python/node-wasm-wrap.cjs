@@ -1,14 +1,23 @@
 /*
 THIS IS A TEMPLATE; THE FOLLOWING TEMPS WILL BE REPLACED BY A PRE-PROCESSOR:
 
-- input program       = INPUT_NAME
-- node benchmark runs = NODE_BENCHMARK_RUNS
+- input program      = INPUT_NAME
+- input program path = INPUT_PROGRAM_PATH
 */
 
+const process = require('process')
 const { performance, PerformanceObserver } = require("node:perf_hooks");
 const readFileSync = require("fs").readFileSync;
+
+const [_runtime, _script, INTRA_VM_BENCHMARK_RUNS_ARG] = process.argv;
+const INTRA_VM_BENCHMARK_RUNS = parseInt(INTRA_VM_BENCHMARK_RUNS_ARG);
+if (isNaN(INTRA_VM_BENCHMARK_RUNS) || !(INTRA_VM_BENCHMARK_RUNS > 0)) {
+    console.error("Argument 'INTRA_VM_BENCHMARK_RUNS_ARG' must be a number greater than 0.")
+    console.error("Exiting now.")
+    process.exit(22); // erno - EINVAL
+}
+
 const input_program = readFileSync("INPUT_PROGRAM_PATH");
-const process = require('process')
 
 const observer = new PerformanceObserver((performance_observer_entry_list) => {
     for (const performance_entry of performance_observer_entry_list.getEntries()) {
@@ -28,7 +37,7 @@ function report_memory() {
 }
 
 (async () => {
-    for (let i = 1; i <= NODE_BENCHMARK_RUNS; i++) {
+    for (let i = 1; i <= INTRA_VM_BENCHMARK_RUNS; i++) {
         // Instantiate & retrieve export
         const instantiated_source = await WebAssembly.instantiate(input_program, {});
         const { _start } = instantiated_source.instance.exports;

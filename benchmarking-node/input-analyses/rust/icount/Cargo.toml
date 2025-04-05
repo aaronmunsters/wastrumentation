@@ -1,5 +1,5 @@
 [package]
-name = "rust-wasp-call-stack"
+name = "rust-instruction-icount"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,12 +7,12 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-wee_alloc = "0.4.5"
+# wee_alloc = "0.4.5"
 wastrumentation-rs-stdlib = { path = "../wastrumentation-rs-stdlib", features = [
     "std",
 ] }
-lazy_static = "1.5.0"
-heapless = { version = "0.8.0", default-features = false }
+strum = { version = "0.26", default-features = false, features = ["derive"] }
+enum-collections = "1.6.0"
 
 [profile.release]
 strip = true
