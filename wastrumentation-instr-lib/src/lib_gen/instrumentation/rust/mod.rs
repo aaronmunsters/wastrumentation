@@ -602,49 +602,41 @@ fn stack_deallocate(ptr: usize, bytes_to_allocate: usize) {
 }
 
 #[no_mangle]
-#[inline(always)]
 pub extern "C" fn wastrumentation_stack_load_i32(ptr: usize, offset: usize) -> i32 {
     wastrumentation_memory_load::<i32>(ptr, offset)
 }
 
 #[no_mangle]
-#[inline(always)]
 pub extern "C" fn wastrumentation_stack_load_f32(ptr: usize, offset: usize) -> f32 {
     wastrumentation_memory_load::<f32>(ptr, offset)
 }
 
 #[no_mangle]
-#[inline(always)]
 pub extern "C" fn wastrumentation_stack_load_i64(ptr: usize, offset: usize) -> i64 {
     wastrumentation_memory_load::<i64>(ptr, offset)
 }
 
 #[no_mangle]
-#[inline(always)]
 pub extern "C" fn wastrumentation_stack_load_f64(ptr: usize, offset: usize) -> f64 {
     wastrumentation_memory_load::<f64>(ptr, offset)
 }
 
 #[no_mangle]
-#[inline(always)]
 pub extern "C" fn wastrumentation_stack_store_i32(ptr: usize, value: i32, offset: usize) {
     wastrumentation_memory_store::<i32>(ptr, value, offset)
 }
 
 #[no_mangle]
-#[inline(always)]
 pub extern "C" fn wastrumentation_stack_store_f32(ptr: usize, value: f32, offset: usize) {
     wastrumentation_memory_store::<f32>(ptr, value, offset)
 }
 
 #[no_mangle]
-#[inline(always)]
 pub extern "C" fn wastrumentation_stack_store_i64(ptr: usize, value: i64, offset: usize) {
     wastrumentation_memory_store::<i64>(ptr, value, offset)
 }
 
 #[no_mangle]
-#[inline(always)]
 pub extern "C" fn wastrumentation_stack_store_f64(ptr: usize, value: f64, offset: usize) {
     wastrumentation_memory_store::<f64>(ptr, value, offset)
 }
