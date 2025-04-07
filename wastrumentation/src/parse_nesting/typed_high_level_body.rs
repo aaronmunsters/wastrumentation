@@ -13,6 +13,20 @@ pub type BodyInner = Vec<TypedHighLevelInstr>;
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Body(pub BodyInner);
 
+impl Body {
+    /// Equality check for instruction and type.
+    /// Discarding equality for `funct_index`, `instr_index` or `instrumentation_instruction`
+    #[must_use]
+    pub fn instr_eq(&self, other: &Self) -> bool {
+        let Self(body_self) = self;
+        let Self(body_other) = other;
+        body_self
+            .iter()
+            .zip(body_other)
+            .all(|(i_s, i_o)| i_s.instr_eq(i_o))
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct TypedHighLevelInstr {
     pub funct_index: u32,
@@ -21,6 +35,29 @@ pub struct TypedHighLevelInstr {
     pub instr: Instr,
 
     instrumentation_instruction: bool,
+}
+
+impl TypedHighLevelInstr {
+    /// Equality check for instruction and type.
+    /// Discarding equality for `funct_index`, `instr_index` or `instrumentation_instruction`
+    #[must_use]
+    pub fn instr_eq(&self, other: &Self) -> bool {
+        let Self {
+            funct_index: _,
+            instr_index: _,
+            type_,
+            instr,
+            instrumentation_instruction: _,
+        } = self;
+        let Self {
+            funct_index: _funct_index_other,
+            instr_index: _instr_index_other,
+            type_: type_other,
+            instr: instr_other,
+            instrumentation_instruction: _instrumentation_instruction_other,
+        } = other;
+        type_ == type_other && instr == instr_other
+    }
 }
 
 impl TypedHighLevelInstr {

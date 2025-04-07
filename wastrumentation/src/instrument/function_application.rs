@@ -108,7 +108,10 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
         let apply_index = module.add_function(
             apply_type,
             vec![signature_buffer_pointer_type],
-            apply_instructions,
+            apply_instructions
+                .into_iter()
+                .map(|i| (i, 0_usize))
+                .collect(),
         );
 
         let apply_table_index = apply_table_funs.len();
@@ -179,7 +182,10 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
         instrumented_body.push(local_get_stack_types_ptr());
         instrumented_body.push(call_free_types_buffer);
         instrumented_body.push(End);
-        original_function.code_mut().unwrap().body = instrumented_body;
+        original_function.code_mut().unwrap().body = instrumented_body
+            .into_iter()
+            .map(|i| (i, 0_usize))
+            .collect();
     }
 
     let apply_count = u32::try_from(apply_table_funs.len()).unwrap();
@@ -194,9 +200,9 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
         export: vec![],
     });
 
-    let apply_table_funs_refs: Vec<Vec<Instr>> = apply_table_funs
+    let apply_table_funs_refs: Vec<Vec<_>> = apply_table_funs
         .iter()
-        .map(|idx| vec![RefFunc(*idx), End])
+        .map(|idx| vec![(RefFunc(*idx), 0), (End, 0)])
         .collect();
 
     module.elements.push(Element {
@@ -204,7 +210,7 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
         init: apply_table_funs_refs,
         mode: ElementMode::Active {
             table: apply_table_idx.into(),
-            offset: vec![Const(Val::I32(0)), End],
+            offset: vec![(Const(Val::I32(0)), 0), (End, 0)],
         },
     });
 
@@ -213,13 +219,16 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
         wasp_imported_generic_apply_base.as_function_type(),
         vec![],
         vec![
-            Local(LocalOp::Get, 1_usize.into()), // f_apply
-            Local(LocalOp::Get, 0_usize.into()), // sigv
-            CallIndirect(
-                FunctionType::new(&[ValType::I32], &[]),
-                apply_table_index.into(),
+            (Local(LocalOp::Get, 1_usize.into()), 0), // f_apply
+            (Local(LocalOp::Get, 0_usize.into()), 0), // sigv
+            (
+                CallIndirect(
+                    FunctionType::new(&[ValType::I32], &[]),
+                    apply_table_index.into(),
+                ),
+                0,
             ),
-            End,
+            (End, 0),
         ],
     );
 

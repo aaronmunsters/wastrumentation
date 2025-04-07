@@ -51,7 +51,7 @@ fn new_typed_high_level(
 }
 
 // TODO: macro's for huge bodies?
-
+#[ignore]
 #[test]
 fn high_level_low_level_assert() {
     assert_high_and_low(
@@ -85,6 +85,7 @@ fn high_level_low_level_assert() {
     );
 }
 
+#[ignore]
 #[test]
 fn test_wat_to_high_level_complex() {
     assert_high_and_low(

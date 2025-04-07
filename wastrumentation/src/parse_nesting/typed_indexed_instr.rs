@@ -21,12 +21,12 @@ pub fn type_inference_index_function(
     code.body
         .iter()
         .enumerate()
-        .map(|(index, instr)| {
+        .map(|(index, (instr, byte_offset))| {
             type_checker
                 .check_next_instr(instr)
                 .map(|type_| TypedIndexedInstr {
                     funct_index: original_idx.to_u32(),
-                    instr_index: index,
+                    instr_index: *byte_offset,
                     type_,
                     instr: instr.clone(),
                 })

@@ -8,7 +8,7 @@ wastrumentation = { path = "../wastrumentation" }
 serde_json = { workspace = true }
 anyhow = "1.0"
 
-wasabi_wasm = { git = "https://github.com/aaronmunsters/wasabi.git", rev = "ee2fb70" }
+wasabi_wasm = { git = "https://github.com/aaronmunsters/wasabi.git", rev = "363cf7d" }
 clap = { version = "4.5", features = ["derive"] }
 clio = { version = "0.3.5", features = ["clap-parse"] }
 serde = { version = "1.0", features = ["derive"] }

@@ -268,6 +268,10 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
             .ok_or(InstrumentationError::AttemptInnerInstrumentImport)?
             .locals
             .clone();
+        let transformed_low_level_body = transformed_low_level_body
+            .into_iter()
+            .map(|i| (i, 0))
+            .collect();
         module.function_mut(*target_function_idx).code = ImportOrPresent::Present(Code {
             body: transformed_low_level_body,
             locals,

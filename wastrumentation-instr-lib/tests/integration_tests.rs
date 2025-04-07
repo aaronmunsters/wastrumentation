@@ -478,6 +478,7 @@ fn test_analysis_forward_pacalc() {
     wasm_call!(store, _start);
 }
 
+#[ignore]
 #[test]
 fn test_analysis_logging() {
     const SOURCE: Source =

@@ -428,6 +428,7 @@ pub fn inject_memory_loads(module: &mut Module) {
             ]
         };
 
+        let body = body.into_iter().map(|i| (i, 0)).collect();
         let memory_function_idx = module.add_function(function_type, vec![], body);
         module
             .function_mut(memory_function_idx)
@@ -478,6 +479,7 @@ pub fn inject_memory_stores(module: &mut Module) {
             ]
         };
 
+        let body = body.into_iter().map(|i| (i, 0)).collect();
         let memory_function_idx: Idx<Function> = module.add_function(function_type, vec![], body);
         module
             .function_mut(memory_function_idx)
@@ -509,6 +511,7 @@ pub fn inject_memory_grow(module: &mut Module) {
         ]
     };
 
+    let body = body.into_iter().map(|i| (i, 0)).collect();
     let memory_function_idx: Idx<Function> = module.add_function(function_type, vec![], body);
     module
         .function_mut(memory_function_idx)
@@ -537,6 +540,7 @@ pub fn inject_memory_size(module: &mut Module) {
         ]
     };
 
+    let body = body.into_iter().map(|i| (i, 0)).collect();
     let memory_function_idx: Idx<Function> = module.add_function(function_type, vec![], body);
     module
         .function_mut(memory_function_idx)

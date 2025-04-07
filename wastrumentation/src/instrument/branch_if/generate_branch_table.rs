@@ -28,7 +28,7 @@ impl Reified for BrTable {
 }
 
 impl BrTable {
-    fn generate_body(&self) -> Vec<Instr> {
+    fn generate_body(&self) -> Vec<(Instr, usize)> {
         let yield_i32 = FunctionType::new(&[], &[ValType::I32]);
         let yield_i32_i32 = FunctionType::empty();
         let mut body = vec![];
@@ -39,7 +39,7 @@ impl BrTable {
                 Instr::Const(Val::I32(self.default.to_u32().try_into().unwrap())),
                 Instr::End,
             ]);
-            return body;
+            return body.into_iter().map(|i| (i, 0)).collect();
         }
 
         if self.table.len() == 1 {
@@ -54,7 +54,7 @@ impl BrTable {
                 Instr::End,
                 Instr::End,
             ]);
-            return body;
+            return body.into_iter().map(|i| (i, 0)).collect();
         }
 
         let blocks_enter: Vec<Instr> = self
@@ -91,7 +91,7 @@ impl BrTable {
             Instr::Const(Val::I32(self.default.to_u32().try_into().unwrap())),
             Instr::End,
         ]);
-        body
+        body.into_iter().map(|i| (i, 0)).collect()
     }
 
     fn to_br_table_for_generation(&self) -> Instr {
@@ -122,7 +122,7 @@ mod tests {
         }
     }
 
-    fn get_as_compiled_body(switch_related_source: &'_ str) -> Vec<Instr> {
+    fn get_as_compiled_body(switch_related_source: &'_ str) -> Vec<(Instr, usize)> {
         let assemblyscript_compiler = AssemblyScriptCompiler::new().unwrap();
         let options = CompilerOptions::default_for(switch_related_source);
         let expected_program_wasm = assemblyscript_compiler.compile(&options).unwrap();
@@ -135,7 +135,7 @@ mod tests {
 
     fn assert_compiler_expectation_equivalence(
         switch_related_source: &'_ str,
-        switch_encoded_body: &[Instr],
+        switch_encoded_body: &[(Instr, usize)],
     ) {
         let body = get_as_compiled_body(switch_related_source);
         assert_eq!(body, switch_encoded_body);
@@ -195,6 +195,9 @@ mod tests {
             Instr::Const(Val::I32(3)),
             Instr::End,
         ];
+
+        let coded_expectation: Vec<(Instr, usize)> =
+            coded_expectation.into_iter().map(|i| (i, 0)).collect();
 
         let generated_body = BrTable::from(vec![4, 0, 1, 2], 3).reify().body;
         assert_eq!(generated_body, coded_expectation);
@@ -257,6 +260,10 @@ mod tests {
             Instr::Const(Val::I32(7)),
             Instr::End,
         ];
+        let expected_body_hardcoded: Vec<(Instr, usize)> = expected_body_hardcoded
+            .into_iter()
+            .map(|i| (i, 0))
+            .collect();
 
         // Assert equality to custom implementation
         let generated_body = BrTable::from(vec![9, 11, 2, 43, 3, 5, 8], 7).reify().body;
