@@ -31,15 +31,26 @@ pub struct GlobalHandle {
 }
 
 impl GlobalHandle {
+    /// Get value from global handle.
+    /// The actual value allows us to assert that the global value in the
+    /// shadow execution matches the actual global value.
+    // FIXME: Split this into an assertion where the caller is debug_assert!;
+    //        this kind of assertion is skipped in --release builds.
     #[must_use]
-    pub fn value(&mut self, type_: &WasmType) -> WasmValue {
+    pub fn value(&mut self, type_: &WasmType, actual: &WasmValue) -> WasmValue {
         if let Some(value) = &self.value {
             assert_eq!(value.type_(), *type_);
+            assert_eq!(value, actual);
+            // If this assertion fails, the host must have changed it.
+            // If the host changed it and we were not notified, this is a bug.
+            // FIXME: add infrastructure for notification.
             value.clone()
         } else {
-            let default = WasmValue::default_for(type_);
-            self.value = Some(default.clone());
-            default
+            // The actual value will be either the default value (if
+            // uninitialized) or a fixed compile-time value if an
+            // initializer is present in the binary.
+            self.value = Some(actual.clone());
+            actual.clone()
         }
     }
 
