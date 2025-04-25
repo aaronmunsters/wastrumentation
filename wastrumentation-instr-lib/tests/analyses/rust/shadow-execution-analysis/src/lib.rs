@@ -228,8 +228,7 @@ fn br_with(l: usize) {
     }
     // 8. Jump to the continuation of `L`.
     "taken care of by hook termination of caller";
-    if matches!(top_of_stack(), StackEntry::Label(label) if matches!(label.origin(), LabelOrigin::Function(_)))
-    {
+    if matches!(L.origin(), LabelOrigin::Function(_)) {
         set_jump_flag_true();
     }
 }
