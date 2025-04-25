@@ -228,8 +228,7 @@ fn br_with(l: usize) {
     }
     // 8. Jump to the continuation of `L`.
     "taken care of by hook termination of caller";
-    if matches!(top_of_stack(), StackEntry::Label(label) if matches!(label.origin(), LabelOrigin::Function(_)))
-    {
+    if matches!(L.origin(), LabelOrigin::Function(_)) {
         set_jump_flag_true();
     }
 }
@@ -674,7 +673,7 @@ advice! { global (
                 // Let `glob` be the global instance `S.globals[a]`.
                 let glob = global(a);
                 // Let `val` be the value `glob.value`.
-                let shadow_val = glob.value(&value.type_());
+                let shadow_val = glob.value(&value.type_(), &value);
                 assert_global_value(&value, &shadow_val);
                 // Push the value `val` to the stack.
                 push_value_on_stack(shadow_val);
