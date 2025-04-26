@@ -882,9 +882,8 @@ mod tests {
         for (parameter_arguments, parameter_results, message) in outcomes {
             let program = format!(
                 "(aspect
-                    (advice apply (func WasmFunction) {} {}
+                    (advice apply (func WasmFunction) {parameter_arguments} {parameter_results}
                         >>>GUEST>>>🟢<<<GUEST<<<))",
-                parameter_arguments, parameter_results
             );
             assert_eq!(
                 program_to_wasp_root(program.as_str())
