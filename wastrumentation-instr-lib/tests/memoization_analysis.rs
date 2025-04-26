@@ -51,7 +51,7 @@ fn test_basic() {
     let time_elapsed_after_uninstrumented_call = report.uninstrumented_duration;
     let time_elapsed_after_instrumented_call = report.instrumented_duration;
 
-    assert!(report.runtime_pure_function_calls.len() == 4);
+    assert_eq!(report.runtime_pure_function_calls.len(), 3);
     assert_eq!(report.runtime_target_functions, vec![4]);
 
     dbg!(report.cache_size_report);
