@@ -107,8 +107,8 @@ impl BrTable {
 
 #[cfg(test)]
 mod tests {
-    use assemblyscript_compiler::compiler::Compiler as AssemblyScriptCompiler;
-    use assemblyscript_compiler::options::CompilerOptions;
+    use asc_compiler_rs::compiler::Compiler as AssemblyScriptCompiler;
+    use asc_compiler_rs::options::CompilerOptions;
     use wasmtime::{Engine, Instance, Module, Store};
 
     use super::*;

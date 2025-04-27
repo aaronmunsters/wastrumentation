@@ -2,7 +2,6 @@
 
 resolver = "2"
 members = [
-    "assemblyscript-compiler",
     "wastrumentation",
     "wastrumentation-instr-lib",
     "wasp-compiler",
@@ -14,7 +13,7 @@ members = [
 
 [workspace.dependencies]
 # Crates defined in this project
-assemblyscript-compiler = { path = "./assemblyscript-compiler" }
+asc-compiler-rs = { git = "https://github.com/aaronmunsters/asc-compiler-rs", rev = "779738e" }
 rust-to-wasm-compiler = { path = "./rust-to-wasm-compiler" }
 wastrumentation = { path = "./wastrumentation" }
 wastrumentation-instr-lib = { path = "./wastrumentation-instr-lib" }

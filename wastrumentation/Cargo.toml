@@ -15,5 +15,5 @@ thiserror = { workspace = true }
 wasmtime = { workspace = true }
 wastrumentation = { workspace = true }
 wastrumentation-instr-lib = { workspace = true }
-assemblyscript-compiler = { workspace = true }
+asc-compiler-rs = { workspace = true }
 wat = { workspace = true }
