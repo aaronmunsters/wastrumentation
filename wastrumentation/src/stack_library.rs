@@ -97,8 +97,6 @@ pub struct ModuleLinkedStackHooks {
     pub arg_load_n: Vec<Idx<Function>>,
     #[allow(dead_code)]
     pub arg_store_n: Vec<Idx<Function>>,
-    #[allow(dead_code)]
-    pub arg_store_all: Idx<Function>,
     pub ret_load_n: Vec<Idx<Function>>,
     #[allow(dead_code)]
     pub ret_store_n: Vec<Idx<Function>>,
@@ -183,14 +181,6 @@ impl From<(FunctionType, &mut Module)> for ModuleLinkedStackHooks {
             })
             .collect();
 
-        let mut store_args_signature = vec![ValType::I32];
-        store_args_signature.extend(function_type.inputs());
-        let arg_store_all = module.add_function_import(
-            FunctionType::new(&store_args_signature, &[]),
-            INSTRUMENTATION_STACK_MODULE.into(),
-            lib_gen_signature.generate_store_args_name(),
-        );
-
         let ret_store_n = function_type
             .results()
             .iter()
@@ -220,7 +210,6 @@ impl From<(FunctionType, &mut Module)> for ModuleLinkedStackHooks {
             free_types_buffer,
             arg_load_n,
             arg_store_n,
-            arg_store_all,
             ret_load_n,
             ret_store_n,
             ret_store_all,
