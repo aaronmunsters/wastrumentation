@@ -51,7 +51,7 @@ Use the following BibTeX entry to cite this work:
 
 ```
 @InProceedings{munsters_et_al:LIPIcs.ECOOP.2025.23,
-  author =	{Munsters, A\"{a}ron and Scull Pupo, Angel Luis and Gonzalez Boix, Elisa},
+  author =	{Munsters, A\"{a}ron and Scull Pupo, Angel Luis and {Gonzalez Boix}, Elisa},
   title =	{{Wastrumentation: Portable WebAssembly Dynamic Analysis with Support for Intercession}},
   booktitle =	{39th European Conference on Object-Oriented Programming (ECOOP 2025)},
   pages =	{23:1--23:29},
