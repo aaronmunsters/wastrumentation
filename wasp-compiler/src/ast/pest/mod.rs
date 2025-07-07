@@ -6,7 +6,7 @@ use pest_derive::Parser;
 #[grammar = "wasp.pest"]
 pub struct WaspParser;
 
-fn span_into_string(span: Span) -> &str {
+fn span_into_string(span: Span<'_>) -> &str {
     span.as_str()
 }
 

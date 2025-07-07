@@ -1,9 +1,4 @@
-use thiserror::Error;
 use wasabi_wasm::{Code, FunctionType, Instr, Label, Local, LocalOp, UnaryOp, Val, ValType};
-
-#[derive(Error, Debug)]
-#[error("Cannot create BrTable from {0}")]
-pub struct GenerateBranchConversionError(Instr);
 
 pub trait Reified {
     fn reify(&self) -> Code;
