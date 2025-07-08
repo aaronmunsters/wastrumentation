@@ -17,8 +17,8 @@ use wastrumentation_instr_lib::lib_gen::analysis::rust::RustAnalysisSpec;
 
 // Wasmtime imports
 use wasmtime::{Config, Engine, Instance, Linker, Module, Store};
+use wasmtime_wasi::p2::WasiCtxBuilder;
 use wasmtime_wasi::preview1::{self, WasiP1Ctx};
-use wasmtime_wasi::WasiCtxBuilder;
 
 // Bring macros in scope
 mod wasmtime_macros;
@@ -139,8 +139,8 @@ fn test_analysis_denan() {
     // WASMTIME ENGINE //
     /////////////////////
 
-    let stdout = wasmtime_wasi::pipe::MemoryOutputPipe::new(usize::MAX);
-    let stderr = wasmtime_wasi::pipe::MemoryOutputPipe::new(usize::MAX);
+    let stdout = wasmtime_wasi::p2::pipe::MemoryOutputPipe::new(usize::MAX);
+    let stderr = wasmtime_wasi::p2::pipe::MemoryOutputPipe::new(usize::MAX);
 
     // Construct the wasm engine
     let mut config = Config::new();
@@ -262,8 +262,8 @@ fn test_analysis_safe_heap() {
     // WASMTIME ENGINE //
     /////////////////////
 
-    let stdout = wasmtime_wasi::pipe::MemoryOutputPipe::new(usize::MAX);
-    let stderr = wasmtime_wasi::pipe::MemoryOutputPipe::new(usize::MAX);
+    let stdout = wasmtime_wasi::p2::pipe::MemoryOutputPipe::new(usize::MAX);
+    let stderr = wasmtime_wasi::p2::pipe::MemoryOutputPipe::new(usize::MAX);
 
     // Construct the wasm engine
     let mut config = Config::new();
@@ -385,8 +385,8 @@ fn test_analysis_memory_introspection() {
     // WASMTIME ENGINE //
     /////////////////////
 
-    let stdout = wasmtime_wasi::pipe::MemoryOutputPipe::new(usize::MAX);
-    let stderr = wasmtime_wasi::pipe::MemoryOutputPipe::new(usize::MAX);
+    let stdout = wasmtime_wasi::p2::pipe::MemoryOutputPipe::new(usize::MAX);
+    let stderr = wasmtime_wasi::p2::pipe::MemoryOutputPipe::new(usize::MAX);
 
     // Construct the wasm engine
     let mut config = Config::new();
@@ -644,8 +644,8 @@ fn test_analysis_logging() {
     // WASMTIME ENGINE //
     /////////////////////
 
-    let stdout = wasmtime_wasi::pipe::MemoryOutputPipe::new(usize::MAX);
-    let stderr = wasmtime_wasi::pipe::MemoryOutputPipe::new(usize::MAX);
+    let stdout = wasmtime_wasi::p2::pipe::MemoryOutputPipe::new(usize::MAX);
+    let stderr = wasmtime_wasi::p2::pipe::MemoryOutputPipe::new(usize::MAX);
 
     // Construct the wasm engine
     let engine = Engine::default();
