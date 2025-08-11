@@ -11,7 +11,7 @@ members = [
 ]
 
 [workspace.dependencies]
-# Crates defined in this project
+# Crates defined as part of Wastrumentation
 asc-compiler-rs = { git = "https://github.com/aaronmunsters/asc-compiler-rs", rev = "779738e" }
 rust-to-wasm-compiler = { git = "https://github.com/aaronmunsters/rust-to-wasm-compiler", rev = "363a3a6" }
 wastrumentation = { path = "./wastrumentation" }
@@ -19,7 +19,7 @@ wastrumentation-instr-lib = { path = "./wastrumentation-instr-lib" }
 wasp-compiler = { path = "./wasp-compiler" }
 wasm-merge = { path = "./wasm-merge" }
 
-wasmtime = "34.0"
+wasmtime = "35.0"
 indoc = "2"
 tempfile = "3.20"
 serde = { version = "1.0", features = ["derive"] }
