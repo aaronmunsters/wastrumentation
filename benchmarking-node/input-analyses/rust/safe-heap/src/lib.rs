@@ -7,7 +7,6 @@
 // top of sbrk()-addressible memory, and incorrect alignment notation.
 
 #![no_std]
-#![feature(strict_overflow_ops)]
 use wastrumentation_rs_stdlib::*;
 
 const SIZE_AS_BYTES: i64 = i64::pow(2, 16);
