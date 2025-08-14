@@ -486,18 +486,14 @@ fn test_analysis_logging() {
     const EXPECTED_ANALYSIS_STDOUT: &str = indoc::indoc! { r#"
     [ANALYSIS:] apply (pre) WasmFunction {
         uninstr_idx: 1,
-        sig_pointer: 1179640,
+        sig_pointer: 1179632,
     }(RuntimeValues {
         argc: 1,
         resc: 1,
-        sigv: 1179640,
+        sigv: 1179632,
         signature_types: [
             I32,
             I32,
-        ],
-        signature_offsets: [
-            0,
-            4,
         ],
     })
     [ANALYSIS:] block pre [block_input_count: BlockInputCount(0), block_arity: BlockArity(0)], location: Location { instr_index: 1, funct_index: 0 }
@@ -585,30 +581,22 @@ fn test_analysis_logging() {
     ), location: Location { instr_index: 1, funct_index: 21 }
     [ANALYSIS:] apply (post) WasmFunction {
         uninstr_idx: 1,
-        sig_pointer: 1179640,
+        sig_pointer: 1179632,
     }(RuntimeValues {
         argc: 1,
         resc: 1,
-        sigv: 1179640,
+        sigv: 1179632,
         signature_types: [
             I32,
             I32,
-        ],
-        signature_offsets: [
-            0,
-            4,
         ],
     }) = RuntimeValues {
         argc: 1,
         resc: 1,
-        sigv: 1179640,
+        sigv: 1179632,
         signature_types: [
             I32,
             I32,
-        ],
-        signature_offsets: [
-            0,
-            4,
         ],
     }
     "# };

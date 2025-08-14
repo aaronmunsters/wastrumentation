@@ -16,6 +16,17 @@ pub enum RefType {
 }
 
 impl WasmType {
+    pub fn runtime_enum_variant(&self) -> String {
+        match self {
+            WasmType::I32 => "I32".to_string(),
+            WasmType::F32 => "F32".to_string(),
+            WasmType::I64 => "I64".to_string(),
+            WasmType::F64 => "F64".to_string(),
+            WasmType::Ref(RefType::FuncRef) => "FuncRef".to_string(),
+            WasmType::Ref(RefType::ExternRef) => "ExternRef".to_string(),
+        }
+    }
+
     pub fn runtime_enum_value(&self) -> usize {
         match self {
             WasmType::I32 => 0,

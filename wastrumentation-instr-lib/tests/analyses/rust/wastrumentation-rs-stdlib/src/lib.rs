@@ -66,6 +66,7 @@ extern "C" {
 
 #[link(wasm_import_module = "wastrumentation_stack")]
 extern "C" {
+    fn wastrumentation_stack_load_type(ptr: i32, offset: i32) -> i32;
     fn wastrumentation_stack_load_i32(ptr: i32, offset: i32) -> i32;
     fn wastrumentation_stack_load_f32(ptr: i32, offset: i32) -> f32;
     fn wastrumentation_stack_load_i64(ptr: i32, offset: i32) -> i64;
@@ -340,7 +341,6 @@ pub struct RuntimeValues {
     pub resc: i32,
     pub sigv: i32,
     pub signature_types: Vec<WasmType>,
-    pub signature_offsets: Vec<usize>,
 }
 
 pub const CODE_IS_PRESENT: i32 = 0;
@@ -380,16 +380,10 @@ impl RuntimeValues {
     pub fn new(argc: i32, resc: i32, sigv: i32, sigtypv: i32) -> Self {
         let total_values = argc + resc;
         let mut signature_types: Vec<WasmType> = Vec::with_capacity(total_values as usize);
-        let mut signature_offsets: Vec<usize> = Vec::with_capacity(total_values as usize);
 
-        let mut offset = 0;
-        for value_index in 0..total_values {
-            let serialized_type =
-                unsafe { wastrumentation_stack_load_i32(sigtypv, value_index * 4) };
+        for index in 0..total_values {
+            let serialized_type = unsafe { wastrumentation_stack_load_type(sigtypv, index) };
             let wasm_type: WasmType = (&serialized_type).into();
-
-            signature_offsets.push(offset);
-            offset += wasm_type.size();
             signature_types.push(wasm_type);
         }
         Self {
@@ -397,7 +391,6 @@ impl RuntimeValues {
             resc,
             sigv,
             signature_types,
-            signature_offsets,
         }
     }
 
@@ -412,12 +405,12 @@ impl RuntimeValues {
 
     fn get_value(&self, index: i32) -> WasmValue {
         let index = index as usize;
-        self.signature_types[index].load(self.sigv, self.signature_offsets[index])
+        self.signature_types[index].load(self.sigv, index)
     }
 
     fn set_value(&mut self, index: i32, value: WasmValue) {
         let index = index as usize;
-        value.store(self.sigv, self.signature_offsets[index]);
+        value.store(self.sigv, index);
     }
 
     fn arg_base_offset(&self) -> i32 {

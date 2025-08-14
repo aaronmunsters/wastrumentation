@@ -90,8 +90,7 @@ fn test_edge_rust() {
     let _ = instrumentation_wasm_library;
 
     // Assert execution
-    // FIXME:
-    // assert_lib_with_use_case(instrumentation_wasm_library);
+    assert_lib_with_use_case(instrumentation_wasm_library);
 }
 
 #[test]
