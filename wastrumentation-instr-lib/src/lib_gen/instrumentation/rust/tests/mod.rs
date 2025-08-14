@@ -74,50 +74,13 @@ fn test_signature_uniqueness() {
 }
 
 #[test]
-fn compute_memory_offset_generically_works_correctly() {
-    let pos_frst = 0;
-    let pos_scnd = 1;
-    let pos_thrd = 2;
-    let pos_frth = 3;
-    for ((position, ret_count, arg_offset), expected) in [
-        ((pos_frst, 0, 1), "0"),
-        ((pos_frst, 0, 2), "0"),
-        ((pos_scnd, 0, 2), "size_of::<T0>()"),
-        ((pos_frst, 1, 0), "0"),
-        ((pos_frst, 1, 1), "0"),
-        ((pos_scnd, 1, 1), "size_of::<R0>()"),
-        ((pos_frst, 1, 2), "0"),
-        ((pos_scnd, 1, 2), "size_of::<R0>()"),
-        ((pos_thrd, 1, 2), "size_of::<R0>() + size_of::<T0>()"),
-        ((pos_frst, 2, 0), "0"),
-        ((pos_scnd, 2, 0), "size_of::<R0>()"),
-        ((pos_frst, 2, 1), "0"),
-        ((pos_scnd, 2, 1), "size_of::<R0>()"),
-        ((pos_thrd, 2, 1), "size_of::<R0>() + size_of::<R1>()"),
-        ((pos_frst, 2, 2), "0"),
-        ((pos_scnd, 2, 2), "size_of::<R0>()"),
-        ((pos_thrd, 2, 2), "size_of::<R0>() + size_of::<R1>()"),
-        (
-            (pos_frth, 2, 2),
-            "size_of::<R0>() + size_of::<R1>() + size_of::<T0>()",
-        ),
-    ] {
-        assert_eq!(generics_offset(position, ret_count, arg_offset), expected);
-    }
-}
-
-#[test]
 fn generating_allocate_generic_instructions() {
     assert_eq!(
         generate_allocate_generic(0, 0),
         "
 #[inline(always)]
-fn allocate_ret_0_arg_0() -> usize  {
-    let align = align_of::<u8>();
-    let size_to_allocate: usize = 0;
-    let layout = unsafe { Layout::from_size_align_unchecked(size_to_allocate, align) };
-    let shadow_frame_ptr = unsafe { GlobalAlloc::alloc(&ALLOC, layout) } as usize;
-    shadow_frame_ptr as usize
+fn allocate_ret_0_arg_0() -> usize {
+    0 // Fake shadow pointer for empty signatures
 }"
     );
 
@@ -125,16 +88,10 @@ fn allocate_ret_0_arg_0() -> usize  {
         generate_allocate_generic(0, 1),
         "
 #[inline(always)]
-fn allocate_ret_0_arg_1<T0>(a0: T0) -> usize where T0: Copy {
-    let align = align_of::<u8>();
-    let size_to_allocate: usize = size_of::<T0>();
-    let layout = unsafe { Layout::from_size_align_unchecked(size_to_allocate, align) };
-    let shadow_frame_ptr = unsafe { GlobalAlloc::alloc(&ALLOC, layout) } as usize;
-    // store a0
-    let a0_offset = 0; // constant folded
-    wastrumentation_memory_store::<T0>(shadow_frame_ptr, a0, a0_offset);
-
-    shadow_frame_ptr as usize
+fn allocate_ret_0_arg_1(a0: WasmValue) -> usize {
+    let frame_ptr = stack_allocate_values(1);
+    wastrumentation_memory_store(frame_ptr, a0, 0);
+    frame_ptr
 }"
     );
 
@@ -142,32 +99,14 @@ fn allocate_ret_0_arg_1<T0>(a0: T0) -> usize where T0: Copy {
         generate_allocate_generic(5, 5),
     "
 #[inline(always)]
-fn allocate_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(a0: T0, a1: T1, a2: T2, a3: T3, a4: T4) -> usize where R0: Copy, R1: Copy, R2: Copy, R3: Copy, R4: Copy, T0: Copy, T1: Copy, T2: Copy, T3: Copy, T4: Copy {
-    let align = align_of::<u8>();
-    let size_to_allocate: usize = size_of::<R0>() + size_of::<R1>() + size_of::<R2>() + size_of::<R3>() + size_of::<R4>() + size_of::<T0>() + size_of::<T1>() + size_of::<T2>() + size_of::<T3>() + size_of::<T4>();
-    let layout = unsafe { Layout::from_size_align_unchecked(size_to_allocate, align) };
-    let shadow_frame_ptr = unsafe { GlobalAlloc::alloc(&ALLOC, layout) } as usize;
-    // store a0
-    let a0_offset = size_of::<R0>() + size_of::<R1>() + size_of::<R2>() + size_of::<R3>() + size_of::<R4>(); // constant folded
-    wastrumentation_memory_store::<T0>(shadow_frame_ptr, a0, a0_offset);
-
-    // store a1
-    let a1_offset = size_of::<R0>() + size_of::<R1>() + size_of::<R2>() + size_of::<R3>() + size_of::<R4>() + size_of::<T0>(); // constant folded
-    wastrumentation_memory_store::<T1>(shadow_frame_ptr, a1, a1_offset);
-
-    // store a2
-    let a2_offset = size_of::<R0>() + size_of::<R1>() + size_of::<R2>() + size_of::<R3>() + size_of::<R4>() + size_of::<T0>() + size_of::<T1>(); // constant folded
-    wastrumentation_memory_store::<T2>(shadow_frame_ptr, a2, a2_offset);
-
-    // store a3
-    let a3_offset = size_of::<R0>() + size_of::<R1>() + size_of::<R2>() + size_of::<R3>() + size_of::<R4>() + size_of::<T0>() + size_of::<T1>() + size_of::<T2>(); // constant folded
-    wastrumentation_memory_store::<T3>(shadow_frame_ptr, a3, a3_offset);
-
-    // store a4
-    let a4_offset = size_of::<R0>() + size_of::<R1>() + size_of::<R2>() + size_of::<R3>() + size_of::<R4>() + size_of::<T0>() + size_of::<T1>() + size_of::<T2>() + size_of::<T3>(); // constant folded
-    wastrumentation_memory_store::<T4>(shadow_frame_ptr, a4, a4_offset);
-
-    shadow_frame_ptr as usize
+fn allocate_ret_5_arg_5(a0: WasmValue, a1: WasmValue, a2: WasmValue, a3: WasmValue, a4: WasmValue) -> usize {
+    let frame_ptr = stack_allocate_values(10);
+    wastrumentation_memory_store(frame_ptr, a0, 5);
+    wastrumentation_memory_store(frame_ptr, a1, 6);
+    wastrumentation_memory_store(frame_ptr, a2, 7);
+    wastrumentation_memory_store(frame_ptr, a3, 8);
+    wastrumentation_memory_store(frame_ptr, a4, 9);
+    frame_ptr
 }"
     );
 }
@@ -178,16 +117,16 @@ fn generating_allocate_specialized_instructions() {
         generate_allocate_specialized(&RustSignature(&get_ret_f64_f32_arg_i32_i64())),
         "
 #[no_mangle]
-pub fn allocate_ret_f64_f32_arg_i32_i64(a0: i32, a1: i64) -> usize {
-    return allocate_ret_2_arg_2::<f64, f32, i32, i64>(a0, a1);
+pub extern \"C\" fn allocate_ret_f64_f32_arg_i32_i64(a0: i32, a1: i64) -> usize {
+    allocate_ret_2_arg_2(WasmValue::new_i32(a0), WasmValue::new_i64(a1))
 }
 "
     );
 
     assert_eq!(generate_allocate_specialized(&RustSignature(&get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64())), "
 #[no_mangle]
-pub fn allocate_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(a0: i64, a1: i32, a2: f32, a3: f64) -> usize {
-    return allocate_ret_4_arg_4::<f64, f32, i32, i64, i64, i32, f32, f64>(a0, a1, a2, a3);
+pub extern \"C\" fn allocate_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(a0: i64, a1: i32, a2: f32, a3: f64) -> usize {
+    allocate_ret_4_arg_4(WasmValue::new_i64(a0), WasmValue::new_i32(a1), WasmValue::new_f32(a2), WasmValue::new_f64(a3))
 }
 ");
 }
@@ -198,71 +137,63 @@ fn generating_load_generic_instructions() {
         generate_load_generic(0, 1),
         "
 #[inline(always)]
-fn load_arg0_ret_0_arg_1<T0>(stack_ptr: usize) -> T0 where T0: Copy {
-    let a0_offset = 0; // constant folded
-    return wastrumentation_memory_load::<T0>(stack_ptr, a0_offset); // inlined
+fn load_arg0_ret_0_arg_1(stack_ptr: usize) -> WasmValue {
+    wastrumentation_memory_load(stack_ptr, 0)
 }",
     );
-    assert_eq!(generate_load_generic(5, 5), "
+    assert_eq!(
+        generate_load_generic(5, 5),
+        "
 #[inline(always)]
-fn load_arg0_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize) -> T0 where R0: Copy, R1: Copy, R2: Copy, R3: Copy, R4: Copy, T0: Copy, T1: Copy, T2: Copy, T3: Copy, T4: Copy {
-    let a0_offset = size_of::<R0>() + size_of::<R1>() + size_of::<R2>() + size_of::<R3>() + size_of::<R4>(); // constant folded
-    return wastrumentation_memory_load::<T0>(stack_ptr, a0_offset); // inlined
+fn load_arg0_ret_5_arg_5(stack_ptr: usize) -> WasmValue {
+    wastrumentation_memory_load(stack_ptr, 5)
 }
 
 #[inline(always)]
-fn load_arg1_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize) -> T1 where R0: Copy, R1: Copy, R2: Copy, R3: Copy, R4: Copy, T0: Copy, T1: Copy, T2: Copy, T3: Copy, T4: Copy {
-    let a1_offset = size_of::<R0>() + size_of::<R1>() + size_of::<R2>() + size_of::<R3>() + size_of::<R4>() + size_of::<T0>(); // constant folded
-    return wastrumentation_memory_load::<T1>(stack_ptr, a1_offset); // inlined
+fn load_arg1_ret_5_arg_5(stack_ptr: usize) -> WasmValue {
+    wastrumentation_memory_load(stack_ptr, 6)
 }
 
 #[inline(always)]
-fn load_arg2_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize) -> T2 where R0: Copy, R1: Copy, R2: Copy, R3: Copy, R4: Copy, T0: Copy, T1: Copy, T2: Copy, T3: Copy, T4: Copy {
-    let a2_offset = size_of::<R0>() + size_of::<R1>() + size_of::<R2>() + size_of::<R3>() + size_of::<R4>() + size_of::<T0>() + size_of::<T1>(); // constant folded
-    return wastrumentation_memory_load::<T2>(stack_ptr, a2_offset); // inlined
+fn load_arg2_ret_5_arg_5(stack_ptr: usize) -> WasmValue {
+    wastrumentation_memory_load(stack_ptr, 7)
 }
 
 #[inline(always)]
-fn load_arg3_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize) -> T3 where R0: Copy, R1: Copy, R2: Copy, R3: Copy, R4: Copy, T0: Copy, T1: Copy, T2: Copy, T3: Copy, T4: Copy {
-    let a3_offset = size_of::<R0>() + size_of::<R1>() + size_of::<R2>() + size_of::<R3>() + size_of::<R4>() + size_of::<T0>() + size_of::<T1>() + size_of::<T2>(); // constant folded
-    return wastrumentation_memory_load::<T3>(stack_ptr, a3_offset); // inlined
+fn load_arg3_ret_5_arg_5(stack_ptr: usize) -> WasmValue {
+    wastrumentation_memory_load(stack_ptr, 8)
 }
 
 #[inline(always)]
-fn load_arg4_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize) -> T4 where R0: Copy, R1: Copy, R2: Copy, R3: Copy, R4: Copy, T0: Copy, T1: Copy, T2: Copy, T3: Copy, T4: Copy {
-    let a4_offset = size_of::<R0>() + size_of::<R1>() + size_of::<R2>() + size_of::<R3>() + size_of::<R4>() + size_of::<T0>() + size_of::<T1>() + size_of::<T2>() + size_of::<T3>(); // constant folded
-    return wastrumentation_memory_load::<T4>(stack_ptr, a4_offset); // inlined
+fn load_arg4_ret_5_arg_5(stack_ptr: usize) -> WasmValue {
+    wastrumentation_memory_load(stack_ptr, 9)
 }
 
 #[inline(always)]
-fn load_ret0_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize) -> R0 where R0: Copy, R1: Copy, R2: Copy, R3: Copy, R4: Copy, T0: Copy, T1: Copy, T2: Copy, T3: Copy, T4: Copy {
-    let r0_offset = 0; // constant folded
-    return wastrumentation_memory_load::<R0>(stack_ptr, r0_offset); // inlined
+fn load_ret0_ret_5_arg_5(stack_ptr: usize) -> WasmValue {
+    wastrumentation_memory_load(stack_ptr, 0)
 }
 
 #[inline(always)]
-fn load_ret1_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize) -> R1 where R0: Copy, R1: Copy, R2: Copy, R3: Copy, R4: Copy, T0: Copy, T1: Copy, T2: Copy, T3: Copy, T4: Copy {
-    let r1_offset = size_of::<R0>(); // constant folded
-    return wastrumentation_memory_load::<R1>(stack_ptr, r1_offset); // inlined
+fn load_ret1_ret_5_arg_5(stack_ptr: usize) -> WasmValue {
+    wastrumentation_memory_load(stack_ptr, 1)
 }
 
 #[inline(always)]
-fn load_ret2_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize) -> R2 where R0: Copy, R1: Copy, R2: Copy, R3: Copy, R4: Copy, T0: Copy, T1: Copy, T2: Copy, T3: Copy, T4: Copy {
-    let r2_offset = size_of::<R0>() + size_of::<R1>(); // constant folded
-    return wastrumentation_memory_load::<R2>(stack_ptr, r2_offset); // inlined
+fn load_ret2_ret_5_arg_5(stack_ptr: usize) -> WasmValue {
+    wastrumentation_memory_load(stack_ptr, 2)
 }
 
 #[inline(always)]
-fn load_ret3_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize) -> R3 where R0: Copy, R1: Copy, R2: Copy, R3: Copy, R4: Copy, T0: Copy, T1: Copy, T2: Copy, T3: Copy, T4: Copy {
-    let r3_offset = size_of::<R0>() + size_of::<R1>() + size_of::<R2>(); // constant folded
-    return wastrumentation_memory_load::<R3>(stack_ptr, r3_offset); // inlined
+fn load_ret3_ret_5_arg_5(stack_ptr: usize) -> WasmValue {
+    wastrumentation_memory_load(stack_ptr, 3)
 }
 
 #[inline(always)]
-fn load_ret4_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize) -> R4 where R0: Copy, R1: Copy, R2: Copy, R3: Copy, R4: Copy, T0: Copy, T1: Copy, T2: Copy, T3: Copy, T4: Copy {
-    let r4_offset = size_of::<R0>() + size_of::<R1>() + size_of::<R2>() + size_of::<R3>(); // constant folded
-    return wastrumentation_memory_load::<R4>(stack_ptr, r4_offset); // inlined
-}");
+fn load_ret4_ret_5_arg_5(stack_ptr: usize) -> WasmValue {
+    wastrumentation_memory_load(stack_ptr, 4)
+}"
+    );
 }
 
 #[test]
@@ -271,23 +202,27 @@ fn generating_load_specialized_instructions() {
         generate_load_specialized(&RustSignature(&get_ret_f64_f32_arg_i32_i64())),
         "
 #[no_mangle]
-pub fn load_arg0_ret_f64_f32_arg_i32_i64(stack_ptr: usize) -> i32 {
-    return load_arg0_ret_2_arg_2::<f64, f32, i32, i64>(stack_ptr);
+pub extern \"C\" fn load_arg0_ret_f64_f32_arg_i32_i64(stack_ptr: usize) -> i32 {
+    let val = load_arg0_ret_2_arg_2(stack_ptr);
+    unsafe { val.i32 }
 }
 
 #[no_mangle]
-pub fn load_arg1_ret_f64_f32_arg_i32_i64(stack_ptr: usize) -> i64 {
-    return load_arg1_ret_2_arg_2::<f64, f32, i32, i64>(stack_ptr);
+pub extern \"C\" fn load_arg1_ret_f64_f32_arg_i32_i64(stack_ptr: usize) -> i64 {
+    let val = load_arg1_ret_2_arg_2(stack_ptr);
+    unsafe { val.i64 }
 }
 
 #[no_mangle]
-pub fn load_ret0_ret_f64_f32_arg_i32_i64(stack_ptr: usize) -> f64 {
-    return load_ret0_ret_2_arg_2::<f64, f32, i32, i64>(stack_ptr);
+pub extern \"C\" fn load_ret0_ret_f64_f32_arg_i32_i64(stack_ptr: usize) -> f64 {
+    let val = load_ret0_ret_2_arg_2(stack_ptr);
+    unsafe { val.f64 }
 }
 
 #[no_mangle]
-pub fn load_ret1_ret_f64_f32_arg_i32_i64(stack_ptr: usize) -> f32 {
-    return load_ret1_ret_2_arg_2::<f64, f32, i32, i64>(stack_ptr);
+pub extern \"C\" fn load_ret1_ret_f64_f32_arg_i32_i64(stack_ptr: usize) -> f32 {
+    let val = load_ret1_ret_2_arg_2(stack_ptr);
+    unsafe { val.f32 }
 }"
     );
 
@@ -297,43 +232,51 @@ pub fn load_ret1_ret_f64_f32_arg_i32_i64(stack_ptr: usize) -> f32 {
         )),
         "
 #[no_mangle]
-pub fn load_arg0_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize) -> i64 {
-    return load_arg0_ret_4_arg_4::<f64, f32, i32, i64, i64, i32, f32, f64>(stack_ptr);
+pub extern \"C\" fn load_arg0_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize) -> i64 {
+    let val = load_arg0_ret_4_arg_4(stack_ptr);
+    unsafe { val.i64 }
 }
 
 #[no_mangle]
-pub fn load_arg1_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize) -> i32 {
-    return load_arg1_ret_4_arg_4::<f64, f32, i32, i64, i64, i32, f32, f64>(stack_ptr);
+pub extern \"C\" fn load_arg1_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize) -> i32 {
+    let val = load_arg1_ret_4_arg_4(stack_ptr);
+    unsafe { val.i32 }
 }
 
 #[no_mangle]
-pub fn load_arg2_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize) -> f32 {
-    return load_arg2_ret_4_arg_4::<f64, f32, i32, i64, i64, i32, f32, f64>(stack_ptr);
+pub extern \"C\" fn load_arg2_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize) -> f32 {
+    let val = load_arg2_ret_4_arg_4(stack_ptr);
+    unsafe { val.f32 }
 }
 
 #[no_mangle]
-pub fn load_arg3_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize) -> f64 {
-    return load_arg3_ret_4_arg_4::<f64, f32, i32, i64, i64, i32, f32, f64>(stack_ptr);
+pub extern \"C\" fn load_arg3_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize) -> f64 {
+    let val = load_arg3_ret_4_arg_4(stack_ptr);
+    unsafe { val.f64 }
 }
 
 #[no_mangle]
-pub fn load_ret0_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize) -> f64 {
-    return load_ret0_ret_4_arg_4::<f64, f32, i32, i64, i64, i32, f32, f64>(stack_ptr);
+pub extern \"C\" fn load_ret0_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize) -> f64 {
+    let val = load_ret0_ret_4_arg_4(stack_ptr);
+    unsafe { val.f64 }
 }
 
 #[no_mangle]
-pub fn load_ret1_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize) -> f32 {
-    return load_ret1_ret_4_arg_4::<f64, f32, i32, i64, i64, i32, f32, f64>(stack_ptr);
+pub extern \"C\" fn load_ret1_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize) -> f32 {
+    let val = load_ret1_ret_4_arg_4(stack_ptr);
+    unsafe { val.f32 }
 }
 
 #[no_mangle]
-pub fn load_ret2_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize) -> i32 {
-    return load_ret2_ret_4_arg_4::<f64, f32, i32, i64, i64, i32, f32, f64>(stack_ptr);
+pub extern \"C\" fn load_ret2_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize) -> i32 {
+    let val = load_ret2_ret_4_arg_4(stack_ptr);
+    unsafe { val.i32 }
 }
 
 #[no_mangle]
-pub fn load_ret3_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize) -> i64 {
-    return load_ret3_ret_4_arg_4::<f64, f32, i32, i64, i64, i32, f32, f64>(stack_ptr);
+pub extern \"C\" fn load_ret3_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize) -> i64 {
+    let val = load_ret3_ret_4_arg_4(stack_ptr);
+    unsafe { val.i64 }
 }"
     );
 }
@@ -344,71 +287,63 @@ fn generating_store_generic_instructions() {
         generate_store_generic(0, 1),
         "
 #[inline(always)]
-fn store_arg0_ret_0_arg_1<T0>(stack_ptr: usize, a0: T0) where T0: Copy {
-    let a0_offset: usize = 0; // constant folded
-    return wastrumentation_memory_store::<T0>(stack_ptr, a0, a0_offset); // inlined
+fn store_arg0_ret_0_arg_1(stack_ptr: usize, a0: WasmValue) {
+    wastrumentation_memory_store(stack_ptr, a0, 0);
 }",
     );
-    assert_eq!(generate_store_generic(5, 5), "
+    assert_eq!(
+        generate_store_generic(5, 5),
+        "
 #[inline(always)]
-fn store_arg0_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize, a0: T0) where R0: Copy, R1: Copy, R2: Copy, R3: Copy, R4: Copy, T0: Copy, T1: Copy, T2: Copy, T3: Copy, T4: Copy {
-    let a0_offset: usize = size_of::<R0>() + size_of::<R1>() + size_of::<R2>() + size_of::<R3>() + size_of::<R4>(); // constant folded
-    return wastrumentation_memory_store::<T0>(stack_ptr, a0, a0_offset); // inlined
+fn store_arg0_ret_5_arg_5(stack_ptr: usize, a0: WasmValue) {
+    wastrumentation_memory_store(stack_ptr, a0, 5);
 }
 
 #[inline(always)]
-fn store_arg1_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize, a1: T1) where R0: Copy, R1: Copy, R2: Copy, R3: Copy, R4: Copy, T0: Copy, T1: Copy, T2: Copy, T3: Copy, T4: Copy {
-    let a1_offset: usize = size_of::<R0>() + size_of::<R1>() + size_of::<R2>() + size_of::<R3>() + size_of::<R4>() + size_of::<T0>(); // constant folded
-    return wastrumentation_memory_store::<T1>(stack_ptr, a1, a1_offset); // inlined
+fn store_arg1_ret_5_arg_5(stack_ptr: usize, a1: WasmValue) {
+    wastrumentation_memory_store(stack_ptr, a1, 6);
 }
 
 #[inline(always)]
-fn store_arg2_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize, a2: T2) where R0: Copy, R1: Copy, R2: Copy, R3: Copy, R4: Copy, T0: Copy, T1: Copy, T2: Copy, T3: Copy, T4: Copy {
-    let a2_offset: usize = size_of::<R0>() + size_of::<R1>() + size_of::<R2>() + size_of::<R3>() + size_of::<R4>() + size_of::<T0>() + size_of::<T1>(); // constant folded
-    return wastrumentation_memory_store::<T2>(stack_ptr, a2, a2_offset); // inlined
+fn store_arg2_ret_5_arg_5(stack_ptr: usize, a2: WasmValue) {
+    wastrumentation_memory_store(stack_ptr, a2, 7);
 }
 
 #[inline(always)]
-fn store_arg3_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize, a3: T3) where R0: Copy, R1: Copy, R2: Copy, R3: Copy, R4: Copy, T0: Copy, T1: Copy, T2: Copy, T3: Copy, T4: Copy {
-    let a3_offset: usize = size_of::<R0>() + size_of::<R1>() + size_of::<R2>() + size_of::<R3>() + size_of::<R4>() + size_of::<T0>() + size_of::<T1>() + size_of::<T2>(); // constant folded
-    return wastrumentation_memory_store::<T3>(stack_ptr, a3, a3_offset); // inlined
+fn store_arg3_ret_5_arg_5(stack_ptr: usize, a3: WasmValue) {
+    wastrumentation_memory_store(stack_ptr, a3, 8);
 }
 
 #[inline(always)]
-fn store_arg4_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize, a4: T4) where R0: Copy, R1: Copy, R2: Copy, R3: Copy, R4: Copy, T0: Copy, T1: Copy, T2: Copy, T3: Copy, T4: Copy {
-    let a4_offset: usize = size_of::<R0>() + size_of::<R1>() + size_of::<R2>() + size_of::<R3>() + size_of::<R4>() + size_of::<T0>() + size_of::<T1>() + size_of::<T2>() + size_of::<T3>(); // constant folded
-    return wastrumentation_memory_store::<T4>(stack_ptr, a4, a4_offset); // inlined
+fn store_arg4_ret_5_arg_5(stack_ptr: usize, a4: WasmValue) {
+    wastrumentation_memory_store(stack_ptr, a4, 9);
 }
 
 #[inline(always)]
-fn store_ret0_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize, r0: R0) where R0: Copy, R1: Copy, R2: Copy, R3: Copy, R4: Copy, T0: Copy, T1: Copy, T2: Copy, T3: Copy, T4: Copy {
-    let r0_offset: usize = 0; // constant folded
-    return wastrumentation_memory_store::<R0>(stack_ptr, r0, r0_offset); // inlined
+fn store_ret0_ret_5_arg_5(stack_ptr: usize, r0: WasmValue) {
+    wastrumentation_memory_store(stack_ptr, r0, 0);
 }
 
 #[inline(always)]
-fn store_ret1_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize, r1: R1) where R0: Copy, R1: Copy, R2: Copy, R3: Copy, R4: Copy, T0: Copy, T1: Copy, T2: Copy, T3: Copy, T4: Copy {
-    let r1_offset: usize = size_of::<R0>(); // constant folded
-    return wastrumentation_memory_store::<R1>(stack_ptr, r1, r1_offset); // inlined
+fn store_ret1_ret_5_arg_5(stack_ptr: usize, r1: WasmValue) {
+    wastrumentation_memory_store(stack_ptr, r1, 1);
 }
 
 #[inline(always)]
-fn store_ret2_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize, r2: R2) where R0: Copy, R1: Copy, R2: Copy, R3: Copy, R4: Copy, T0: Copy, T1: Copy, T2: Copy, T3: Copy, T4: Copy {
-    let r2_offset: usize = size_of::<R0>() + size_of::<R1>(); // constant folded
-    return wastrumentation_memory_store::<R2>(stack_ptr, r2, r2_offset); // inlined
+fn store_ret2_ret_5_arg_5(stack_ptr: usize, r2: WasmValue) {
+    wastrumentation_memory_store(stack_ptr, r2, 2);
 }
 
 #[inline(always)]
-fn store_ret3_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize, r3: R3) where R0: Copy, R1: Copy, R2: Copy, R3: Copy, R4: Copy, T0: Copy, T1: Copy, T2: Copy, T3: Copy, T4: Copy {
-    let r3_offset: usize = size_of::<R0>() + size_of::<R1>() + size_of::<R2>(); // constant folded
-    return wastrumentation_memory_store::<R3>(stack_ptr, r3, r3_offset); // inlined
+fn store_ret3_ret_5_arg_5(stack_ptr: usize, r3: WasmValue) {
+    wastrumentation_memory_store(stack_ptr, r3, 3);
 }
 
 #[inline(always)]
-fn store_ret4_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize, r4: R4) where R0: Copy, R1: Copy, R2: Copy, R3: Copy, R4: Copy, T0: Copy, T1: Copy, T2: Copy, T3: Copy, T4: Copy {
-    let r4_offset: usize = size_of::<R0>() + size_of::<R1>() + size_of::<R2>() + size_of::<R3>(); // constant folded
-    return wastrumentation_memory_store::<R4>(stack_ptr, r4, r4_offset); // inlined
-}");
+fn store_ret4_ret_5_arg_5(stack_ptr: usize, r4: WasmValue) {
+    wastrumentation_memory_store(stack_ptr, r4, 4);
+}"
+    );
 }
 
 #[test]
@@ -417,23 +352,23 @@ fn generating_store_specialized_instructions() {
         generate_store_specialized(&RustSignature(&get_ret_f64_f32_arg_i32_i64())),
         "
 #[no_mangle]
-pub fn store_arg0_ret_f64_f32_arg_i32_i64(stack_ptr: usize, a0: i32) {
-    return store_arg0_ret_2_arg_2::<f64, f32, i32, i64>(stack_ptr, a0);
+pub extern \"C\" fn store_arg0_ret_f64_f32_arg_i32_i64(stack_ptr: usize, a0: i32) {
+    store_arg0_ret_2_arg_2(stack_ptr, WasmValue::new_i32(a0));
 }
 
 #[no_mangle]
-pub fn store_arg1_ret_f64_f32_arg_i32_i64(stack_ptr: usize, a1: i64) {
-    return store_arg1_ret_2_arg_2::<f64, f32, i32, i64>(stack_ptr, a1);
+pub extern \"C\" fn store_arg1_ret_f64_f32_arg_i32_i64(stack_ptr: usize, a1: i64) {
+    store_arg1_ret_2_arg_2(stack_ptr, WasmValue::new_i64(a1));
 }
 
 #[no_mangle]
-pub fn store_ret0_ret_f64_f32_arg_i32_i64(stack_ptr: usize, a0: f64) {
-    return store_ret0_ret_2_arg_2::<f64, f32, i32, i64>(stack_ptr, a0);
+pub extern \"C\" fn store_ret0_ret_f64_f32_arg_i32_i64(stack_ptr: usize, a0: f64) {
+    store_ret0_ret_2_arg_2(stack_ptr, WasmValue::new_f64(a0));
 }
 
 #[no_mangle]
-pub fn store_ret1_ret_f64_f32_arg_i32_i64(stack_ptr: usize, a1: f32) {
-    return store_ret1_ret_2_arg_2::<f64, f32, i32, i64>(stack_ptr, a1);
+pub extern \"C\" fn store_ret1_ret_f64_f32_arg_i32_i64(stack_ptr: usize, a1: f32) {
+    store_ret1_ret_2_arg_2(stack_ptr, WasmValue::new_f32(a1));
 }",
     );
 
@@ -443,43 +378,43 @@ pub fn store_ret1_ret_f64_f32_arg_i32_i64(stack_ptr: usize, a1: f32) {
         )),
         "
 #[no_mangle]
-pub fn store_arg0_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize, a0: i64) {
-    return store_arg0_ret_4_arg_4::<f64, f32, i32, i64, i64, i32, f32, f64>(stack_ptr, a0);
+pub extern \"C\" fn store_arg0_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize, a0: i64) {
+    store_arg0_ret_4_arg_4(stack_ptr, WasmValue::new_i64(a0));
 }
 
 #[no_mangle]
-pub fn store_arg1_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize, a1: i32) {
-    return store_arg1_ret_4_arg_4::<f64, f32, i32, i64, i64, i32, f32, f64>(stack_ptr, a1);
+pub extern \"C\" fn store_arg1_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize, a1: i32) {
+    store_arg1_ret_4_arg_4(stack_ptr, WasmValue::new_i32(a1));
 }
 
 #[no_mangle]
-pub fn store_arg2_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize, a2: f32) {
-    return store_arg2_ret_4_arg_4::<f64, f32, i32, i64, i64, i32, f32, f64>(stack_ptr, a2);
+pub extern \"C\" fn store_arg2_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize, a2: f32) {
+    store_arg2_ret_4_arg_4(stack_ptr, WasmValue::new_f32(a2));
 }
 
 #[no_mangle]
-pub fn store_arg3_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize, a3: f64) {
-    return store_arg3_ret_4_arg_4::<f64, f32, i32, i64, i64, i32, f32, f64>(stack_ptr, a3);
+pub extern \"C\" fn store_arg3_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize, a3: f64) {
+    store_arg3_ret_4_arg_4(stack_ptr, WasmValue::new_f64(a3));
 }
 
 #[no_mangle]
-pub fn store_ret0_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize, a0: f64) {
-    return store_ret0_ret_4_arg_4::<f64, f32, i32, i64, i64, i32, f32, f64>(stack_ptr, a0);
+pub extern \"C\" fn store_ret0_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize, a0: f64) {
+    store_ret0_ret_4_arg_4(stack_ptr, WasmValue::new_f64(a0));
 }
 
 #[no_mangle]
-pub fn store_ret1_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize, a1: f32) {
-    return store_ret1_ret_4_arg_4::<f64, f32, i32, i64, i64, i32, f32, f64>(stack_ptr, a1);
+pub extern \"C\" fn store_ret1_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize, a1: f32) {
+    store_ret1_ret_4_arg_4(stack_ptr, WasmValue::new_f32(a1));
 }
 
 #[no_mangle]
-pub fn store_ret2_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize, a2: i32) {
-    return store_ret2_ret_4_arg_4::<f64, f32, i32, i64, i64, i32, f32, f64>(stack_ptr, a2);
+pub extern \"C\" fn store_ret2_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize, a2: i32) {
+    store_ret2_ret_4_arg_4(stack_ptr, WasmValue::new_i32(a2));
 }
 
 #[no_mangle]
-pub fn store_ret3_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize, a3: i64) {
-    return store_ret3_ret_4_arg_4::<f64, f32, i32, i64, i64, i32, f32, f64>(stack_ptr, a3);
+pub extern \"C\" fn store_ret3_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize, a3: i64) {
+    store_ret3_ret_4_arg_4(stack_ptr, WasmValue::new_i64(a3));
 }"
     );
 }
@@ -490,19 +425,18 @@ fn generating_free_generic_instruction() {
         generate_free_values_buffer_generic(0, 1),
         "
 #[inline(always)]
-fn free_values_ret_0_arg_1<T0>(ptr: usize) where T0: Copy {
-    let to_deallocate = size_of::<T0>(); // constant folded
-    stack_deallocate(ptr, to_deallocate); // inlined
-    return;
+fn free_values_ret_0_arg_1(ptr: usize) {
+    stack_deallocate_values(ptr, 1);
 }"
     );
-    assert_eq!(generate_free_values_buffer_generic(5, 5), "
+    assert_eq!(
+        generate_free_values_buffer_generic(5, 5),
+        "
 #[inline(always)]
-fn free_values_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(ptr: usize) where R0: Copy, R1: Copy, R2: Copy, R3: Copy, R4: Copy, T0: Copy, T1: Copy, T2: Copy, T3: Copy, T4: Copy {
-    let to_deallocate = size_of::<R0>() + size_of::<R1>() + size_of::<R2>() + size_of::<R3>() + size_of::<R4>() + size_of::<T0>() + size_of::<T1>() + size_of::<T2>() + size_of::<T3>() + size_of::<T4>(); // constant folded
-    stack_deallocate(ptr, to_deallocate); // inlined
-    return;
-}");
+fn free_values_ret_5_arg_5(ptr: usize) {
+    stack_deallocate_values(ptr, 10);
+}"
+    );
 }
 
 #[test]
@@ -511,8 +445,8 @@ fn generating_free_specialized_instruction() {
         generate_free_values_buffer_specialized(&RustSignature(&get_ret_f64_f32_arg_i32_i64())),
         "
 #[no_mangle]
-pub fn free_values_ret_f64_f32_arg_i32_i64(ptr: usize) {
-    return free_values_ret_2_arg_2::<f64, f32, i32, i64>(ptr);
+pub extern \"C\" fn free_values_ret_f64_f32_arg_i32_i64(ptr: usize) {
+    free_values_ret_2_arg_2(ptr);
 }",
     );
 
@@ -522,8 +456,8 @@ pub fn free_values_ret_f64_f32_arg_i32_i64(ptr: usize) {
         )),
         "
 #[no_mangle]
-pub fn free_values_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(ptr: usize) {
-    return free_values_ret_4_arg_4::<f64, f32, i32, i64, i64, i32, f32, f64>(ptr);
+pub extern \"C\" fn free_values_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(ptr: usize) {
+    free_values_ret_4_arg_4(ptr);
 }",
     );
 }
@@ -535,9 +469,7 @@ fn generating_free_types_generic_instruction() {
         "
 #[inline(always)]
 fn free_types_ret_0_arg_1(ptr: usize) {
-    let to_deallocate = size_of::<i32>() * 1; // constant folded
-    stack_deallocate(ptr, to_deallocate); // inlined
-    return;
+    stack_deallocate_types(ptr, 1);
 }"
     );
     assert_eq!(
@@ -545,9 +477,7 @@ fn free_types_ret_0_arg_1(ptr: usize) {
         "
 #[inline(always)]
 fn free_types_ret_5_arg_5(ptr: usize) {
-    let to_deallocate = size_of::<i32>() * 10; // constant folded
-    stack_deallocate(ptr, to_deallocate); // inlined
-    return;
+    stack_deallocate_types(ptr, 10);
 }"
     );
 }
@@ -558,8 +488,8 @@ fn generating_free_types_specialized_instruction() {
         generate_free_types_buffer_specialized(&RustSignature(&get_ret_f64_f32_arg_i32_i64())),
         "
 #[no_mangle]
-pub fn free_types_ret_f64_f32_arg_i32_i64(ptr: usize) {
-    return free_types_ret_2_arg_2(ptr);
+pub extern \"C\" fn free_types_ret_f64_f32_arg_i32_i64(ptr: usize) {
+    free_types_ret_2_arg_2(ptr);
 }"
     );
     assert_eq!(
@@ -568,8 +498,8 @@ pub fn free_types_ret_f64_f32_arg_i32_i64(ptr: usize) {
         )),
         "
 #[no_mangle]
-pub fn free_types_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(ptr: usize) {
-    return free_types_ret_4_arg_4(ptr);
+pub extern \"C\" fn free_types_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(ptr: usize) {
+    free_types_ret_4_arg_4(ptr);
 }"
     );
 }
@@ -580,24 +510,18 @@ fn generating_store_rets_generic_instruction() {
         generate_store_rets_generic(0, 1),
         "
 #[inline(always)]
-fn store_rets_ret_0_arg_1<T0>(_stack_ptr: usize) where T0: Copy {
-    return;
+fn store_rets_ret_0_arg_1(_stack_ptr: usize) {
+
 }",
     );
     assert_eq!(generate_store_rets_generic(5, 5), "
 #[inline(always)]
-fn store_rets_ret_5_arg_5<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr: usize, a0: R0, a1: R1, a2: R2, a3: R3, a4: R4) where R0: Copy, R1: Copy, R2: Copy, R3: Copy, R4: Copy, T0: Copy, T1: Copy, T2: Copy, T3: Copy, T4: Copy {
-    // store a0
-    store_ret0_ret_5_arg_5::<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr, a0);
-    // store a1
-    store_ret1_ret_5_arg_5::<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr, a1);
-    // store a2
-    store_ret2_ret_5_arg_5::<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr, a2);
-    // store a3
-    store_ret3_ret_5_arg_5::<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr, a3);
-    // store a4
-    store_ret4_ret_5_arg_5::<R0, R1, R2, R3, R4, T0, T1, T2, T3, T4>(stack_ptr, a4);
-    return;
+fn store_rets_ret_5_arg_5(stack_ptr: usize, a0: WasmValue, a1: WasmValue, a2: WasmValue, a3: WasmValue, a4: WasmValue) {
+    store_ret0_ret_5_arg_5(stack_ptr, a0);
+    store_ret1_ret_5_arg_5(stack_ptr, a1);
+    store_ret2_ret_5_arg_5(stack_ptr, a2);
+    store_ret3_ret_5_arg_5(stack_ptr, a3);
+    store_ret4_ret_5_arg_5(stack_ptr, a4);
 }");
 }
 
@@ -607,15 +531,15 @@ fn generating_store_rets_specialized_instruction() {
         generate_store_rets_specialized(&RustSignature(&get_ret_f64_f32_arg_i32_i64())),
         "
 #[no_mangle]
-pub fn store_rets_ret_f64_f32_arg_i32_i64(stack_ptr: usize, a0: f64, a1: f32) {
-    return store_rets_ret_2_arg_2::<f64, f32, i32, i64>(stack_ptr, a0, a1);
+pub extern \"C\" fn store_rets_ret_f64_f32_arg_i32_i64(stack_ptr: usize, a0: f64, a1: f32) {
+    store_rets_ret_2_arg_2(stack_ptr, WasmValue::new_f64(a0), WasmValue::new_f32(a1));
 }"
     );
 
     assert_eq!(generate_store_rets_specialized(&RustSignature(&get_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64())), "
 #[no_mangle]
-pub fn store_rets_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize, a0: f64, a1: f32, a2: i32, a3: i64) {
-    return store_rets_ret_4_arg_4::<f64, f32, i32, i64, i64, i32, f32, f64>(stack_ptr, a0, a1, a2, a3);
+pub extern \"C\" fn store_rets_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64(stack_ptr: usize, a0: f64, a1: f32, a2: i32, a3: i64) {
+    store_rets_ret_4_arg_4(stack_ptr, WasmValue::new_f64(a0), WasmValue::new_f32(a1), WasmValue::new_i32(a2), WasmValue::new_i64(a3));
 }");
 }
 
@@ -626,9 +550,7 @@ fn generating_allocate_types_generic_specialized() {
         "
 #[inline(always)]
 fn allocate_signature_types_buffer_ret_0_arg_1() -> usize {
-    let to_allocate = size_of::<i32>() * 1; // constant folded
-    let stack_begin = stack_allocate(to_allocate); // inlined
-    return stack_begin;
+    stack_allocate_types(1) // inlined
 }"
     );
 
@@ -637,9 +559,7 @@ fn allocate_signature_types_buffer_ret_0_arg_1() -> usize {
         "
 #[inline(always)]
 fn allocate_signature_types_buffer_ret_5_arg_5() -> usize {
-    let to_allocate = size_of::<i32>() * 10; // constant folded
-    let stack_begin = stack_allocate(to_allocate); // inlined
-    return stack_begin;
+    stack_allocate_types(10) // inlined
 }"
     )
 }
@@ -654,9 +574,10 @@ fn generating_allocate_types_buffer_specialized_instruction() {
         generate_allocate_types_buffer_specialized(&RustSignature(&signature_empty)),
         "
 #[no_mangle]
-pub fn allocate_types_ret_arg() -> usize {
+pub extern \"C\" fn allocate_types_ret_arg() -> usize {
     let types_buffer = allocate_signature_types_buffer_ret_0_arg_0();
-    return types_buffer;
+
+    types_buffer
 }"
     );
     let signature_0 = Signature {
@@ -667,13 +588,13 @@ pub fn allocate_types_ret_arg() -> usize {
         generate_allocate_types_buffer_specialized(&RustSignature(&signature_0)),
         "
 #[no_mangle]
-pub fn allocate_types_ret_f64_f32_arg_i32_i64() -> usize {
+pub extern \"C\" fn allocate_types_ret_f64_f32_arg_i32_i64() -> usize {
     let types_buffer = allocate_signature_types_buffer_ret_2_arg_2();
-    wastrumentation_memory_store::<i32>(types_buffer, 3, size_of::<i32>()*0);
-    wastrumentation_memory_store::<i32>(types_buffer, 1, size_of::<i32>()*1);
-    wastrumentation_memory_store::<i32>(types_buffer, 0, size_of::<i32>()*2);
-    wastrumentation_memory_store::<i32>(types_buffer, 2, size_of::<i32>()*3);
-    return types_buffer;
+    wastrumentation_stack_store_type(types_buffer, 0, RuntimeType::F64);
+    wastrumentation_stack_store_type(types_buffer, 1, RuntimeType::F32);
+    wastrumentation_stack_store_type(types_buffer, 2, RuntimeType::I32);
+    wastrumentation_stack_store_type(types_buffer, 3, RuntimeType::I64);
+    types_buffer
 }"
     );
     let signature_1 = Signature {
@@ -684,17 +605,17 @@ pub fn allocate_types_ret_f64_f32_arg_i32_i64() -> usize {
         generate_allocate_types_buffer_specialized(&RustSignature(&signature_1)),
         "
 #[no_mangle]
-pub fn allocate_types_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64() -> usize {
+pub extern \"C\" fn allocate_types_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64() -> usize {
     let types_buffer = allocate_signature_types_buffer_ret_4_arg_4();
-    wastrumentation_memory_store::<i32>(types_buffer, 3, size_of::<i32>()*0);
-    wastrumentation_memory_store::<i32>(types_buffer, 1, size_of::<i32>()*1);
-    wastrumentation_memory_store::<i32>(types_buffer, 0, size_of::<i32>()*2);
-    wastrumentation_memory_store::<i32>(types_buffer, 2, size_of::<i32>()*3);
-    wastrumentation_memory_store::<i32>(types_buffer, 2, size_of::<i32>()*4);
-    wastrumentation_memory_store::<i32>(types_buffer, 0, size_of::<i32>()*5);
-    wastrumentation_memory_store::<i32>(types_buffer, 1, size_of::<i32>()*6);
-    wastrumentation_memory_store::<i32>(types_buffer, 3, size_of::<i32>()*7);
-    return types_buffer;
+    wastrumentation_stack_store_type(types_buffer, 0, RuntimeType::F64);
+    wastrumentation_stack_store_type(types_buffer, 1, RuntimeType::F32);
+    wastrumentation_stack_store_type(types_buffer, 2, RuntimeType::I32);
+    wastrumentation_stack_store_type(types_buffer, 3, RuntimeType::I64);
+    wastrumentation_stack_store_type(types_buffer, 4, RuntimeType::I64);
+    wastrumentation_stack_store_type(types_buffer, 5, RuntimeType::I32);
+    wastrumentation_stack_store_type(types_buffer, 6, RuntimeType::F32);
+    wastrumentation_stack_store_type(types_buffer, 7, RuntimeType::F64);
+    types_buffer
 }"
     );
 
@@ -712,13 +633,13 @@ pub fn allocate_types_ret_f64_f32_i32_i64_arg_i64_i32_f32_f64() -> usize {
         generate_allocate_types_buffer_specialized(&RustSignature(&signature_2)),
         "
 #[no_mangle]
-pub fn allocate_types_ret_ref_func_ref_func_arg_ref_extern_ref_extern() -> usize {
+pub extern \"C\" fn allocate_types_ret_ref_func_ref_func_arg_ref_extern_ref_extern() -> usize {
     let types_buffer = allocate_signature_types_buffer_ret_2_arg_2();
-    wastrumentation_memory_store::<i32>(types_buffer, 4, size_of::<i32>()*0);
-    wastrumentation_memory_store::<i32>(types_buffer, 4, size_of::<i32>()*1);
-    wastrumentation_memory_store::<i32>(types_buffer, 5, size_of::<i32>()*2);
-    wastrumentation_memory_store::<i32>(types_buffer, 5, size_of::<i32>()*3);
-    return types_buffer;
+    wastrumentation_stack_store_type(types_buffer, 0, RuntimeType::FuncRef);
+    wastrumentation_stack_store_type(types_buffer, 1, RuntimeType::FuncRef);
+    wastrumentation_stack_store_type(types_buffer, 2, RuntimeType::ExternRef);
+    wastrumentation_stack_store_type(types_buffer, 3, RuntimeType::ExternRef);
+    types_buffer
 }"
     );
 }

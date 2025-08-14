@@ -12,6 +12,7 @@ pub struct Compiler {
     compiler: RustToWasmCompiler,
 }
 
+// TODO: for tests suite, would be nice to cover Profile::Release & Profile::Dev
 impl DefaultCompilerOptions<Rust> for CompilerOptions {
     fn default_for(source: RustSource) -> Self {
         Self {
