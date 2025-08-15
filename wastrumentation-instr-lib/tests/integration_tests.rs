@@ -485,7 +485,7 @@ fn test_analysis_logging() {
 
     const EXPECTED_ANALYSIS_STDOUT: &str = indoc::indoc! { r#"
     [ANALYSIS:] apply (pre) WasmFunction {
-        uninstr_idx: 1,
+        uninstr_idx: 0,
         sig_pointer: 1179632,
     }(RuntimeValues {
         argc: 1,
@@ -496,91 +496,91 @@ fn test_analysis_logging() {
             I32,
         ],
     })
-    [ANALYSIS:] block pre [block_input_count: BlockInputCount(0), block_arity: BlockArity(0)], location: Location { instr_index: 1, funct_index: 0 }
+    [ANALYSIS:] block pre [block_input_count: BlockInputCount(0), block_arity: BlockArity(0)], location: Location { instr_index: 0, funct_index: 0 }
     [ANALYSIS:] local generic I32(
         123,
     ) @ LocalIndex(
         0,
-    ) : Get, location: Location { instr_index: 1, funct_index: 1 }
+    ) : Get, location: Location { instr_index: 0, funct_index: 1 }
     [ANALYSIS:] br_if ParameterBrIfCondition(
         123,
     ) to ParameterBrIfLabel(
         0,
-    ), location: Location { instr_index: 1, funct_index: 2 }
+    ), location: Location { instr_index: 0, funct_index: 2 }
     [ANALYSIS:] const_ generic I32(
         0,
-    ), location: Location { instr_index: 1, funct_index: 6 }
+    ), location: Location { instr_index: 0, funct_index: 6 }
     [ANALYSIS:] const_ generic I32(
         0,
-    ), location: Location { instr_index: 1, funct_index: 7 }
+    ), location: Location { instr_index: 0, funct_index: 7 }
     [ANALYSIS:] load generic I32Load @ (CONST LoadOffset(
         1048576,
     ) + LoadIndex(
         0,
     )) -> I32(
         0,
-    ), location: Location { instr_index: 1, funct_index: 8 }
+    ), location: Location { instr_index: 0, funct_index: 8 }
     [ANALYSIS:] const_ generic I32(
         4,
-    ), location: Location { instr_index: 1, funct_index: 9 }
+    ), location: Location { instr_index: 0, funct_index: 9 }
     [ANALYSIS:] binary generic I32Add I32(
         0,
     ) I32(
         4,
-    ), location: Location { instr_index: 1, funct_index: 10 }
+    ), location: Location { instr_index: 0, funct_index: 10 }
     [ANALYSIS:] store generic I32Store @ (CONST StoreOffset(
         1048576,
     ) + StoreIndex(
         0,
     )) <- I32(
         4,
-    ), location: Location { instr_index: 1, funct_index: 11 }
+    ), location: Location { instr_index: 0, funct_index: 11 }
     [ANALYSIS:] local generic I32(
         123,
     ) @ LocalIndex(
         0,
-    ) : Get, location: Location { instr_index: 1, funct_index: 12 }
+    ) : Get, location: Location { instr_index: 0, funct_index: 12 }
     [ANALYSIS:] const_ generic I32(
         20,
-    ), location: Location { instr_index: 1, funct_index: 13 }
+    ), location: Location { instr_index: 0, funct_index: 13 }
     [ANALYSIS:] binary generic I32Mul I32(
         123,
     ) I32(
         20,
-    ), location: Location { instr_index: 1, funct_index: 14 }
+    ), location: Location { instr_index: 0, funct_index: 14 }
     [ANALYSIS:] const_ generic I32(
         35,
-    ), location: Location { instr_index: 1, funct_index: 15 }
+    ), location: Location { instr_index: 0, funct_index: 15 }
     [ANALYSIS:] binary generic I32Add I32(
         2460,
     ) I32(
         35,
-    ), location: Location { instr_index: 1, funct_index: 16 }
+    ), location: Location { instr_index: 0, funct_index: 16 }
     [ANALYSIS:] const_ generic I32(
         1,
-    ), location: Location { instr_index: 1, funct_index: 17 }
+    ), location: Location { instr_index: 0, funct_index: 17 }
     [ANALYSIS:] binary generic I32ShrS I32(
         2495,
     ) I32(
         1,
-    ), location: Location { instr_index: 1, funct_index: 18 }
+    ), location: Location { instr_index: 0, funct_index: 18 }
     [ANALYSIS:] local generic I32(
         1247,
     ) @ LocalIndex(
         0,
-    ) : Tee, location: Location { instr_index: 1, funct_index: 19 }
+    ) : Tee, location: Location { instr_index: 0, funct_index: 19 }
     [ANALYSIS:] local generic I32(
         1247,
     ) @ LocalIndex(
         0,
-    ) : Get, location: Location { instr_index: 1, funct_index: 20 }
+    ) : Get, location: Location { instr_index: 0, funct_index: 20 }
     [ANALYSIS:] binary generic I32Mul I32(
         1247,
     ) I32(
         1247,
-    ), location: Location { instr_index: 1, funct_index: 21 }
+    ), location: Location { instr_index: 0, funct_index: 21 }
     [ANALYSIS:] apply (post) WasmFunction {
-        uninstr_idx: 1,
+        uninstr_idx: 0,
         sig_pointer: 1179632,
     }(RuntimeValues {
         argc: 1,

@@ -52,7 +52,7 @@ fn test_basic() {
     let time_elapsed_after_instrumented_call = report.instrumented_duration;
 
     assert_eq!(report.runtime_pure_function_calls.len(), 3);
-    assert_eq!(report.runtime_target_functions, vec![4]);
+    assert_eq!(report.runtime_target_functions, vec![2]);
 
     dbg!(report.cache_size_report);
     dbg!(report.cache_hit_report);
