@@ -1,5 +1,5 @@
-use assemblyscript_compiler::compiler::Compiler as AssemblyscriptCompiler;
-use assemblyscript_compiler::options::CompilerOptions as AssemblyscriptCompilerOptions;
+use asc_compiler_rs::compiler::Compiler as AssemblyscriptCompiler;
+use asc_compiler_rs::options::CompilerOptions as AssemblyscriptCompilerOptions;
 use wastrumentation::compiler::Compiles;
 use wastrumentation::{Configuration, Wastrumenter};
 

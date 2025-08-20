@@ -17,8 +17,8 @@ use wastrumentation_instr_lib::lib_gen::analysis::rust::RustAnalysisSpec;
 
 // Wasmtime imports
 use wasmtime::{Config, Engine, Instance, Linker, Module, Store};
+use wasmtime_wasi::p2::WasiCtxBuilder;
 use wasmtime_wasi::preview1::{self, WasiP1Ctx};
-use wasmtime_wasi::WasiCtxBuilder;
 
 // Bring macros in scope
 mod wasmtime_macros;
@@ -139,8 +139,8 @@ fn test_analysis_denan() {
     // WASMTIME ENGINE //
     /////////////////////
 
-    let stdout = wasmtime_wasi::pipe::MemoryOutputPipe::new(usize::MAX);
-    let stderr = wasmtime_wasi::pipe::MemoryOutputPipe::new(usize::MAX);
+    let stdout = wasmtime_wasi::p2::pipe::MemoryOutputPipe::new(usize::MAX);
+    let stderr = wasmtime_wasi::p2::pipe::MemoryOutputPipe::new(usize::MAX);
 
     // Construct the wasm engine
     let mut config = Config::new();
@@ -262,8 +262,8 @@ fn test_analysis_safe_heap() {
     // WASMTIME ENGINE //
     /////////////////////
 
-    let stdout = wasmtime_wasi::pipe::MemoryOutputPipe::new(usize::MAX);
-    let stderr = wasmtime_wasi::pipe::MemoryOutputPipe::new(usize::MAX);
+    let stdout = wasmtime_wasi::p2::pipe::MemoryOutputPipe::new(usize::MAX);
+    let stderr = wasmtime_wasi::p2::pipe::MemoryOutputPipe::new(usize::MAX);
 
     // Construct the wasm engine
     let mut config = Config::new();
@@ -385,8 +385,8 @@ fn test_analysis_memory_introspection() {
     // WASMTIME ENGINE //
     /////////////////////
 
-    let stdout = wasmtime_wasi::pipe::MemoryOutputPipe::new(usize::MAX);
-    let stderr = wasmtime_wasi::pipe::MemoryOutputPipe::new(usize::MAX);
+    let stdout = wasmtime_wasi::p2::pipe::MemoryOutputPipe::new(usize::MAX);
+    let stderr = wasmtime_wasi::p2::pipe::MemoryOutputPipe::new(usize::MAX);
 
     // Construct the wasm engine
     let mut config = Config::new();
@@ -485,130 +485,118 @@ fn test_analysis_logging() {
 
     const EXPECTED_ANALYSIS_STDOUT: &str = indoc::indoc! { r#"
     [ANALYSIS:] apply (pre) WasmFunction {
-        uninstr_idx: 1,
-        sig_pointer: 1179640,
+        uninstr_idx: 0,
+        sig_pointer: 1179632,
     }(RuntimeValues {
         argc: 1,
         resc: 1,
-        sigv: 1179640,
+        sigv: 1179632,
         signature_types: [
             I32,
             I32,
         ],
-        signature_offsets: [
-            0,
-            4,
-        ],
     })
-    [ANALYSIS:] block pre [block_input_count: BlockInputCount(0), block_arity: BlockArity(0)], location: Location { instr_index: 1, funct_index: 0 }
+    [ANALYSIS:] block pre [block_input_count: BlockInputCount(0), block_arity: BlockArity(0)], location: Location { instr_index: 0, funct_index: 0 }
     [ANALYSIS:] local generic I32(
         123,
     ) @ LocalIndex(
         0,
-    ) : Get, location: Location { instr_index: 1, funct_index: 1 }
+    ) : Get, location: Location { instr_index: 0, funct_index: 1 }
     [ANALYSIS:] br_if ParameterBrIfCondition(
         123,
     ) to ParameterBrIfLabel(
         0,
-    ), location: Location { instr_index: 1, funct_index: 2 }
+    ), location: Location { instr_index: 0, funct_index: 2 }
     [ANALYSIS:] const_ generic I32(
         0,
-    ), location: Location { instr_index: 1, funct_index: 6 }
+    ), location: Location { instr_index: 0, funct_index: 6 }
     [ANALYSIS:] const_ generic I32(
         0,
-    ), location: Location { instr_index: 1, funct_index: 7 }
+    ), location: Location { instr_index: 0, funct_index: 7 }
     [ANALYSIS:] load generic I32Load @ (CONST LoadOffset(
         1048576,
     ) + LoadIndex(
         0,
     )) -> I32(
         0,
-    ), location: Location { instr_index: 1, funct_index: 8 }
+    ), location: Location { instr_index: 0, funct_index: 8 }
     [ANALYSIS:] const_ generic I32(
         4,
-    ), location: Location { instr_index: 1, funct_index: 9 }
+    ), location: Location { instr_index: 0, funct_index: 9 }
     [ANALYSIS:] binary generic I32Add I32(
         0,
     ) I32(
         4,
-    ), location: Location { instr_index: 1, funct_index: 10 }
+    ), location: Location { instr_index: 0, funct_index: 10 }
     [ANALYSIS:] store generic I32Store @ (CONST StoreOffset(
         1048576,
     ) + StoreIndex(
         0,
     )) <- I32(
         4,
-    ), location: Location { instr_index: 1, funct_index: 11 }
+    ), location: Location { instr_index: 0, funct_index: 11 }
     [ANALYSIS:] local generic I32(
         123,
     ) @ LocalIndex(
         0,
-    ) : Get, location: Location { instr_index: 1, funct_index: 12 }
+    ) : Get, location: Location { instr_index: 0, funct_index: 12 }
     [ANALYSIS:] const_ generic I32(
         20,
-    ), location: Location { instr_index: 1, funct_index: 13 }
+    ), location: Location { instr_index: 0, funct_index: 13 }
     [ANALYSIS:] binary generic I32Mul I32(
         123,
     ) I32(
         20,
-    ), location: Location { instr_index: 1, funct_index: 14 }
+    ), location: Location { instr_index: 0, funct_index: 14 }
     [ANALYSIS:] const_ generic I32(
         35,
-    ), location: Location { instr_index: 1, funct_index: 15 }
+    ), location: Location { instr_index: 0, funct_index: 15 }
     [ANALYSIS:] binary generic I32Add I32(
         2460,
     ) I32(
         35,
-    ), location: Location { instr_index: 1, funct_index: 16 }
+    ), location: Location { instr_index: 0, funct_index: 16 }
     [ANALYSIS:] const_ generic I32(
         1,
-    ), location: Location { instr_index: 1, funct_index: 17 }
+    ), location: Location { instr_index: 0, funct_index: 17 }
     [ANALYSIS:] binary generic I32ShrS I32(
         2495,
     ) I32(
         1,
-    ), location: Location { instr_index: 1, funct_index: 18 }
+    ), location: Location { instr_index: 0, funct_index: 18 }
     [ANALYSIS:] local generic I32(
         1247,
     ) @ LocalIndex(
         0,
-    ) : Tee, location: Location { instr_index: 1, funct_index: 19 }
+    ) : Tee, location: Location { instr_index: 0, funct_index: 19 }
     [ANALYSIS:] local generic I32(
         1247,
     ) @ LocalIndex(
         0,
-    ) : Get, location: Location { instr_index: 1, funct_index: 20 }
+    ) : Get, location: Location { instr_index: 0, funct_index: 20 }
     [ANALYSIS:] binary generic I32Mul I32(
         1247,
     ) I32(
         1247,
-    ), location: Location { instr_index: 1, funct_index: 21 }
+    ), location: Location { instr_index: 0, funct_index: 21 }
     [ANALYSIS:] apply (post) WasmFunction {
-        uninstr_idx: 1,
-        sig_pointer: 1179640,
+        uninstr_idx: 0,
+        sig_pointer: 1179632,
     }(RuntimeValues {
         argc: 1,
         resc: 1,
-        sigv: 1179640,
+        sigv: 1179632,
         signature_types: [
             I32,
             I32,
-        ],
-        signature_offsets: [
-            0,
-            4,
         ],
     }) = RuntimeValues {
         argc: 1,
         resc: 1,
-        sigv: 1179640,
+        sigv: 1179632,
         signature_types: [
             I32,
             I32,
-        ],
-        signature_offsets: [
-            0,
-            4,
         ],
     }
     "# };
@@ -644,8 +632,8 @@ fn test_analysis_logging() {
     // WASMTIME ENGINE //
     /////////////////////
 
-    let stdout = wasmtime_wasi::pipe::MemoryOutputPipe::new(usize::MAX);
-    let stderr = wasmtime_wasi::pipe::MemoryOutputPipe::new(usize::MAX);
+    let stdout = wasmtime_wasi::p2::pipe::MemoryOutputPipe::new(usize::MAX);
+    let stderr = wasmtime_wasi::p2::pipe::MemoryOutputPipe::new(usize::MAX);
 
     // Construct the wasm engine
     let engine = Engine::default();

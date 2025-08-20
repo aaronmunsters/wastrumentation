@@ -1,7 +1,7 @@
 use super::AssemblyScript;
 
-pub use assemblyscript_compiler::compiler::Compiler;
-use assemblyscript_compiler::{error::CompilerSetupError, options::CompilerOptions};
+pub use asc_compiler_rs::compiler::Compiler;
+use asc_compiler_rs::{error::CompilerSetupError, options::CompilerOptions};
 
 use wastrumentation::compiler::{CompilationError, CompilationResult, Compiles};
 

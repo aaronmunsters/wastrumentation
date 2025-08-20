@@ -43,20 +43,20 @@
           validate_post_call_values(expected_values: WasmValue[], actual_values: DynValues): void {
             assert(actual_values.length === expected_values.length);
             for (let index = 0; index < expected_values.length; index++) {
-              const wasm_value = expected_values[index];
-              assert(wasm_value.wasm_type === actual_values.getType(index));
-              switch (wasm_value.wasm_type) {
+              const expected_value = expected_values[index];
+              assert(expected_value.wasm_type === actual_values.getType(index));
+              switch (expected_value.wasm_type) {
                 case WasmType.i32:
-                  assert(wasm_value.as_i32() === actual_values.get<i32>(index));
+                  assert(expected_value.as_i32() === actual_values.get<i32>(index));
                   break;
                 case WasmType.f32:
-                  assert(wasm_value.as_f32() === actual_values.get<f32>(index));
+                  assert(expected_value.as_f32() === actual_values.get<f32>(index));
                   break;
                 case WasmType.i64:
-                  assert(wasm_value.as_i64() === actual_values.get<i64>(index));
+                  assert(expected_value.as_i64() === actual_values.get<i64>(index));
                   break;
                 case WasmType.f64:
-                  assert(wasm_value.as_f64() === actual_values.get<f64>(index));
+                  assert(expected_value.as_f64() === actual_values.get<f64>(index));
                   break;
                 default:
                   unreachable();

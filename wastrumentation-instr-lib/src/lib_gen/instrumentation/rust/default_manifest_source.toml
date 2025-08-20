@@ -6,4 +6,5 @@ dependencies.wee_alloc = "0.4.5"
 profile.release.strip = true
 profile.release.lto = true
 profile.release.panic = "abort"
+profile.dev.panic = "abort"
 [workspace]

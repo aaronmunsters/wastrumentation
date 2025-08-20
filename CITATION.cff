@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+title: >-
+  Wastrumentation: Portable WebAssembly Dynamic Analysis
+  with Support for Intercession
+message: >-
+  If you use Wastrumentation in your work, please cite the
+  following paper.
+type: software
+authors:
+  - family-names: Munsters
+    given-names: Aäron
+  - family-names: Scull Pupo
+    given-names: Angel Luis
+  - family-names: Gonzalez Boix
+    given-names: Elisa
+identifiers:
+  - type: doi
+    value: 10.4230/LIPIcs.ECOOP.2025.23
+  - type: url
+    value: 'https://doi.org/10.4230/LIPIcs.ECOOP.2025.23'
+repository-code: 'https://github.com/aaronmunsters/wastrumentation'
+url: 'https://doi.org/10.4230/LIPIcs.ECOOP.2025.23'
+keywords:
+  - WebAssembly
+  - dynamic analysis
+  - intercession
+  - instrumentation
+license: CC-BY-4.0
+version: 0.1.0
+date-released: '2025-07-01'

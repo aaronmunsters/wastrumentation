@@ -2,28 +2,26 @@
 
 resolver = "2"
 members = [
-    "assemblyscript-compiler",
     "wastrumentation",
     "wastrumentation-instr-lib",
     "wasp-compiler",
     "wasm-merge",
-    "rust-to-wasm-compiler",
     "cli",
     "wastrumentation-static-analysis",
 ]
 
 [workspace.dependencies]
-# Crates defined in this project
-assemblyscript-compiler = { path = "./assemblyscript-compiler" }
-rust-to-wasm-compiler = { path = "./rust-to-wasm-compiler" }
+# Crates defined as part of Wastrumentation
+asc-compiler-rs = { git = "https://github.com/aaronmunsters/asc-compiler-rs", rev = "779738e" }
+rust-to-wasm-compiler = { git = "https://github.com/aaronmunsters/rust-to-wasm-compiler", rev = "363a3a6" }
 wastrumentation = { path = "./wastrumentation" }
 wastrumentation-instr-lib = { path = "./wastrumentation-instr-lib" }
 wasp-compiler = { path = "./wasp-compiler" }
 wasm-merge = { path = "./wasm-merge" }
 
-wasmtime = "29.0"
+wasmtime = "35.0"
 indoc = "2"
-tempfile = "3.16"
+tempfile = "3.20"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 wat = "1"
