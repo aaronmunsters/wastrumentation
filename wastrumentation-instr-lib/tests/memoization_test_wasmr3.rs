@@ -29,8 +29,10 @@ Execution on release:
 // TODO: change this test that it either:
 // * downloads the input programs if not found (-> internet connection dependent tests; flakey)
 // * includes the input programs in the repo (-> grows the repo size with +50mb)
+// TODO: either this is enabled (& configurable) or it should be moved?
 #[ignore]
-#[test]
+// #[test]
+#[allow(unused)]
 fn test_basic() {
     for name in [
         //

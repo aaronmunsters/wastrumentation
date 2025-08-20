@@ -14,8 +14,8 @@ use wastrumentation_instr_lib::lib_gen::analysis::rust::RustAnalysisSpec;
 
 // Wasmtime imports
 use wasmtime::{Engine, Linker, Module, Store};
+use wasmtime_wasi::p2::WasiCtxBuilder;
 use wasmtime_wasi::preview1::{self, WasiP1Ctx};
-use wasmtime_wasi::WasiCtxBuilder;
 
 const WAT_MGM: &str = r#"
 (module $Mgm
@@ -79,8 +79,8 @@ fn test_analysis() {
     // WASMTIME ENGINE //
     /////////////////////
 
-    let stdout = wasmtime_wasi::pipe::MemoryOutputPipe::new(usize::MAX);
-    let stderr = wasmtime_wasi::pipe::MemoryOutputPipe::new(usize::MAX);
+    let stdout = wasmtime_wasi::p2::pipe::MemoryOutputPipe::new(usize::MAX);
+    let stderr = wasmtime_wasi::p2::pipe::MemoryOutputPipe::new(usize::MAX);
 
     // Construct the wasm engine
     let engine = Engine::default();

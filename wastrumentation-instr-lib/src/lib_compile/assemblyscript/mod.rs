@@ -8,6 +8,6 @@ use wastrumentation::compiler::SourceCodeBound;
 pub struct AssemblyScript;
 
 impl SourceCodeBound for AssemblyScript {
-    type DefaultCompilerOptions = assemblyscript_compiler::options::CompilerOptions;
+    type DefaultCompilerOptions = asc_compiler_rs::options::CompilerOptions;
     type SourceCode = String;
 }

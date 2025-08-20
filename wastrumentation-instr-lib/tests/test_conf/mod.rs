@@ -34,13 +34,6 @@ pub struct UninstrumentedAssertion {
 
 #[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
-pub enum InputProgramType {
-    Wat,
-    AssemblyScript,
-}
-
-#[derive(Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
 pub struct InstrumentedAssertion {
     pub analysis: Analysis,
     pub input_program_assertion: InputProgramAssertion,

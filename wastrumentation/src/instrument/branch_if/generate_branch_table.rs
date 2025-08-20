@@ -1,9 +1,4 @@
-use thiserror::Error;
 use wasabi_wasm::{Code, FunctionType, Instr, Label, Local, LocalOp, UnaryOp, Val, ValType};
-
-#[derive(Error, Debug)]
-#[error("Cannot create BrTable from {0}")]
-pub struct GenerateBranchConversionError(Instr);
 
 pub trait Reified {
     fn reify(&self) -> Code;
@@ -107,8 +102,8 @@ impl BrTable {
 
 #[cfg(test)]
 mod tests {
-    use assemblyscript_compiler::compiler::Compiler as AssemblyScriptCompiler;
-    use assemblyscript_compiler::options::CompilerOptions;
+    use asc_compiler_rs::compiler::Compiler as AssemblyScriptCompiler;
+    use asc_compiler_rs::options::CompilerOptions;
     use wasmtime::{Engine, Instance, Module, Store};
 
     use super::*;

@@ -19,8 +19,8 @@ mod test_conf;
 
 const TEST_RELATIVE_PATH: &str = "./tests/";
 
-use assemblyscript_compiler::compiler::Compiler as ASCompiler;
-use assemblyscript_compiler::options::CompilerOptions as ASCompilerCompilerOptions;
+use asc_compiler_rs::compiler::Compiler as ASCompiler;
+use asc_compiler_rs::options::CompilerOptions as ASCompilerCompilerOptions;
 use wastrumentation_instr_lib::lib_compile::rust::compiler::Compiler as RSCompiler;
 use wastrumentation_instr_lib::lib_compile::rust::options::RustSource;
 

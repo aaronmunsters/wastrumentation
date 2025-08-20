@@ -8,7 +8,7 @@ use wastrumentation::compiler::Compiles;
 use wastrumentation::{Configuration, Wastrumenter};
 use wastrumentation_instr_lib::lib_gen::analysis::rust::{Hook as AnalysisHook, RustAnalysisSpec};
 
-use assemblyscript_compiler::compiler::Compiler as AssemblyScriptCompiler;
+use asc_compiler_rs::compiler::Compiler as AssemblyScriptCompiler;
 use wastrumentation_instr_lib::lib_compile::rust::compiler::Compiler as RustCompiler;
 use wastrumentation_instr_lib::lib_compile::rust::options::RustSource;
 

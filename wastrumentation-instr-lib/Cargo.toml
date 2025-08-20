@@ -11,7 +11,7 @@ tempfile = { workspace = true }
 bitmask = "0.5.0"
 indoc = { workspace = true }
 serde = { workspace = true }
-assemblyscript-compiler = { workspace = true }
+asc-compiler-rs = { workspace = true }
 
 [dev-dependencies]
 wasmtime = { workspace = true }
@@ -19,5 +19,5 @@ rayon = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 wat = { workspace = true }
-wasmtime-wasi = "29.0"
+wasmtime-wasi = "35.0"
 wastrumentation-static-analysis = { path = "../wastrumentation-static-analysis" }
