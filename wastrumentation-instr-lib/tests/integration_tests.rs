@@ -17,8 +17,8 @@ use wastrumentation_instr_lib::lib_gen::analysis::rust::RustAnalysisSpec;
 
 // Wasmtime imports
 use wasmtime::{Config, Engine, Instance, Linker, Module, Store};
-use wasmtime_wasi::p2::WasiCtxBuilder;
 use wasmtime_wasi::preview1::{self, WasiP1Ctx};
+use wasmtime_wasi::WasiCtxBuilder;
 
 // Bring macros in scope
 mod wasmtime_macros;
