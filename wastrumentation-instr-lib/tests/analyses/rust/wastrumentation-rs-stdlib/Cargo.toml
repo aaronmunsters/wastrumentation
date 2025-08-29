@@ -6,7 +6,7 @@ rust-version = "1.81"
 
 [dependencies]
 wee_alloc = "0.4.5"
-libm = "0.2.8"
+libm = "0.2.15"
 cfg-if = "1.0"
 
 [features]

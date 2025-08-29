@@ -1,6 +1,6 @@
 #![no_std]
 
-use heapless::{FnvIndexMap, Vec};
+use heapless::{index_map::FnvIndexMap, Vec};
 use wastrumentation_rs_stdlib::{advice, MutDynArgs, MutDynResults, WasmFunction, WasmValue};
 
 // Global cache structure using a Mutex and AtomicUsize for thread safety
