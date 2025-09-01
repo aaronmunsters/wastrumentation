@@ -1,6 +1,6 @@
 use std::fmt::{Debug, Display};
 
-use indoc::indoc;
+use indoc::writedoc;
 
 mod util;
 pub mod wasp;
@@ -168,9 +168,9 @@ impl Display for ASApplyGen<'_> {
                 },
             body,
         } = self;
-        write!(
+        indoc::writedoc!(
             f,
-            indoc! { r#"
+            r"
             export function {GENERIC_APPLY_FUNCTION_NAME}(
                 f_apply: i32,
                 instr_f_idx: i32,
@@ -191,12 +191,8 @@ impl Display for ASApplyGen<'_> {
                 let {parameter_results} = new MutDynRess(argsResults);
                 {body}
             }}
-            "# },
+            ",
             GENERIC_APPLY_FUNCTION_NAME = FUNCTION_NAME_GENERIC_APPLY,
-            parameter_function = parameter_function,
-            parameter_arguments = parameter_arguments,
-            parameter_results = parameter_results,
-            body = body,
         )
     }
 }
@@ -266,17 +262,11 @@ impl Display for ASWasmImport {
             .map(WasmType::to_string)
             .collect::<Vec<String>>()
             .join(", ");
-        write!(
-            f,
-            indoc! { r#"
-                @external("{namespace}", "{name}")
-                declare function {name}({args_signature}): {ress_signature};
-                "# },
-            namespace = namespace,
-            name = name,
-            args_signature = args_signature,
-            ress_signature = ress_signature,
-        )
+        indoc::writedoc! { f, r#"
+            @external("{namespace}", "{name}")
+            declare function {name}({args_signature}): {ress_signature};
+            "#
+        }
     }
 }
 
@@ -370,23 +360,18 @@ impl Display for ASApplySpe<'_> {
 
         let exported_func_inst_name = export.name;
 
-        write!(
+        writedoc!(
             f,
-            indoc! { r#"
-                        {import_declaration}
-                        export function {exported_func_inst_name}({args_signature}): {ress_signature} {{
-                            let func = {external_call_base_name};
-                            {{
-                                {body}
-                            }}
-                        }}
-                        "# },
-            import_declaration = as_wasm_import,
-            exported_func_inst_name = exported_func_inst_name,
-            args_signature = args_signature,
-            ress_signature = ress_signature,
-            external_call_base_name = external_call_base_name,
-            body = body,
+            "
+            {import_declaration}
+            export function {exported_func_inst_name}({args_signature}): {ress_signature} {{
+                let func = {external_call_base_name};
+                {{
+                    {body}
+                }}
+            }}
+            ",
+            import_declaration = as_wasm_import
         )
     }
 }
@@ -404,9 +389,9 @@ impl Display for ASTrapIfThen<'_> {
             body,
         }) = &self;
 
-        write!(
+        writedoc!(
             f,
-            indoc! { r#"
+            "
             export function {FUNCTION_NAME_SPECIALIZED_IF_THEN}(
                 path_kontinuation: i32,
                 if_then_input_c: i32,
@@ -419,10 +404,7 @@ impl Display for ASTrapIfThen<'_> {
                 // Fallback, if no return value
                 return path_kontinuation;
             }}
-            "# },
-            FUNCTION_NAME_SPECIALIZED_IF_THEN = FUNCTION_NAME_SPECIALIZED_IF_THEN,
-            body = body,
-            parameter_condition = parameter_condition,
+            "
         )
     }
 }
@@ -435,9 +417,9 @@ impl Display for ASTrapIfThenElse<'_> {
             body,
         }) = &self;
 
-        write!(
+        writedoc!(
             f,
-            indoc! { r#"
+            "
             export function {FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE}(
                 path_kontinuation: i32,
                 if_then_else_input_c: i32,
@@ -450,10 +432,7 @@ impl Display for ASTrapIfThenElse<'_> {
                 // Fallback, if no return value
                 return path_kontinuation;
             }}
-            "# },
-            FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE = FUNCTION_NAME_SPECIALIZED_IF_THEN_ELSE,
-            body = body,
-            parameter_condition = parameter_condition,
+            "
         )
     }
 }
@@ -467,9 +446,9 @@ impl Display for ASTrapBrIf<'_> {
             body,
         }) = &self;
 
-        write!(
+        writedoc!(
             f,
-            indoc! { r#"
+            "
             export function {FUNCTION_NAME_SPECIALIZED_BR_IF}(
                 path_kontinuation: i32,
                 low_level_label: i32,
@@ -482,12 +461,7 @@ impl Display for ASTrapBrIf<'_> {
                 // Fallback, if no return value
                 return path_kontinuation;
             }}
-            "#
-            },
-            FUNCTION_NAME_SPECIALIZED_BR_IF = FUNCTION_NAME_SPECIALIZED_BR_IF,
-            body = body,
-            parameter_condition = parameter_condition,
-            parameter_label = parameter_label,
+            "
         )
     }
 }
@@ -500,9 +474,9 @@ impl Display for ASTrapBrTable<'_> {
             body,
         }) = &self;
 
-        write!(
+        writedoc!(
             f,
-            indoc! { r#"
+            "
             export function {FUNCTION_NAME_SPECIALIZED_BR_TABLE}(
                 br_table_target: i32,
                 effective_label: i32,
@@ -516,12 +490,7 @@ impl Display for ASTrapBrTable<'_> {
                 // Fallback, if no return value
                 return br_table_target;
             }}
-            "#
-            },
-            FUNCTION_NAME_SPECIALIZED_BR_TABLE = FUNCTION_NAME_SPECIALIZED_BR_TABLE,
-            body = body,
-            parameter_target = parameter_target,
-            parameter_default = parameter_default,
+            "
         )
     }
 }
@@ -540,9 +509,9 @@ impl Display for ASTrapCall<'_> {
             wasp_compiler::ast::pest::CallQualifier::Post => FUNCTION_NAME_SPECIALIZED_CALL_POST,
         };
 
-        write!(
+        writedoc!(
             f,
-            indoc! { r#"
+            "
             export function {specialized_name}(
                 function_target: i32,
                 func_index: i64,
@@ -551,11 +520,7 @@ impl Display for ASTrapCall<'_> {
                 let {parameter_target} = new FunctionIndex(function_target);
                 {body}
             }}
-            "#
-            },
-            specialized_name = specialized_name,
-            body = body,
-            parameter_target = parameter_target,
+            "
         )
     }
 }
@@ -569,9 +534,9 @@ impl Display for ASTrapCallIndirectPre<'_> {
             body,
         }) = &self;
 
-        write!(
+        writedoc!(
             f,
-            indoc! { r#"
+            "
             export function {FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_PRE}(
                 function_table_index: i32, // NOTE: index first, eases transformation!
                 function_table: i32,
@@ -584,13 +549,7 @@ impl Display for ASTrapCallIndirectPre<'_> {
                 // Fallback, if no return value
                 return function_table_index;
             }}
-            "#
-            },
-            FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_PRE =
-                FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_PRE,
-            body = body,
-            parameter_table = parameter_table,
-            parameter_index = parameter_index,
+            "
         )
     }
 }
@@ -602,9 +561,9 @@ impl Display for ASTrapCallIndirectPost<'_> {
             formal_table: FormalTable(parameter_table),
             body,
         }) = &self;
-        write!(
+        writedoc!(
             f,
-            indoc! { r#"
+            "
             export function {FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_POST}(
                 function_table: i32,
                 func_index: i64,
@@ -613,12 +572,7 @@ impl Display for ASTrapCallIndirectPost<'_> {
                 let {parameter_table} = new FunctionTable(function_table);
                 {body}
             }}
-            "#
-            },
-            FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_POST =
-                FUNCTION_NAME_SPECIALIZED_CALL_INDIRECT_POST,
-            body = body,
-            parameter_table = parameter_table,
+            "
         )
     }
 }
@@ -627,9 +581,9 @@ struct ASTrapBlockPre<'a>(&'a TrapBlockPre);
 impl Display for ASTrapBlockPre<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self(TrapBlockPre { body }) = &self;
-        write!(
+        writedoc!(
             f,
-            indoc! { r#"
+            "
             export function {FUNCTION_NAME_BLOCK_PRE}(
                 input_count: i32,
                 arity: i32,
@@ -638,10 +592,8 @@ impl Display for ASTrapBlockPre<'_> {
             ): void {{
                 {body}
             }}
-            "#
-            },
+            ",
             FUNCTION_NAME_BLOCK_PRE = TRAP_NAME_PRE_BLOCK,
-            body = body,
         )
     }
 }
@@ -650,18 +602,17 @@ struct ASTrapBlockPost<'a>(&'a TrapBlockPost);
 impl Display for ASTrapBlockPost<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self(TrapBlockPost { body }) = &self;
-        write!(
+        writedoc!(
             f,
-            indoc! { r#"
+            "
             export function {FUNCTION_NAME_BLOCK_POST}(
                 func_index: i64,
                 istr_index: i64,
             ): void {{
                 {body}
             }}
-            "# },
+            ",
             FUNCTION_NAME_BLOCK_POST = TRAP_NAME_POST_BLOCK,
-            body = body,
         )
     }
 }
@@ -670,9 +621,9 @@ struct ASTrapLoopPre<'a>(&'a TrapLoopPre);
 impl Display for ASTrapLoopPre<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self(TrapLoopPre { body }) = &self;
-        write!(
+        writedoc!(
             f,
-            indoc! { r#"
+            "
             export function {FUNCTION_NAME_LOOP_PRE}(
                 input_count: i32,
                 arity: i32,
@@ -681,9 +632,8 @@ impl Display for ASTrapLoopPre<'_> {
             ): void {{
                 {body}
             }}
-            "# },
+            ",
             FUNCTION_NAME_LOOP_PRE = TRAP_NAME_PRE_LOOP,
-            body = body,
         )
     }
 }
@@ -692,18 +642,17 @@ struct ASTrapLoopPost<'a>(&'a TrapLoopPost);
 impl Display for ASTrapLoopPost<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self(TrapLoopPost { body }) = &self;
-        write!(
+        writedoc!(
             f,
-            indoc! { r#"
+            "
             export function {FUNCTION_NAME_LOOP_POST}(
                 func_index: i64,
                 istr_index: i64,
             ): void {{
                 {body}
             }}
-            "# },
+            ",
             FUNCTION_NAME_LOOP_POST = TRAP_NAME_POST_LOOP,
-            body = body,
         )
     }
 }
@@ -717,7 +666,7 @@ impl Display for ASTrapSelect<'_> {
         }) = &self;
         write!(
             f,
-            indoc! { r#"
+            "
             export function {FUNCTION_NAME_SELECT}(
                 path_kontinuation: i32,
                 func_index: i64,
@@ -728,10 +677,7 @@ impl Display for ASTrapSelect<'_> {
                 // Fallback, if no return value
                 return path_kontinuation;
             }}
-            "# },
-            FUNCTION_NAME_SELECT = FUNCTION_NAME_SELECT,
-            body = body,
-            select_formal_condition = select_formal_condition,
+            "
         )
     }
 }
@@ -739,6 +685,7 @@ impl Display for ASTrapSelect<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use indoc::indoc;
     use wasp_compiler::ast::wasp::{GenericTarget, WasmParameter, WasmType};
 
     #[test]
@@ -841,7 +788,7 @@ mod tests {
             body: "console.log(args.get<i32>(0)); func.apply();".into(),
         });
 
-        let expected = indoc! { r#"
+        let expected = indoc! { r"
             export function generic_apply(
                 f_apply: i32,
                 instr_f_idx: i32,
@@ -862,7 +809,7 @@ mod tests {
                 let results = new MutDynRess(argsResults);
                 console.log(args.get<i32>(0)); func.apply();
             }
-            "# };
+            " };
 
         assert_eq!(ASTrapSignature(&ast).to_string(), expected);
     }
@@ -874,7 +821,7 @@ mod tests {
             body: "console.log('it');".into(),
         });
 
-        let expected = indoc! { r#"
+        let expected = indoc! { r"
         export function specialized_if_then_k(
             path_kontinuation: i32,
             if_then_input_c: i32,
@@ -887,7 +834,7 @@ mod tests {
             // Fallback, if no return value
             return path_kontinuation;
         }
-        "# };
+        " };
 
         assert_eq!(ASTrapSignature(&ast).to_string(), expected);
     }
@@ -899,7 +846,7 @@ mod tests {
             body: "console.log('ite');".into(),
         });
 
-        let expected = indoc! { r#"
+        let expected = indoc! { r"
         export function specialized_if_then_else_k(
             path_kontinuation: i32,
             if_then_else_input_c: i32,
@@ -912,7 +859,7 @@ mod tests {
             // Fallback, if no return value
             return path_kontinuation;
         }
-        "# };
+        " };
 
         assert_eq!(ASTrapSignature(&ast).to_string(), expected);
     }

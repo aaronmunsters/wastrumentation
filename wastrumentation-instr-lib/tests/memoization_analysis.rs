@@ -4,7 +4,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use indoc::indoc;
+use indoc::formatdoc;
 use rust_to_wasm_compiler::WasiSupport;
 
 // Wastrumentation imports
@@ -119,8 +119,8 @@ fn report_memoization_benches_for(
     ///////////////////////////
     let map_size = immutable_set.len();
 
-    let pure_functions_profiler_program = format!(
-        indoc! { r#"
+    let pure_functions_profiler_program = formatdoc!(
+        r#"
             #![no_std]
             use core::ptr::addr_of_mut;
             use wastrumentation_rs_stdlib::*;
@@ -143,9 +143,7 @@ fn report_memoization_benches_for(
 
                     func.apply();
                 }}
-            }}"#
-        },
-        map_size = map_size,
+            }}"#,
         map_increment_instructions = immutable_set
             .iter()
             .enumerate()

@@ -66,7 +66,7 @@ pub trait DefaultCompilerOptions<Language: SourceCodeBound> {
 mod tests {
     use std::marker::PhantomData;
 
-    use indoc::indoc;
+    use indoc::formatdoc;
     use wastrumentation::compiler::CompilationError;
 
     #[derive(Debug)]
@@ -81,11 +81,13 @@ mod tests {
 
         let module_path = module_path!();
 
-        let expectation = format! { indoc! { r#"
-        CompilationError {{
-            reason: "reason",
-            language: PhantomData<{module_path}::ExampleLanguage>,
-        }}"# }, module_path = module_path };
+        let expectation = formatdoc!(
+            r#"
+            CompilationError {{
+                reason: "reason",
+                language: PhantomData<{module_path}::ExampleLanguage>,
+            }}"#
+        );
 
         assert_eq!(format!("{compilation_error:#?}",), expectation);
     }
