@@ -1,7 +1,7 @@
 // Rust STD
 use std::path::absolute;
 
-use indoc::indoc;
+use indoc::formatdoc;
 // Wastrumentation imports
 use rust_to_wasm_compiler::{Profile, WasiSupport};
 use wastrumentation::{compiler::Compiles, Configuration, PrimaryTarget, Wastrumenter};
@@ -343,21 +343,19 @@ fn test_analysis_memory_introspection() {
         let wastrumentation_rs_stdlib =
             absolute("./tests/analyses/rust/wastrumentation-rs-stdlib").unwrap();
         let wastrumentation_rs_stdlib = wastrumentation_rs_stdlib.to_string_lossy();
-        format!(
-            indoc! { r#"
-                package.name = "rust-wasp-call-stack"
-                package.version = "0.1.0"
-                package.edition = "2021"
-                lib.crate-type = ["cdylib"]
-                dependencies.wee_alloc = "0.4.5"
-                dependencies.wastrumentation-rs-stdlib = {{ path = "{wastrumentation_rs_stdlib}", features = ["std"] }}
-                profile.release.strip = true
-                profile.release.lto = true
-                profile.release.panic = "abort"
-                [workspace]"#
-            },
-            wastrumentation_rs_stdlib = wastrumentation_rs_stdlib
-        )
+
+        formatdoc! { r#"
+            package.name = "rust-wasp-call-stack"
+            package.version = "0.1.0"
+            package.edition = "2021"
+            lib.crate-type = ["cdylib"]
+            dependencies.wee_alloc = "0.4.5"
+            dependencies.wastrumentation-rs-stdlib = {{ path = "{wastrumentation_rs_stdlib}", features = ["std"] }}
+            profile.release.strip = true
+            profile.release.lto = true
+            profile.release.panic = "abort"
+            [workspace]"#
+        }
     };
 
     let source = RustSource::SourceCode(
