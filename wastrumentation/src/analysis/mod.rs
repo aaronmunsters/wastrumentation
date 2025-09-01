@@ -247,6 +247,10 @@ macro_rules! simple_interface {
     };
 }
 
+// TODO: add support for
+// - nop
+// - unreachable
+
 simple_interfaces! {
     interface_if_then               FUNCTION_NAME_SPECIALIZED_IF_THEN            :              /*cndt:*/ I32 /*inputs-len:*/ I32 /*results-len:*/ I32 /*fidx*/ I64 /*iidx*/ I64 =>           /*cont:*/ I32,
     interface_if_then_post          FUNCTION_NAME_SPECIALIZED_IF_THEN_POST       :                                                            /*void*/ /*fidx*/ I64 /*iidx*/ I64 =>                /*void*/,
