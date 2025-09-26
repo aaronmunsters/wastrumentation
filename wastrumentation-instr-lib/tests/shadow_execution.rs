@@ -14,7 +14,7 @@ use wastrumentation_instr_lib::lib_gen::analysis::rust::RustAnalysisSpec;
 
 // Wasmtime imports
 use wasmtime::{Config, Engine, Linker, Module, Store};
-use wasmtime_wasi::preview1::{self, WasiP1Ctx};
+use wasmtime_wasi::p1::{self as preview1, WasiP1Ctx};
 use wasmtime_wasi::WasiCtxBuilder;
 
 fn compile_input_program(input_program: impl Into<PathBuf>) -> Vec<u8> {
