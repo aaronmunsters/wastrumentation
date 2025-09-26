@@ -8,6 +8,6 @@ tempfile = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
-wat = { version = "1.238.0" }
+wat = { version = "1.239.0" }
 wasmtime = { workspace = true }
 indoc = { workspace = true }

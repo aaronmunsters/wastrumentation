@@ -19,9 +19,9 @@ wastrumentation-instr-lib = { path = "./wastrumentation-instr-lib" }
 wasp-compiler = { path = "./wasp-compiler" }
 wasm-merge = { path = "./wasm-merge" }
 
-wasmtime = "36.0"
+wasmtime = "37.0"
 indoc = "2"
-tempfile = "3.21"
+tempfile = "3.23"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 wat = "1"
