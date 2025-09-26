@@ -8,12 +8,12 @@ use rust_to_wasm_compiler::WasiSupport;
 
 // Wastrumentation imports
 use wastrumentation::{compiler::Compiles, Configuration, PrimaryTarget, Wastrumenter};
-use wastrumentation_instr_lib::lib_compile::assemblyscript::compiler::Compiler as AssemblyScriptCompiler;
-use wastrumentation_instr_lib::lib_compile::rust::{
+use wastrumentation_lang_assemblyscript::compile::compiler::Compiler as AssemblyScriptCompiler;
+use wastrumentation_lang_rust::compile::{
     compiler::Compiler as RustCompiler,
     options::{ManifestSource, RustSource, RustSourceCode},
 };
-use wastrumentation_instr_lib::lib_gen::analysis::rust::{Hook, RustAnalysisSpec};
+use wastrumentation_lang_rust::generate::analysis::{Hook, RustAnalysisSpec};
 use wastrumentation_static_analysis::immutable_functions_from_binary;
 
 // Wasmtime imports

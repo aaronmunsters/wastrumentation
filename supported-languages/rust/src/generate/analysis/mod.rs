@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::lib_compile::rust::{options::RustSource, Rust};
+use crate::compile::{Rust, options::RustSource};
 use serde::Deserialize;
 use wastrumentation::analysis::{AnalysisInterface, ProcessedAnalysis};
 

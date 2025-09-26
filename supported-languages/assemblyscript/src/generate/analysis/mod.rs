@@ -7,8 +7,8 @@ pub mod wasp;
 
 use util::Alphabetical;
 
-use crate::lib_compile::assemblyscript::AssemblyScript;
-use crate::lib_gen::analysis::assemblyscript::wasp::WaspRoot;
+use crate::compile::AssemblyScript;
+use crate::generate::analysis::wasp::WaspRoot;
 use wasp_compiler::CompilationResult as WaspCompilerResult;
 use wastrumentation::analysis::{AnalysisInterface, ProcessedAnalysis};
 
