@@ -6,14 +6,14 @@ use test_conf::{
 };
 use wasmtime::*;
 use wastrumentation::Configuration;
-use wastrumentation::{Wastrumenter, compiler::Compiles};
+use wastrumentation::{compiler::Compiles, Wastrumenter};
 use wastrumentation_lang_assemblyscript::generate::analysis::WaspAnalysisSpec;
 use wastrumentation_lang_rust::generate::analysis::RustAnalysisSpec;
 
 use crate::test_conf::{CallYields, GlobalValueEquals, InputProgramAssertion, TestConfiguration};
 use std::fs::{read, read_to_string};
-use std::path::PathBuf;
 use std::path::absolute;
+use std::path::PathBuf;
 
 mod test_conf;
 

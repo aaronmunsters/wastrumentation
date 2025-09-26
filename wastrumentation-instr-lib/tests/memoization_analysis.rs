@@ -8,7 +8,7 @@ use indoc::formatdoc;
 use rust_to_wasm_compiler::WasiSupport;
 
 // Wastrumentation imports
-use wastrumentation::{Configuration, PrimaryTarget, Wastrumenter, compiler::Compiles};
+use wastrumentation::{compiler::Compiles, Configuration, PrimaryTarget, Wastrumenter};
 use wastrumentation_lang_rust::compile::{
     compiler::Compiler,
     options::{CompilerOptions, ManifestSource, RustSource, RustSourceCode},
