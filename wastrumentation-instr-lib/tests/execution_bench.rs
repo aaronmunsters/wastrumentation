@@ -6,14 +6,14 @@ use test_conf::{
 };
 use wasmtime::*;
 use wastrumentation::Configuration;
-use wastrumentation::{compiler::Compiles, Wastrumenter};
-use wastrumentation_instr_lib::lib_gen::analysis::assemblyscript::WaspAnalysisSpec;
-use wastrumentation_instr_lib::lib_gen::analysis::rust::RustAnalysisSpec;
+use wastrumentation::{Wastrumenter, compiler::Compiles};
+use wastrumentation_lang_assemblyscript::generate::analysis::WaspAnalysisSpec;
+use wastrumentation_lang_rust::generate::analysis::RustAnalysisSpec;
 
 use crate::test_conf::{CallYields, GlobalValueEquals, InputProgramAssertion, TestConfiguration};
 use std::fs::{read, read_to_string};
-use std::path::absolute;
 use std::path::PathBuf;
+use std::path::absolute;
 
 mod test_conf;
 
@@ -21,8 +21,8 @@ const TEST_RELATIVE_PATH: &str = "./tests/";
 
 use asc_compiler_rs::compiler::Compiler as ASCompiler;
 use asc_compiler_rs::options::CompilerOptions as ASCompilerCompilerOptions;
-use wastrumentation_instr_lib::lib_compile::rust::compiler::Compiler as RSCompiler;
-use wastrumentation_instr_lib::lib_compile::rust::options::RustSource;
+use wastrumentation_lang_rust::compile::compiler::Compiler as RSCompiler;
+use wastrumentation_lang_rust::compile::options::RustSource;
 
 #[test]
 fn test_integration_configurations() {

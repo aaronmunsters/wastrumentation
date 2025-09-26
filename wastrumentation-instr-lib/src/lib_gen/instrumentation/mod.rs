@@ -1,2 +1,0 @@
-mod assemblyscript;
-mod rust;

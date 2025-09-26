@@ -3,7 +3,7 @@ mod test;
 
 use std::{collections::HashSet, marker::PhantomData, ops::Deref, vec};
 
-use crate::lib_compile::assemblyscript::AssemblyScript;
+use crate::compile::AssemblyScript;
 
 use wastrumentation::compiler::{LibGeneratable, Library};
 use wastrumentation::wasm_constructs::{Signature, SignatureSide, WasmType};

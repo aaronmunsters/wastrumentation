@@ -4,21 +4,17 @@ use std::path::absolute;
 use indoc::formatdoc;
 // Wastrumentation imports
 use rust_to_wasm_compiler::{Profile, WasiSupport};
-use wastrumentation::{compiler::Compiles, Configuration, PrimaryTarget, Wastrumenter};
-use wastrumentation_instr_lib::lib_compile::assemblyscript::compiler::Compiler as ASCompiler;
-use wastrumentation_instr_lib::lib_compile::rust::options::{
-    ManifestSource, RustSource, RustSourceCode,
-};
-use wastrumentation_instr_lib::lib_compile::rust::{
-    compiler::Compiler, options::RustSource::Manifest,
-};
-use wastrumentation_instr_lib::lib_gen::analysis::rust::Hook;
-use wastrumentation_instr_lib::lib_gen::analysis::rust::RustAnalysisSpec;
+use wastrumentation::{Configuration, PrimaryTarget, Wastrumenter, compiler::Compiles};
+use wastrumentation_lang_assemblyscript::compile::compiler::Compiler as ASCompiler;
+use wastrumentation_lang_rust::compile::options::{ManifestSource, RustSource, RustSourceCode};
+use wastrumentation_lang_rust::compile::{compiler::Compiler, options::RustSource::Manifest};
+use wastrumentation_lang_rust::generate::analysis::Hook;
+use wastrumentation_lang_rust::generate::analysis::RustAnalysisSpec;
 
 // Wasmtime imports
 use wasmtime::{Config, Engine, Instance, Linker, Module, Store};
-use wasmtime_wasi::p1::{self as preview1, WasiP1Ctx};
 use wasmtime_wasi::WasiCtxBuilder;
+use wasmtime_wasi::p1::{self as preview1, WasiP1Ctx};
 
 // Bring macros in scope
 mod wasmtime_macros;

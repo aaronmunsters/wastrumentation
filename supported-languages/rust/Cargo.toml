@@ -1,0 +1,14 @@
+[package]
+name = "wastrumentation-lang-rust"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+rust-to-wasm-compiler = { workspace = true }
+wastrumentation = { workspace = true }
+tempfile = { workspace = true }
+indoc = { workspace = true }
+serde = { workspace = true }
+
+[dev-dependencies]
+wasmtime = { workspace = true }

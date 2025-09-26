@@ -1,7 +1,7 @@
 use std::{collections::HashSet, marker::PhantomData, ops::Deref, vec};
 
-use crate::lib_compile::rust::options::{ManifestSource, RustSource, RustSourceCode};
-use crate::lib_compile::rust::Rust;
+use crate::compile::Rust;
+use crate::compile::options::{ManifestSource, RustSource, RustSourceCode};
 use rust_to_wasm_compiler::WasiSupport;
 use wastrumentation::wasm_constructs::RefType;
 use wastrumentation::{
