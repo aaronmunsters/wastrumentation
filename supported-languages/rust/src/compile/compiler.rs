@@ -4,8 +4,8 @@ use wastrumentation::compiler::{
 };
 
 use super::{
-    options::{CompilerOptions, ManifestSource, RustSource, RustSourceCode},
     Rust,
+    options::{CompilerOptions, ManifestSource, RustSource, RustSourceCode},
 };
 
 pub struct Compiler {

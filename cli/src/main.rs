@@ -6,11 +6,9 @@ use rust_to_wasm_compiler::WasiSupport;
 use serde::Deserialize;
 use wastrumentation::compiler::Compiles;
 use wastrumentation::{Configuration, Wastrumenter};
-use wastrumentation_instr_lib::lib_gen::analysis::rust::{Hook as AnalysisHook, RustAnalysisSpec};
-
-use asc_compiler_rs::compiler::Compiler as AssemblyScriptCompiler;
-use wastrumentation_instr_lib::lib_compile::rust::compiler::Compiler as RustCompiler;
-use wastrumentation_instr_lib::lib_compile::rust::options::RustSource;
+use wastrumentation_lang_rust::compile::compiler::Compiler as RustCompiler;
+use wastrumentation_lang_rust::compile::options::RustSource;
+use wastrumentation_lang_rust::generate::analysis::{Hook as AnalysisHook, RustAnalysisSpec};
 
 /// Command-line interface to the wastrumentation utility
 #[derive(Parser, Debug)]
@@ -130,7 +128,7 @@ fn main() -> anyhow::Result<()> {
     }
     .into();
 
-    let instrumentation_language_compiler = AssemblyScriptCompiler::setup_compiler()?;
+    let instrumentation_language_compiler = RustCompiler::setup_compiler()?;
     let analysis_language_compiler = RustCompiler::setup_compiler()?;
     let configuration = Configuration {
         target_indices: targets,

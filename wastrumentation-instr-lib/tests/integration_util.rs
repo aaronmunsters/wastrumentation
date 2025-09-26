@@ -1,8 +1,8 @@
 // Wastrumentation imports
 use rust_to_wasm_compiler::{Profile, WasiSupport};
 use wastrumentation::compiler::Compiles;
-use wastrumentation_instr_lib::lib_compile::rust::compiler::Compiler;
-use wastrumentation_instr_lib::lib_compile::rust::options::*;
+use wastrumentation_lang_rust::compile::compiler::Compiler;
+use wastrumentation_lang_rust::compile::options::*;
 
 const INPUT_PROGRAM_MANIFEST: &str = r#"
 package.name = "rust-denan-input-program"

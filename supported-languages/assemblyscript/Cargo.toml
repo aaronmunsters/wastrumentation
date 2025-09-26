@@ -1,0 +1,18 @@
+[package]
+name = "wastrumentation-lang-assemblyscript"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+wasp-compiler = { workspace = true }
+wastrumentation = { workspace = true }
+indoc = { workspace = true }
+asc-compiler-rs = { workspace = true }
+
+[dev-dependencies]
+wasmtime = { workspace = true }
+rayon = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+wat = { workspace = true }
+wasmtime-wasi = "37.0"

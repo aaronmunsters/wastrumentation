@@ -14,6 +14,5 @@ thiserror = { workspace = true }
 [dev-dependencies]
 wasmtime = { workspace = true }
 wastrumentation = { workspace = true }
-wastrumentation-instr-lib = { workspace = true }
 asc-compiler-rs = { workspace = true }
 wat = { workspace = true }

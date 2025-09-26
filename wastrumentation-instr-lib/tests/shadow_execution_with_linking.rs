@@ -5,12 +5,10 @@ use std::path::absolute;
 use rust_to_wasm_compiler::WasiSupport;
 use wastrumentation::analysis::ProcessedAnalysis;
 use wastrumentation::{compiler::Compiles, Configuration, PrimaryTarget, Wastrumenter};
-use wastrumentation_instr_lib::lib_compile::rust::Rust;
-use wastrumentation_instr_lib::lib_compile::rust::{
-    compiler::Compiler, options::RustSource::Manifest,
-};
-use wastrumentation_instr_lib::lib_gen::analysis::rust::Hook;
-use wastrumentation_instr_lib::lib_gen::analysis::rust::RustAnalysisSpec;
+use wastrumentation_lang_rust::compile::Rust;
+use wastrumentation_lang_rust::compile::{compiler::Compiler, options::RustSource::Manifest};
+use wastrumentation_lang_rust::generate::analysis::Hook;
+use wastrumentation_lang_rust::generate::analysis::RustAnalysisSpec;
 
 // Wasmtime imports
 use wasmtime::{Engine, Linker, Module, Store};

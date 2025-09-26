@@ -4,13 +4,13 @@ use std::path::{absolute, PathBuf};
 // Wastrumentation imports
 use rust_to_wasm_compiler::WasiSupport;
 use wastrumentation::{compiler::Compiles, Configuration, PrimaryTarget, Wastrumenter};
-use wastrumentation_instr_lib::lib_compile::assemblyscript::compiler::Compiler as ASCompiler;
-use wastrumentation_instr_lib::lib_compile::rust::{
+use wastrumentation_lang_assemblyscript::compile::compiler::Compiler as ASCompiler;
+use wastrumentation_lang_rust::compile::{
     compiler::Compiler,
     options::{CompilerOptions, RustSource, RustSource::Manifest},
 };
-use wastrumentation_instr_lib::lib_gen::analysis::rust::Hook;
-use wastrumentation_instr_lib::lib_gen::analysis::rust::RustAnalysisSpec;
+use wastrumentation_lang_rust::generate::analysis::Hook;
+use wastrumentation_lang_rust::generate::analysis::RustAnalysisSpec;
 
 // Wasmtime imports
 use wasmtime::{Config, Engine, Linker, Module, Store};

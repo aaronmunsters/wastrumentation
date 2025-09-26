@@ -1,15 +1,9 @@
 use super::*;
-use crate::lib_compile::assemblyscript::{
-    compiler::Compiler as AssemblyScriptCompiler,
-    options::CompilerOptions as AssemblyScriptCompilerOptions,
-};
+use WasmType::{I32, I64};
 use rust_to_wasm_compiler::RustToWasmCompiler as RustCompiler;
 use wasmtime::{Engine, Instance, Module, Store};
-use WasmType::{I32, I64};
 
-#[path = "../../../../../tests/wasmtime_macros.rs"]
-mod wasmtime_macros;
-use crate::{declare_fns_from_wasm, wasm_call};
+include!("wasmtime_macros.rs");
 
 fn get_use_case_signature() -> Vec<Signature> {
     vec![Signature {
@@ -88,23 +82,6 @@ fn test_edge_rust() {
         .unwrap();
 
     let _ = instrumentation_wasm_library;
-
-    // Assert execution
-    assert_lib_with_use_case(instrumentation_wasm_library);
-}
-
-#[test]
-fn test_edge_assemblyscript() {
-    // Generate input program signatures
-    let signatures = get_use_case_signature();
-    let generated_lib = super::super::super::assemblyscript::generate_lib(&signatures);
-    println!("{generated_lib}");
-
-    // Compile
-    let compiler = AssemblyScriptCompiler::new().unwrap();
-    let instrumentation_wasm_library = compiler
-        .compile(&AssemblyScriptCompilerOptions::default_for(generated_lib))
-        .unwrap();
 
     // Assert execution
     assert_lib_with_use_case(instrumentation_wasm_library);

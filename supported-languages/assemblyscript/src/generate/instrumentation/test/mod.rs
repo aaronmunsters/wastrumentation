@@ -1,4 +1,4 @@
-use crate::lib_compile::assemblyscript::AssemblyScript;
+use crate::compile::AssemblyScript;
 use wastrumentation::compiler::{LibGeneratable, Library};
 use wastrumentation::wasm_constructs::{Signature, WasmType};
 

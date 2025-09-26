@@ -3,8 +3,8 @@ use asc_compiler_rs::options::CompilerOptions as AssemblyscriptCompilerOptions;
 use wastrumentation::compiler::Compiles;
 use wastrumentation::{Configuration, Wastrumenter};
 
-use wastrumentation_instr_lib::lib_compile::rust::compiler::Compiler as RustCompiler;
-use wastrumentation_instr_lib::lib_gen::analysis::assemblyscript::WaspAnalysisSpec;
+use wastrumentation_lang_assemblyscript::generate::analysis::WaspAnalysisSpec;
+use wastrumentation_lang_rust::compile::compiler::Compiler as RustCompiler;
 
 use wasmtime::*;
 

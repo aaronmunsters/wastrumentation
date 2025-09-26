@@ -44,6 +44,14 @@ repos:
 -   repo: https://github.com/doublify/pre-commit-rust
     rev: v1.0
     hooks:
-    -   id: fmt
     -   id: cargo-check
     -   id: clippy
+
+-   repo: local
+    hooks:
+    -   id: fmt
+        name: fmt
+        description: Format files with cargo fmt.
+        entry: bash -c "cargo fmt"
+        language: system
+        types: [rust]
