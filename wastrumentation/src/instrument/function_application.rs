@@ -22,7 +22,7 @@ use crate::analysis::{WasmExport, WasmImport};
 use super::FunctionTypeConvertible;
 
 pub const INSTRUMENTATION_STACK_MODULE: &str = "wastrumentation_stack";
-pub const INSTRUMENTATION_ANALYSIS_MODULE: &str = "WASP_ANALYSIS";
+pub const INSTRUMENTATION_ANALYSIS_MODULE: &str = "WASTRUMENTATION_ANALYSIS";
 pub const INSTRUMENTATION_INSTRUMENTED_MODULE: &str = "instrumented_input";
 
 pub const CODE_IS_PRESENT: i32 = 0;

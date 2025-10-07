@@ -47,7 +47,7 @@ impl MemoryIndex {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum StoreOperation {
     I32Store,
     I64Store,
@@ -60,7 +60,7 @@ pub enum StoreOperation {
     I64Store32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum LoadOperation {
     I32Load,
     I64Load,

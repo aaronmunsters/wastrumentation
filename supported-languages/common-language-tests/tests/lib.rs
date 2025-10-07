@@ -1,7 +1,7 @@
-use super::*;
-use WasmType::{I32, I64};
-use rust_to_wasm_compiler::RustToWasmCompiler as RustCompiler;
 use wasmtime::{Engine, Instance, Module, Store};
+use wastrumentation::compiler::{Compiles, DefaultCompilerOptions};
+use wastrumentation::wasm_constructs::Signature;
+use wastrumentation::wasm_constructs::WasmType::{I32, I64};
 
 include!("wasmtime_macros.rs");
 
@@ -64,24 +64,64 @@ fn assert_lib_with_use_case(instrumentation_wasm_library: Vec<u8>) {
 
 #[test]
 fn test_edge_rust() {
+    use rust_to_wasm_compiler::WasiSupport; // FIXME: this dependency is bad :/
+    use wastrumentation_lang_rust::compile::compiler::Compiler;
+    use wastrumentation_lang_rust::compile::options::CompilerOptions;
+    use wastrumentation_lang_rust::compile::options::RustSource;
+    use wastrumentation_lang_rust::generate::instrumentation::generate_lib;
+
     // Generate input program signatures
     let signatures = get_use_case_signature();
     let generated_lib = generate_lib(&signatures);
-    println!("{generated_lib:?}");
+    let (manifest_source, rust_source_code) = generated_lib;
 
     // Compile
-    let compiler = RustCompiler::new().unwrap();
-    let (ManifestSource(manifest_source), RustSourceCode(rust_source_code)) = generated_lib;
-    let instrumentation_wasm_library = compiler
-        .compile_source(
-            WasiSupport::Disabled,
-            &manifest_source,
-            &rust_source_code,
-            Profile::Dev,
-        )
-        .unwrap();
+    let compiler = Compiler::setup_compiler().unwrap();
+    let compiler_options = CompilerOptions::default_for(RustSource::SourceCode(
+        WasiSupport::Disabled,
+        manifest_source,
+        rust_source_code,
+    ));
+    let instrumentation_wasm_library = compiler.compile(&compiler_options).unwrap();
 
-    let _ = instrumentation_wasm_library;
+    // Assert execution
+    assert_lib_with_use_case(instrumentation_wasm_library);
+}
+
+#[test]
+fn test_edge_webassembly() {
+    use wastrumentation_lang_webassembly::compile::compiler::Compiler;
+    use wastrumentation_lang_webassembly::compile::options::CompilerOptions;
+    use wastrumentation_lang_webassembly::compile::options::WebAssemblySource;
+    use wastrumentation_lang_webassembly::generate::instrumentation::generate_lib;
+
+    // Generate input program signatures
+    let signatures = get_use_case_signature();
+    let generated_lib = generate_lib(&signatures);
+
+    // Compile
+    let compiler = Compiler::setup_compiler().unwrap();
+    let compiler_options = CompilerOptions::default_for(WebAssemblySource::Wat(generated_lib));
+    let instrumentation_wasm_library = compiler.compile(&compiler_options).unwrap();
+
+    // Assert execution
+    assert_lib_with_use_case(instrumentation_wasm_library);
+}
+
+#[test]
+fn test_edge_assemblyscript() {
+    use wastrumentation_lang_assemblyscript::compile::compiler::Compiler;
+    use wastrumentation_lang_assemblyscript::compile::options::CompilerOptions;
+    use wastrumentation_lang_assemblyscript::generate::instrumentation::generate_lib;
+
+    // Generate input program signatures
+    let signatures = get_use_case_signature();
+    let generated_lib = generate_lib(&signatures);
+
+    // Compile
+    let compiler = Compiler::setup_compiler().unwrap();
+    let compiler_options = CompilerOptions::default_for(generated_lib);
+    let instrumentation_wasm_library = compiler.compile(&compiler_options).unwrap();
 
     // Assert execution
     assert_lib_with_use_case(instrumentation_wasm_library);
