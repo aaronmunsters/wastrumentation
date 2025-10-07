@@ -1,0 +1,18 @@
+[package]
+name = "common-language-tests"
+version = "0.1.0"
+edition = "2024"
+
+[dev-dependencies]
+# Languages
+rust-to-wasm-compiler = { workspace = true }
+wastrumentation-lang-rust = { path = "../rust" }
+wastrumentation-lang-webassembly = { path = "../webassembly" }
+wastrumentation-lang-assemblyscript = { path = "../assemblyscript" }
+
+# Remaining dependencies
+wasmtime = { workspace = true }
+wastrumentation = { workspace = true }
+tempfile = { workspace = true }
+indoc = { workspace = true }
+serde = { workspace = true }
