@@ -2,7 +2,6 @@ use wastrumentation::wasm_constructs::RefType;
 
 use super::*;
 use rust_to_wasm_compiler::{Profile, RustToWasmCompiler};
-mod test_edge_case;
 
 #[test]
 fn test_compiles() {

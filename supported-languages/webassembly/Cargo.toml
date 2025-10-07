@@ -1,0 +1,9 @@
+[package]
+name = "wastrumentation-lang-webassembly"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+wat = { workspace = true }
+wastrumentation = { workspace = true }
+indoc = { workspace = true }
