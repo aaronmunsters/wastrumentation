@@ -1,5 +1,7 @@
-use rust_to_wasm_compiler::{Profile, WasiSupport};
 use std::path::PathBuf;
+
+pub use rust_to_wasm_compiler::Profile;
+pub use rust_to_wasm_compiler::WasiSupport;
 
 #[derive(Debug, Clone)]
 pub struct ManifestSource(pub String);
