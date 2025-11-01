@@ -24,6 +24,7 @@ use self::function_call_indirect::Target::{
 };
 use self::memory::Target::*;
 use self::simple_operations::Target::*;
+use self::table::Target::*;
 
 pub mod block_loop;
 pub mod branch_if;
@@ -31,6 +32,7 @@ pub mod function_application;
 pub mod function_call_indirect;
 pub mod memory;
 pub mod simple_operations;
+pub mod table;
 
 pub struct Instrumented<InstrumentationLanguage: LibGeneratable> {
     pub module: Vec<u8>,
@@ -119,6 +121,23 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
         f64_load,
         i32_load,
         i64_load,
+        ref_func,
+        ref_null,
+        ref_is_null,
+        table_get,
+        table_set,
+        table_size,
+        table_grow,
+        table_fill,
+        table_copy,
+        table_copy_get_source,
+        table_copy_get_destination,
+        table_copy_get_size,
+        table_init,
+        table_init_get_element_source,
+        table_init_get_table_destination,
+        table_init_get_size,
+        elem_drop,
     } = analysis_interface;
 
     let (mut module, _offsets, _issue) =
@@ -239,9 +258,20 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
         (f64_load, (|i| Box::new(F64Load(i)))),
         (i32_load, (|i| Box::new(I32Load(i)))),
         (i64_load, (|i| Box::new(I64Load(i)))),
-    ] as [(&Option<WasmExport>, TFn); 75];
+        (ref_func, (|i| Box::new(RefFunc(i)))),
+        (ref_null, (|i| Box::new(RefNull(i)))),
+        (ref_is_null, (|i| Box::new(RefIsNull(i)))),
+        (table_get, (|i| Box::new(TableGet(i)))),
+        (table_set, (|i| Box::new(TableSet(i)))),
+        (table_size, (|i| Box::new(TableSize(i)))),
+        (table_grow, (|i| Box::new(TableGrow(i)))),
+        (table_fill, (|i| Box::new(TableFill(i)))),
+        // table copy is currently handled separately
+        // table init is currently handled separately
+        (elem_drop, (|i| Box::new(ElemDrop(i)))),
+    ] as [(&Option<WasmExport>, TFn); 84];
 
-    let targets: Vec<Box<dyn TransformationStrategy>> = traps_target_generators
+    let mut targets: Vec<Box<dyn TransformationStrategy>> = traps_target_generators
         .into_iter()
         .filter_map(|(export, target_gen)| {
             export
@@ -250,6 +280,57 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
                 .map(target_gen)
         })
         .collect();
+
+    // table copy target
+    if let Some(table_copy_trap) = table_copy {
+        let table_copy_trap_idx = module.install(table_copy_trap);
+        let table_copy_get_src_idx = table_copy_get_source
+            .as_ref()
+            .map(|e| module.install(e))
+            .expect("table_copy_get_source required when table_copy is present");
+        let table_copy_get_dst_idx = table_copy_get_destination
+            .as_ref()
+            .map(|e| module.install(e))
+            .expect("table_copy_get_destination required when table_copy is present");
+        let table_copy_get_size_idx = table_copy_get_size
+            .as_ref()
+            .map(|e| module.install(e))
+            .expect("table_copy_get_size required when table_copy is present");
+
+        let table_copy_target = Box::new(TableCopy {
+            trap_idx: table_copy_trap_idx,
+            get_src_idx: table_copy_get_src_idx,
+            get_dst_idx: table_copy_get_dst_idx,
+            get_size_idx: table_copy_get_size_idx,
+        }) as Box<dyn TransformationStrategy>;
+
+        targets.push(table_copy_target);
+    }
+
+    if let Some(table_init_trap) = table_init {
+        let table_init_trap_idx = module.install(table_init_trap);
+        let table_init_get_elem_src_idx = table_init_get_element_source
+            .as_ref()
+            .map(|e| module.install(e))
+            .expect("table_init_get_element_source required when table_init is present");
+        let table_init_get_table_dst_idx = table_init_get_table_destination
+            .as_ref()
+            .map(|e| module.install(e))
+            .expect("table_init_get_table_destination required when table_init is present");
+        let table_init_get_size_idx = table_init_get_size
+            .as_ref()
+            .map(|e| module.install(e))
+            .expect("table_init_get_size required when table_init is present");
+
+        let table_init_target = Box::new(TableInit {
+            trap_idx: table_init_trap_idx,
+            get_elem_source_idx: table_init_get_elem_src_idx,
+            get_table_destination_idx: table_init_get_table_dst_idx,
+            get_size_idx: table_init_get_size_idx,
+        }) as Box<dyn TransformationStrategy>;
+
+        targets.push(table_init_target);
+    }
 
     let transformed_bodies: Vec<HighLevelBody> = target_high_level_functions
         .into_iter()

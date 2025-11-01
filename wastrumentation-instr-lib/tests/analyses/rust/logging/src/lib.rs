@@ -260,3 +260,112 @@ advice! { loop_ post (
         println!("[ANALYSIS:] loop_ post, location: {location:?}");
     }
 }
+
+advice! { ref_func (
+        func_index: WasmValue,
+        location: Location,
+    ) {
+        println!("[ANALYSIS:] ref_func {func_index:#?}, location: {location:?}");
+    }
+}
+
+advice! { ref_null (
+        location: Location,
+    ) {
+        println!("[ANALYSIS:] ref_null, location: {location:?}");
+    }
+}
+
+advice! { ref_is_null (
+        res: WasmValue,
+        location: Location,
+    ) {
+        println!("[ANALYSIS:] ref_is_null {res:#?}, location: {location:?}");
+        res
+    }
+}
+
+advice! { table_set (
+    element_index: WasmValue,
+    table_index: FunctionTableIndex,
+    location: Location,
+    ) {
+        println!("[ANALYSIS:] table_set @ {table_index:#?}[{element_index:#?}], location: {location:?}");
+        element_index
+    }
+}
+
+advice! { table_get (
+        element_index: WasmValue,
+        table_index: FunctionTableIndex,
+        location: Location,
+    ) {
+        println!("[ANALYSIS:] table_get @ {table_index:#?}[{element_index:#?}], location: {location:?}");
+        element_index
+    }
+}
+
+advice! { table_size (
+        table_size: WasmValue,
+        table_index: FunctionTableIndex,
+        location: Location,
+    ) {
+        println!("[ANALYSIS:] table_size {table_size:#?} @ {table_index:#?}, location: {location:?}");
+        table_size
+    }
+}
+
+advice! { table_grow (
+        grow_size: WasmValue,
+        table_index: FunctionTableIndex,
+        location: Location,
+    ) {
+        println!("[ANALYSIS:] table_grow {grow_size:#?} @ {table_index:#?}, location: {location:?}");
+        grow_size
+    }
+}
+
+advice! { table_fill (
+        index: WasmValue,
+        fill_size: WasmValue,
+        table_index: FunctionTableIndex,
+        location: Location,
+    ) {
+        println!("[ANALYSIS:] table_fill starting at {index:#?} with size {fill_size:#?} @ {table_index:#?}, location: {location:?}");
+        index
+    }
+}
+
+advice! { table_copy (
+        dst_element_index: WasmValue,
+        src_element_index: WasmValue,
+        copy_size: WasmValue,
+        dst_table_index: FunctionTableIndex,
+        src_table_index: FunctionTableIndex,
+        location: Location,
+    ) {
+        println!("[ANALYSIS:] table_copy {copy_size:#?} elements from {src_table_index:#?}[{src_element_index:#?}] to {dst_table_index:#?}[{dst_element_index:#?}], location: {location:?}");
+        (dst_element_index, src_element_index, copy_size)
+    }
+}
+
+advice! { table_init (
+        destination_table_offset: WasmValue,
+        source_element_offset: WasmValue,
+        init_size: WasmValue,
+        table_index: FunctionTableIndex,
+        element_index: ElementIndex,
+        location: Location,
+    ) {
+        println!("[ANALYSIS:] table_init {init_size:#?} elements from segment {source_element_offset:#?} at offset {destination_table_offset:#?} to {table_index:#?}[{element_index:#?}], location: {location:?}");
+        (destination_table_offset, source_element_offset, init_size)
+    }
+}
+
+advice! { elem_drop (
+        element_index: ElementIndex,
+        location: Location,
+    ) {
+        println!("[ANALYSIS:] elem_drop {element_index:#?}, location: {location:?}");
+    }
+}

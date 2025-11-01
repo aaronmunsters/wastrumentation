@@ -85,6 +85,29 @@ pub const TRAP_NAME_POST_BLOCK: &str = "trap_block_post";
 pub const TRAP_NAME_PRE_LOOP: &str = "trap_loop_pre";
 pub const TRAP_NAME_POST_LOOP: &str = "trap_loop_post";
 
+pub const TRAP_NAME_REF_FUNC: &str = "trap_ref_func";
+pub const TRAP_NAME_REF_NULL: &str = "trap_ref_null";
+pub const TRAP_NAME_REF_IS_NULL: &str = "trap_ref_is_null";
+
+pub const TRAP_NAME_TABLE_GET: &str = "trap_table_get";
+pub const TRAP_NAME_TABLE_SET: &str = "trap_table_set";
+pub const TRAP_NAME_TABLE_COPY: &str = "trap_table_copy";
+pub const TRAP_NAME_TABLE_SIZE: &str = "trap_table_size";
+pub const TRAP_NAME_TABLE_FILL: &str = "trap_table_fill";
+pub const TRAP_NAME_TABLE_GROW: &str = "trap_table_grow";
+pub const TRAP_NAME_TABLE_INIT: &str = "trap_table_init";
+pub const TRAP_NAME_ELEM_DROP: &str = "trap_elem_drop";
+
+pub const TRAP_NAME_TABLE_COPY_GET_SOURCE: &str = "trap_table_copy_get_src";
+pub const TRAP_NAME_TABLE_COPY_GET_DESTINATION: &str = "trap_table_copy_get_dst";
+pub const TRAP_NAME_TABLE_COPY_GET_SIZE: &str = "trap_table_copy_get_size";
+
+pub const TRAP_NAME_TABLE_INIT_GET_TABLE_DESTINATION: &str =
+    "trap_table_init_get_destination_table_offset";
+pub const TRAP_NAME_TABLE_INIT_GET_ELEMENT_SOURCE: &str =
+    "trap_table_init_get_source_element_offset";
+pub const TRAP_NAME_TABLE_INIT_GET_SIZE: &str = "trap_table_init_get_size";
+
 const SER_OPRTR_TYP: WasmType = I32;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -193,6 +216,23 @@ pub struct AnalysisInterface {
     pub f64_load: Option<WasmExport>,
     pub i32_load: Option<WasmExport>,
     pub i64_load: Option<WasmExport>,
+    pub ref_null: Option<WasmExport>,
+    pub ref_func: Option<WasmExport>,
+    pub ref_is_null: Option<WasmExport>,
+    pub table_get: Option<WasmExport>,
+    pub table_set: Option<WasmExport>,
+    pub table_size: Option<WasmExport>,
+    pub table_grow: Option<WasmExport>,
+    pub table_fill: Option<WasmExport>,
+    pub table_copy: Option<WasmExport>,
+    pub table_copy_get_source: Option<WasmExport>,
+    pub table_copy_get_destination: Option<WasmExport>,
+    pub table_copy_get_size: Option<WasmExport>,
+    pub table_init: Option<WasmExport>,
+    pub table_init_get_element_source: Option<WasmExport>,
+    pub table_init_get_table_destination: Option<WasmExport>,
+    pub table_init_get_size: Option<WasmExport>,
+    pub elem_drop: Option<WasmExport>,
 }
 
 pub struct ProcessedAnalysis<Language: SourceCodeBound> {
@@ -323,8 +363,25 @@ simple_interfaces! {
     interface_i64_load              TRAP_NAME_I64_LOAD                           :               /*load_idx:*/ I32 /*offs:*/ I64 /*op:*/ SER_OPRTR_TYP /*fidx*/ I64 /*iidx*/ I64 =>            /*res:*/ I64,
     interface_memory_size           TRAP_NAME_MEMORY_SIZE                        :                                          /*size:*/ I32 /*idx:*/ I64 /*fidx*/ I64 /*iidx*/ I64 =>           /*size:*/ I32,
     interface_memory_grow           TRAP_NAME_MEMORY_GROW                        :                                        /*amount:*/ I32 /*idx:*/ I64 /*fidx*/ I64 /*iidx*/ I64 => /*delta-or-neg-1:*/ I32,
-    interface_pre_block             TRAP_NAME_PRE_BLOCK                          :                                       /*input_c*/ I32 /*arity*/ I32 /*fidx*/ I64 /*iidx*/ I64 =>              /* void */,
-    interface_post_block            TRAP_NAME_POST_BLOCK                         :                                                          /* void */ /*fidx*/ I64 /*iidx*/ I64 =>              /* void */,
-    interface_pre_loop              TRAP_NAME_PRE_LOOP                           :                                       /*input_c*/ I32 /*arity*/ I32 /*fidx*/ I64 /*iidx*/ I64 =>              /* void */,
-    interface_post_loop             TRAP_NAME_POST_LOOP                          :                                                          /* void */ /*fidx*/ I64 /*iidx*/ I64 =>              /* void */,
+    interface_pre_block             TRAP_NAME_PRE_BLOCK                          :                                       /*input_c*/ I32 /*arity*/ I32 /*fidx*/ I64 /*iidx*/ I64 =>                /*void */,
+    interface_post_block            TRAP_NAME_POST_BLOCK                         :                                                          /* void */ /*fidx*/ I64 /*iidx*/ I64 =>                /*void */,
+    interface_pre_loop              TRAP_NAME_PRE_LOOP                           :                                       /*input_c*/ I32 /*arity*/ I32 /*fidx*/ I64 /*iidx*/ I64 =>                /*void */,
+    interface_post_loop             TRAP_NAME_POST_LOOP                          :                                                          /* void */ /*fidx*/ I64 /*iidx*/ I64 =>                /*void */,
+    interface_ref_func              TRAP_NAME_REF_FUNC                           :                                                   /*func_idx:*/ I32 /*fidx*/ I64 /*iidx*/ I64 =>                /*void*:*/,
+    interface_ref_null              TRAP_NAME_REF_NULL                           :                                                                     /*fidx*/ I64 /*iidx*/ I64 =>                /*void:*/,
+    interface_ref_is_null           TRAP_NAME_REF_IS_NULL                        :                                                        /*res:*/ I32 /*fidx*/ I64 /*iidx*/ I64 =>        /*new_res:*/ I32,
+    interface_table_get             TRAP_NAME_TABLE_GET                          :                                   /*index:*/ I32 /*table_idx:*/ I32 /*fidx*/ I64 /*iidx*/ I64 =>      /*new_index:*/ I32,
+    interface_table_set             TRAP_NAME_TABLE_SET                          :                                  /*index:*/ I32  /*table_idx:*/ I32 /*fidx*/ I64 /*iidx*/ I64 =>      /*new_index:*/ I32,
+    interface_table_size            TRAP_NAME_TABLE_SIZE                         :                                    /*size:*/ I32 /*table_idx:*/ I32 /*fidx*/ I64 /*iidx*/ I64 =>       /*new_size:*/ I32,
+    interface_table_grow            TRAP_NAME_TABLE_GROW                         :                               /*grow_size:*/ I32 /*table_idx:*/ I32 /*fidx*/ I64 /*iidx*/ I64 =>  /*new_grow_size:*/ I32,
+    interface_table_fill            TRAP_NAME_TABLE_FILL                         :                    /*i:*/ I32 /*fill_size:*/ I32 /*table_idx:*/ I32 /*fidx*/ I64 /*iidx*/ I64 =>          /*new_i:*/ I32,
+    interface_table_copy            TRAP_NAME_TABLE_COPY                         :  /*d:*/ I32 /*s:*/ I32 /*n:*/ I32 /*dst_idx:*/ I32 /*src_idx:*/ I32 /*fidx*/ I64 /*iidx*/ I64 =>                /*void:*/ ,
+    interface_table_copy_get_source TRAP_NAME_TABLE_COPY_GET_SOURCE              :                                                                                               =>     /*source-idx:*/ I32,
+    interface_table_copy_get_destination TRAP_NAME_TABLE_COPY_GET_DESTINATION    :                                                                                               =>/*destination-idx:*/ I32,
+    interface_table_copy_get_size   TRAP_NAME_TABLE_COPY_GET_SIZE                :                                                                                               =>           /*size:*/ I32,
+    interface_table_init            TRAP_NAME_TABLE_INIT                         :/*d:*/ I32 /*s:*/ I32 /*n:*/ I32 /*table_idx:*/ I32 /*elm_idx:*/ I32 /*fidx*/ I64 /*iidx*/ I64 =>                /*void*/,
+    interface_table_init_get_element_source TRAP_NAME_TABLE_INIT_GET_ELEMENT_SOURCE :                                                                                            =>    /*element-idx:*/ I32,
+    interface_table_init_get_table_destination TRAP_NAME_TABLE_INIT_GET_TABLE_DESTINATION :                                                                                      =>      /*table-idx:*/ I32,
+    interface_table_init_get_size   TRAP_NAME_TABLE_INIT_GET_SIZE                :                                                                                               =>           /*size:*/ I32,
+    interface_elem_drop            TRAP_NAME_ELEM_DROP                          :                                                  /*elem_idx:*/ I32 /*fidx*/ I64 /*iidx*/ I64 =>                /*void*/ ,
 }

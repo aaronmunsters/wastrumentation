@@ -52,6 +52,17 @@ pub enum Hook {
     BlockPost,
     LoopPre,
     LoopPost,
+    RefFunc,
+    RefNull,
+    RefIsNull,
+    TableGet,
+    TableSet,
+    TableSize,
+    TableGrow,
+    TableFill,
+    TableCopy,
+    TableInit,
+    ElemDrop,
 }
 
 impl Hook {
@@ -86,6 +97,17 @@ impl Hook {
             BlockPost,
             LoopPre,
             LoopPost,
+            RefFunc,
+            RefNull,
+            RefIsNull,
+            TableGet,
+            TableSet,
+            TableSize,
+            TableGrow,
+            TableFill,
+            TableCopy,
+            TableInit,
+            ElemDrop,
         ])
     }
 }
@@ -223,6 +245,51 @@ pub fn interface_from(hooks: &HashSet<Hook>) -> AnalysisInterface {
             }
             Hook::LoopPost => {
                 interface.post_loop = Some(AnalysisInterface::interface_post_loop());
+            }
+            Hook::RefFunc => {
+                interface.ref_func = Some(AnalysisInterface::interface_ref_func());
+            }
+            Hook::RefNull => {
+                interface.ref_null = Some(AnalysisInterface::interface_ref_null());
+            }
+            Hook::RefIsNull => {
+                interface.ref_is_null = Some(AnalysisInterface::interface_ref_is_null());
+            }
+            Hook::TableGet => {
+                interface.table_get = Some(AnalysisInterface::interface_table_get());
+            }
+            Hook::TableSet => {
+                interface.table_set = Some(AnalysisInterface::interface_table_set());
+            }
+            Hook::TableSize => {
+                interface.table_size = Some(AnalysisInterface::interface_table_size());
+            }
+            Hook::TableGrow => {
+                interface.table_grow = Some(AnalysisInterface::interface_table_grow());
+            }
+            Hook::TableFill => {
+                interface.table_fill = Some(AnalysisInterface::interface_table_fill());
+            }
+            Hook::TableCopy => {
+                interface.table_copy = Some(AnalysisInterface::interface_table_copy());
+                interface.table_copy_get_source =
+                    Some(AnalysisInterface::interface_table_copy_get_source());
+                interface.table_copy_get_destination =
+                    Some(AnalysisInterface::interface_table_copy_get_destination());
+                interface.table_copy_get_size =
+                    Some(AnalysisInterface::interface_table_copy_get_size());
+            }
+            Hook::TableInit => {
+                interface.table_init = Some(AnalysisInterface::interface_table_init());
+                interface.table_init_get_element_source =
+                    Some(AnalysisInterface::interface_table_init_get_element_source());
+                interface.table_init_get_table_destination =
+                    Some(AnalysisInterface::interface_table_init_get_table_destination());
+                interface.table_init_get_size =
+                    Some(AnalysisInterface::interface_table_init_get_size());
+            }
+            Hook::ElemDrop => {
+                interface.elem_drop = Some(AnalysisInterface::interface_elem_drop());
             }
         }
     }

@@ -152,7 +152,6 @@ impl MergeOptions<'_> {
     fn as_bash_arguments(&self) -> String {
         as_bash_args!(
             self,
-            no_validation,
             rename_export_conflicts,
             sign_ext,
             threads,

@@ -280,3 +280,124 @@ advice! { loop_ post (
         let _ = location;
     }
 }
+
+advice! { ref_func (
+        func_index: WasmValue,
+        location: Location,
+    ) {
+        let _ = func_index;
+        let _ = location;
+    }
+}
+
+advice! { ref_null (
+        location: Location,
+    ) {
+        let _ = location;
+    }
+}
+
+advice! { ref_is_null (
+        res: WasmValue,
+        location: Location,
+    ) {
+        let _ = location;
+        res
+    }
+}
+
+advice! { table_set (
+    element_index: WasmValue,
+    table_index: FunctionTableIndex,
+    location: Location,
+    ) {
+        let _ = table_index;
+        let _ = location;
+        element_index
+    }
+}
+
+advice! { table_get (
+        element_index: WasmValue,
+        table_index: FunctionTableIndex,
+        location: Location,
+    ) {
+        let _ = table_index;
+        let _ = location;
+        element_index
+    }
+}
+
+advice! { table_size (
+        table_size: WasmValue,
+        table_index: FunctionTableIndex,
+        location: Location,
+    ) {
+        let _ = table_index;
+        let _ = location;
+        table_size
+    }
+}
+
+advice! { table_grow (
+        grow_size: WasmValue,
+        table_index: FunctionTableIndex,
+        location: Location,
+    ) {
+        let _ = table_index;
+        let _ = location;
+        grow_size
+    }
+}
+
+advice! { table_fill (
+        index: WasmValue,
+        fill_size: WasmValue,
+        table_index: FunctionTableIndex,
+        location: Location,
+    ) {
+        let _ = fill_size;
+        let _ = table_index;
+        let _ = location;
+        index
+    }
+}
+
+advice! { table_copy (
+        dst_element_index: WasmValue,
+        src_element_index: WasmValue,
+        copy_size: WasmValue,
+        dst_table_index: FunctionTableIndex,
+        src_table_index: FunctionTableIndex,
+        location: Location,
+    ) {
+        let _ = dst_table_index;
+        let _ = src_table_index;
+        let _ = location;
+        (dst_element_index, src_element_index, copy_size)
+    }
+}
+
+advice! { table_init (
+        destination_table_offset: WasmValue,
+        source_element_offset: WasmValue,
+        init_size: WasmValue,
+        table_index: FunctionTableIndex,
+        element_index: ElementIndex,
+        location: Location,
+    ) {
+        let _ = table_index;
+        let _ = element_index;
+        let _ = location;
+        (destination_table_offset, source_element_offset, init_size)
+    }
+}
+
+advice! { elem_drop (
+        element_index: ElementIndex,
+        location: Location,
+    ) {
+        let _ = element_index;
+        let _ = location;
+    }
+}

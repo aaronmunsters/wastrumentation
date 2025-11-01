@@ -577,6 +577,8 @@ generate_wrapper!(BlockInputCount        wrapping i32 accessed-using .value());
 generate_wrapper!(LoopArity              wrapping i32 accessed-using .value());
 generate_wrapper!(LoopInputCount         wrapping i32 accessed-using .value());
 generate_wrapper!(GlobalIndex            wrapping i64 accessed-using .value());
+generate_wrapper!(TableIndex             wrapping i32 accessed-using .value());
+generate_wrapper!(ElementIndex           wrapping i32 accessed-using .value());
 
 impl SerializedContinuation for PathContinuation {
     fn low_level_continuation(&self) -> &i32 {
@@ -1383,6 +1385,271 @@ macro_rules! advice {
             $body
         }
     };
+    /////////////////////
+    // REFERENCE TYPES //
+    /////////////////////
+    (ref_func (
+        $func_index: ident: WasmValue,
+        $location_ident: ident: Location $(,)?
+    ) $body:block) => {
+        #[no_mangle]
+        extern "C" fn trap_ref_func(
+            func_index: i32,
+            funct_index: i64,
+            instr_index: i64,
+        ) {
+            let $func_index = func_index;
+            let $location_ident = Location::new(funct_index, instr_index);
+            $body;
+        }
+    };
+    (ref_null (
+        $location_ident: ident: Location $(,)?
+    ) $body:block) => {
+        #[no_mangle]
+        extern "C" fn trap_ref_null(
+            funct_index: i64,
+            instr_index: i64,
+        ) {
+            let $location_ident = Location::new(funct_index, instr_index);
+            $body;
+        }
+    };
+    (ref_is_null (
+        $res: ident: WasmValue,
+        $location_ident: ident: Location $(,)?
+    ) $body:block) => {
+        #[no_mangle]
+        extern "C" fn trap_ref_is_null(
+            res: i32,
+            funct_index: i64,
+            instr_index: i64,
+        ) -> i32 {
+            let $res = WasmValue::I32(res);
+            let $location_ident = Location::new(funct_index, instr_index);
+            let new_res: WasmValue = $body;
+            new_res.as_i32()
+        }
+    };
+    ////////////
+    // TABLES //
+    ////////////
+    (table_get (
+        $element_index: ident: WasmValue,
+        $table_index: ident: FunctionTableIndex,
+        $location_ident: ident: Location $(,)?
+    ) $body:block) => {
+        #[no_mangle]
+        extern "C" fn trap_table_get(
+            element_index: i32,
+            table_index: i32,
+            funct_index: i64,
+            instr_index: i64,
+        ) -> i32 {
+            let $table_index = FunctionTableIndex(table_index);
+            let $element_index = element_index;
+            let $location_ident = Location::new(funct_index, instr_index);
+            let new_element_index: i32 = $body;
+            new_element_index
+        }
+    };
+    (table_set (
+        $element_index: ident: WasmValue,
+        $table_index: ident: FunctionTableIndex,
+        $location_ident: ident: Location $(,)?
+    ) $body:block) => {
+        #[no_mangle]
+        extern "C" fn trap_table_set(
+            element_index: i32,
+            table_index: i32,
+            funct_index: i64,
+            instr_index: i64,
+        ) -> i32 {
+            let $table_index = FunctionTableIndex(table_index);
+            let $element_index = element_index;
+            let $location_ident = Location::new(funct_index, instr_index);
+            let new_element_index: i32 = $body;
+            new_element_index
+        }
+    };
+    (table_size (
+        $table_size: ident: WasmValue,
+        $table_index: ident: FunctionTableIndex,
+        $location_ident: ident: Location $(,)?
+    ) $body:block) => {
+        #[no_mangle]
+        extern "C" fn trap_table_size(
+            table_size: i32,
+            table_index: i32,
+            funct_index: i64,
+            instr_index: i64,
+        ) -> i32 {
+            let $table_size = table_size;
+            let $table_index = FunctionTableIndex(table_index);
+            let $location_ident = Location::new(funct_index, instr_index);
+            let new_table_size: i32 = $body;
+            new_table_size
+        }
+    };
+    (table_grow (
+        $grow_size: ident: WasmValue,
+        $table_index: ident: FunctionTableIndex,
+        $location_ident: ident: Location $(,)?
+    ) $body:block) => {
+        #[no_mangle]
+        extern "C" fn trap_table_grow(
+            grow_size: i32,
+            table_index: i32,
+            funct_index: i64,
+            instr_index: i64,
+        ) -> i32 {
+            let $grow_size = grow_size;
+            let $table_index = FunctionTableIndex(table_index);
+            let $location_ident = Location::new(funct_index, instr_index);
+            let new_grow_size: i32 = $body;
+            new_grow_size
+        }
+    };
+    (table_fill (
+        $index: ident: WasmValue,
+        $fill_size: ident: WasmValue,
+        $table_index: ident: FunctionTableIndex,
+        $location_ident: ident: Location $(,)?
+    ) $body:block) => {
+        #[no_mangle]
+        extern "C" fn trap_table_fill(
+            index: i32,
+            fill_size: i32,
+            table_index: i32,
+            funct_index: i64,
+            instr_index: i64,
+        ) -> i32 {
+            let $table_index = FunctionTableIndex(table_index);
+            let $index = index;
+            let $fill_size = fill_size;
+            let $location_ident = Location::new(funct_index, instr_index);
+            let new_index: i32 = $body;
+            new_index
+        }
+    };
+    (table_copy (
+        $dst_element_index: ident: WasmValue,
+        $src_element_index: ident: WasmValue,
+        $copy_size: ident: WasmValue,
+        $dst_table_index: ident: FunctionTableIndex,
+        $src_table_index: ident: FunctionTableIndex,
+        $location_ident: ident: Location $(,)?
+    ) $body:block) => {
+
+        static mut RETURN_DST: i32 = 0;
+        static mut RETURN_SRC: i32 = 0;
+        static mut RETURN_SIZE: i32 = 0;
+
+        #[no_mangle]
+        extern "C" fn trap_table_copy(
+            dst_element_index: i32,
+            src_element_index: i32,
+            copy_size: i32,
+            dst_table_index: i32,
+            src_table_index: i32,
+            funct_index: i64,
+            instr_index: i64,
+        ) {
+            let $dst_table_index = FunctionTableIndex(dst_table_index);
+            let $src_table_index = FunctionTableIndex(src_table_index);
+            let $dst_element_index = dst_element_index;
+            let $src_element_index = src_element_index;
+            let $copy_size = copy_size;
+            let $location_ident = Location::new(funct_index, instr_index);
+            let (new_dst, new_src, new_size): (i32, i32, i32) = $body;
+            unsafe {
+                RETURN_DST = new_dst;
+                RETURN_SRC = new_src;
+                RETURN_SIZE = new_size;
+            }
+        }
+
+        #[no_mangle]
+        extern "C" fn trap_table_copy_get_dst() -> i32 {
+            unsafe { RETURN_DST }
+        }
+
+        #[no_mangle]
+        extern "C" fn trap_table_copy_get_src() -> i32 {
+            unsafe { RETURN_SRC }
+        }
+
+        #[no_mangle]
+        extern "C" fn trap_table_copy_get_size() -> i32 {
+            unsafe { RETURN_SIZE }
+        }
+    };
+    (table_init (
+        $destination_table_offset: ident: WasmValue,
+        $source_element_offset: ident: WasmValue,
+        $init_size: ident: WasmValue,
+        $table_index: ident: FunctionTableIndex,
+        $element_index: ident: ElementIndex,
+        $location_ident: ident: Location $(,)?
+    ) $body:block) => {
+        static mut RETURN_DESTINATION_TABLE_OFFSET: i32 = 0;
+        static mut RETURN_SOURCE_ELEMENT_OFFSET: i32 = 0;
+        static mut RETURN_INIT_SIZE: i32 = 0;
+        #[no_mangle]
+        extern "C" fn trap_table_init(
+            destination_table_offset: i32,
+            source_element_offset: i32,
+            init_size: i32,
+            table_index: i32,
+            element_index: i32,
+            funct_index: i64,
+            instr_index: i64,
+        ) {
+            let $table_index = FunctionTableIndex(table_index);
+            let $element_index = element_index;
+            let $destination_table_offset = destination_table_offset;
+            let $source_element_offset = source_element_offset;
+            let $init_size = init_size;
+            let $location_ident = Location::new(funct_index, instr_index);
+            let (new_destination_table_offset, new_source_element_offset, new_init_size): (i32, i32, i32) = $body;
+            unsafe {
+                RETURN_DESTINATION_TABLE_OFFSET = new_destination_table_offset;
+                RETURN_SOURCE_ELEMENT_OFFSET = new_source_element_offset;
+                RETURN_INIT_SIZE = new_init_size;
+            }
+        }
+
+        #[no_mangle]
+        extern "C" fn trap_table_init_get_destination_table_offset() -> i32 {
+            unsafe { RETURN_DESTINATION_TABLE_OFFSET }
+        }
+
+        #[no_mangle]
+        extern "C" fn trap_table_init_get_source_element_offset() -> i32 {
+            unsafe { RETURN_SOURCE_ELEMENT_OFFSET }
+        }
+
+        #[no_mangle]
+        extern "C" fn trap_table_init_get_size() -> i32 {
+            unsafe { RETURN_INIT_SIZE }
+        }
+    };
+    (elem_drop (
+        $element_index: ident: ElementIndex,
+        $location_ident: ident: Location $(,)?
+    ) $body:block) => {
+        #[no_mangle]
+        extern "C" fn trap_elem_drop(
+            element_index: i32,
+            funct_index: i64,
+            instr_index: i64,
+        ) {
+            let $element_index = ElementIndex(element_index);
+            let $location_ident = Location::new(funct_index, instr_index);
+            $body;
+        }
+    };
+
     // General pattern to allow multiple advices in a single `advice! {...}`
     ($(
         $($advice_keyword:ident)+ ($($formal_arg:ident : $formal_type:ident),* $(,)?) $body:block
