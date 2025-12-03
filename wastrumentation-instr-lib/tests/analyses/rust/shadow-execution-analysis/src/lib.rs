@@ -371,24 +371,24 @@ advice! { br_table (
 advice! { select (path_continuation: PathContinuation, _location: Location) {
         SHADOW_STACK.with_borrow_mut(|shadow_stack| {
             // https://webassembly.github.io/spec/core/exec/instructions.html#xref-syntax-instructions-syntax-instr-parametric-mathsf-select-t-ast
-            // Assert: due to validation, a value of value type `i32` is on the top of the stack.
+            // 1. Assert: due to validation, a value of value type `i32` is on the top of the stack.
             debug_assert!(matches!(shadow_stack.top_of_stack(), &StackEntry::Value(WasmValue::I32(_))));
-            // Pop the value `i32.const c` from the stack.
+            // 2. Pop the value `i32.const c` from the stack.
             let _shadow_c = shadow_stack.pop_value_from_stack();
-            // Assert: due to validation, two more values (of the same value type) are on the top of the stack.
+            // 3. Assert: due to validation, two more values (of the same value type) are on the top of the stack.
             let (v2, v1) = shadow_stack.top_two_values_of_stack();
             debug_assert_eq!(v2.type_(), v1.type_());
-            // Pop the value `val_{2}` from the stack.
+            // 4. Pop the value `val_{2}` from the stack.
             let val_2 = shadow_stack.pop_value_from_stack();
-            // Pop the value `val_{1}` from the stack.
+            // 5. Pop the value `val_{1}` from the stack.
             let val_1 = shadow_stack.pop_value_from_stack();
-            // If `c` is not `0`, then:
+            // 6. If `c` is not `0`, then:
             if path_continuation.is_then() {
-                // Push the value `val_{1}` back to the stack.
+                // a. Push the value `val_{1}` back to the stack.
                 shadow_stack.push_value_on_stack(val_1);
             // Else:
             } else {
-                // Push the value `val_{2}` back to the stack.
+                // b. Push the value `val_{2}` back to the stack.
                 shadow_stack.push_value_on_stack(val_2);
             }
             path_continuation
