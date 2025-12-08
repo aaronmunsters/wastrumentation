@@ -11,24 +11,18 @@ use super::StoreOperation::{I32Store16, I32Store8}; // I32
 use super::StoreOperation::{I64Store16, I64Store32, I64Store8}; // I64
 
 use super::WasmValue;
-
-use core::ptr::addr_of_mut;
+use std::cell::RefCell;
 
 //////////////////////////////////
 // compile-time severity checks //
 //////////////////////////////////
 
-static mut TRGT_MEMORY_INITIALIZED_EMPTY: bool = false;
-static mut TRGT_MEMORY_ONLY_AFFECTED_INTERNALLY: bool = false;
+const TRGT_MEMORY_INITIALIZED_EMPTY: bool = false;
+const TRGT_MEMORY_ONLY_AFFECTED_INTERNALLY: bool = false;
 
-static mut SHADOW_MEMRY: Vec<u8> = vec![];
 pub(crate) fn assert_shadow_memory(loaded_value: &WasmValue, shadow_value: &WasmValue) {
-    let target_memory_initialized_empty = unsafe { TRGT_MEMORY_INITIALIZED_EMPTY };
-    let target_memory_only_affected_internally = unsafe { TRGT_MEMORY_ONLY_AFFECTED_INTERNALLY };
-    let assertion_should_hold =
-        target_memory_initialized_empty && target_memory_only_affected_internally;
-    if assertion_should_hold {
-        assert_eq!(loaded_value, shadow_value);
+    if TRGT_MEMORY_INITIALIZED_EMPTY && TRGT_MEMORY_ONLY_AFFECTED_INTERNALLY {
+        debug_assert_eq!(loaded_value, shadow_value);
     }
 }
 
@@ -36,108 +30,145 @@ pub(crate) fn assert_shadow_memory(loaded_value: &WasmValue, shadow_value: &Wasm
 // Public API //
 ////////////////
 
-#[must_use]
-pub(crate) fn shadow_memory_load(
-    store_index: WasmValue,
-    offset: &'_ LoadOffset,
-    operation: LoadOperation,
-) -> WasmValue {
-    let ptr = usize::try_from(store_index.as_i32()).unwrap();
-    let offset = usize::try_from(offset.value()).unwrap();
-    let addr = ptr + offset;
-    let shadow_memory = unsafe { addr_of_mut!(SHADOW_MEMRY).as_mut().unwrap() };
-    grow_if_out_of_bounds(shadow_memory, addr, operation.target_value_size());
-    match operation {
-        I32Load => memory_load::<i32>(shadow_memory, addr).into(),
-        I64Load => memory_load::<i64>(shadow_memory, addr).into(),
-        F32Load => memory_load::<f32>(shadow_memory, addr).into(),
-        F64Load => memory_load::<f64>(shadow_memory, addr).into(),
-        I32Load8S => memory_load_sub::<i32, u8>(shadow_memory, addr).into(),
-        I32Load8U => memory_load_sub::<i32, u8>(shadow_memory, addr).into(),
-        I32Load16S => memory_load_sub::<i32, i16>(shadow_memory, addr).into(),
-        I32Load16U => memory_load_sub::<i32, u16>(shadow_memory, addr).into(),
-        I64Load8S => memory_load_sub::<i64, i8>(shadow_memory, addr).into(),
-        I64Load8U => memory_load_sub::<i64, u8>(shadow_memory, addr).into(),
-        I64Load16S => memory_load_sub::<i64, i16>(shadow_memory, addr).into(),
-        I64Load16U => memory_load_sub::<i64, u16>(shadow_memory, addr).into(),
-        I64Load32S => memory_load_sub::<i64, i32>(shadow_memory, addr).into(),
-        I64Load32U => memory_load_sub::<i64, u32>(shadow_memory, addr).into(),
+thread_local! {
+    pub(crate) static SHADOW_MEMORY: RefCell<Memory> = const { RefCell::new(Memory(vec![])) };
+}
+
+pub(crate) struct Memory(Vec<u8>);
+
+impl Memory {
+    #[must_use]
+    pub(crate) fn load(
+        &mut self,
+        store_index: &WasmValue,
+        offset: &'_ LoadOffset,
+        operation: LoadOperation,
+    ) -> WasmValue {
+        let ptr = usize::try_from(store_index.as_i32()).unwrap();
+        let offset = usize::try_from(offset.value()).unwrap();
+        let addr = ptr + offset;
+        self.grow_if_out_of_bounds(addr, operation.target_value_size());
+        match operation {
+            I32Load => self.memory_load::<i32>(addr).into(),
+            I64Load => self.memory_load::<i64>(addr).into(),
+            F32Load => self.memory_load::<f32>(addr).into(),
+            F64Load => self.memory_load::<f64>(addr).into(),
+            I32Load8S => self.memory_load_sub::<i32, i8>(addr).into(),
+            I32Load8U => self.memory_load_sub::<i32, u8>(addr).into(),
+            I32Load16S => self.memory_load_sub::<i32, i16>(addr).into(),
+            I32Load16U => self.memory_load_sub::<i32, u16>(addr).into(),
+            I64Load8S => self.memory_load_sub::<i64, i8>(addr).into(),
+            I64Load8U => self.memory_load_sub::<i64, u8>(addr).into(),
+            I64Load16S => self.memory_load_sub::<i64, i16>(addr).into(),
+            I64Load16U => self.memory_load_sub::<i64, u16>(addr).into(),
+            I64Load32S => self.memory_load_sub::<i64, i32>(addr).into(),
+            I64Load32U => self.memory_load_sub::<i64, u32>(addr).into(),
+        }
     }
-}
 
-pub(crate) fn shadow_memory_store(
-    store_index: WasmValue,
-    shadow_value: WasmValue,
-    offset: &'_ StoreOffset,
-    operation: StoreOperation,
-) {
-    let ptr = usize::try_from(store_index.as_i32()).unwrap();
-    let offset = usize::try_from(offset.value()).unwrap();
-    let addr = ptr + offset;
-    let shadow_memory = unsafe { addr_of_mut!(SHADOW_MEMRY).as_mut().unwrap() };
-    grow_if_out_of_bounds(shadow_memory, addr, shadow_value.type_().size());
-    match operation {
-        I32Store => memory_store::<i32>(shadow_memory, addr, shadow_value.as_i32()),
-        I64Store => memory_store::<i64>(shadow_memory, addr, shadow_value.as_i64()),
-        F32Store => memory_store::<f32>(shadow_memory, addr, shadow_value.as_f32()),
-        F64Store => memory_store::<f64>(shadow_memory, addr, shadow_value.as_f64()),
-        I32Store8 => memory_store::<u8>(shadow_memory, addr, shadow_value.as_i32() as u8),
-        I64Store8 => memory_store::<u8>(shadow_memory, addr, shadow_value.as_i64() as u8),
-        I32Store16 => memory_store::<u16>(shadow_memory, addr, shadow_value.as_i32() as u16),
-        I64Store16 => memory_store::<u16>(shadow_memory, addr, shadow_value.as_i64() as u16),
-        I64Store32 => memory_store::<u32>(shadow_memory, addr, shadow_value.as_i64() as u32),
+    pub(crate) fn store(
+        &mut self,
+        store_index: &WasmValue,
+        shadow_value: &WasmValue,
+        offset: &'_ StoreOffset,
+        operation: StoreOperation,
+    ) {
+        let ptr = usize::try_from(store_index.as_i32()).unwrap();
+        let offset = usize::try_from(offset.value()).unwrap();
+        let addr = ptr + offset;
+        self.grow_if_out_of_bounds(addr, shadow_value.type_().size());
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        match operation {
+            I32Store => self.memory_store::<i32>(addr, shadow_value.as_i32()),
+            I64Store => self.memory_store::<i64>(addr, shadow_value.as_i64()),
+            F32Store => self.memory_store::<f32>(addr, shadow_value.as_f32()),
+            F64Store => self.memory_store::<f64>(addr, shadow_value.as_f64()),
+            I32Store8 => self.memory_store::<u8>(addr, shadow_value.as_i32() as u8),
+            I64Store8 => self.memory_store::<u8>(addr, shadow_value.as_i64() as u8),
+            I32Store16 => self.memory_store::<u16>(addr, shadow_value.as_i32() as u16),
+            I64Store16 => self.memory_store::<u16>(addr, shadow_value.as_i64() as u16),
+            I64Store32 => self.memory_store::<u32>(addr, shadow_value.as_i64() as u32),
+        }
     }
-}
 
-/////////////////
-// private API //
-/////////////////
-
-fn grow_if_out_of_bounds<T: Default>(buffer: &mut Vec<T>, index: usize, target_size: usize) {
-    if buffer.len() <= index + target_size {
-        buffer.resize_with(index + target_size, T::default);
+    #[allow(unused)]
+    pub(crate) fn as_ptr(&self) -> *const u8 {
+        let Self(buffer) = self;
+        buffer.as_ptr()
     }
-}
 
-fn assert_memory_bounds<Value>(memory: &[u8], address: usize) {
-    // Ensure size follows development expectation
-    let size_of_t = core::mem::size_of::<Value>();
-    assert!(size_of_t <= 8, "Value larger values than 8 bytes");
-    // Ensure address does not overflow
-    let eventual_pointer = address
-        .checked_add(size_of::<Value>())
-        .expect("address computation overflow");
-    // Ensure the address is within bounds
-    let out_too_big = eventual_pointer <= memory.len();
-    assert!(out_too_big, "Address out of bounds");
-}
+    #[allow(unused)]
+    pub(crate) fn len(&self) -> usize {
+        let Self(buffer) = self;
+        buffer.len()
+    }
 
-// Safely loads a value of type T from memory at a given address
-fn memory_load<T: Copy>(memory: &[u8], address: usize) -> T {
-    assert_memory_bounds::<T>(memory, address);
-    // Safely create a slice from memory and cast it to a reference of type T
-    let eventual_pointer = memory.as_ptr();
-    // Copy the bytes and convert them into type T
-    unsafe { core::ptr::read_unaligned(eventual_pointer.add(address) as *const T) }
-}
+    #[allow(unused)]
+    pub(crate) fn inner(&self) -> &Vec<u8> {
+        let Self(inner) = self;
+        inner
+    }
 
-// Safely stores a value of type T into memory at a given address
-fn memory_store<T: Copy>(memory: &mut [u8], address: usize, value: T) {
-    assert_memory_bounds::<T>(memory, address);
-    // Safely create a slice from memory and cast it to a reference of type T
-    let eventual_pointer = memory.as_ptr();
-    // Copy the bytes and convert them into type T
-    unsafe { core::ptr::write_unaligned(eventual_pointer.add(address) as *mut T, value) }
-}
+    #[allow(unused)]
+    pub(crate) fn inner_mut(&mut self) -> &mut Vec<u8> {
+        let Self(inner) = self;
+        inner
+    }
 
-fn memory_load_sub<StoreValue, Sub>(memory: &[u8], address: usize) -> StoreValue
-where
-    StoreValue: TryFrom<Sub>,
-    StoreValue::Error: core::fmt::Debug,
-    Sub: Copy,
-{
-    let loaded_value = memory_load::<Sub>(memory, address);
-    StoreValue::try_from(loaded_value).expect(concat! {
-            "Conversion of ", stringify!(Sub), " to ", stringify!(StoreValue), " failed."
-    })
+    /////////////////
+    // private API //
+    /////////////////
+
+    fn grow_if_out_of_bounds(&mut self, index: usize, target_size: usize) {
+        let Self(buffer) = self;
+        if buffer.len() <= index + target_size {
+            buffer.resize_with(index + target_size, u8::default);
+        }
+    }
+
+    fn assert_memory_bounds<Value>(&self, address: usize) {
+        // Ensure size follows development expectation
+        let size_of_t = core::mem::size_of::<Value>();
+        debug_assert!(size_of_t <= 8, "Value larger values than 8 bytes");
+        // Ensure address does not overflow
+        let eventual_pointer = address
+            .checked_add(size_of::<Value>())
+            .expect("address computation overflow");
+        // Ensure the address is within bounds
+        let Self(buffer) = self;
+        let out_too_big = eventual_pointer <= buffer.len();
+        debug_assert!(out_too_big, "Address out of bounds");
+    }
+
+    // Safely loads a value of type T from memory at a given address
+    fn memory_load<T: Copy>(&self, address: usize) -> T {
+        self.assert_memory_bounds::<T>(address);
+        // Safely create a slice from memory and cast it to a reference of type T
+        let Self(buffer) = self;
+        let eventual_pointer = buffer.as_ptr();
+        // Copy the bytes and convert them into type T
+        unsafe { core::ptr::read_unaligned(eventual_pointer.add(address).cast::<T>()) }
+    }
+
+    // Safely stores a value of type T into memory at a given address
+    fn memory_store<T: Copy>(&mut self, address: usize, value: T) {
+        self.assert_memory_bounds::<T>(address);
+        // Safely create a slice from memory and cast it to a reference of type T
+        let Self(buffer) = self;
+        let eventual_pointer = buffer.as_mut_ptr();
+        // Copy the bytes and convert them into type T
+        unsafe { core::ptr::write_unaligned(eventual_pointer.add(address).cast::<T>(), value) }
+    }
+
+    fn memory_load_sub<StoreValue, Sub>(&self, address: usize) -> StoreValue
+    where
+        StoreValue: TryFrom<Sub>,
+        StoreValue::Error: core::fmt::Debug,
+        Sub: Copy,
+    {
+        let loaded_value = self.memory_load::<Sub>(address);
+        StoreValue::try_from(loaded_value).expect(concat! {
+                "Conversion of ", stringify!(Sub), " to ", stringify!(StoreValue), " failed."
+        })
+    }
 }
