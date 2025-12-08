@@ -229,6 +229,13 @@ advice! { memory_grow (
     }
 }
 
+advice! { memory_init (
+        location: Location,
+    ) {
+        println!("[ANALYSIS:] memory_init, location: {location:?}");
+    }
+}
+
 advice! { block pre (
         block_input_count: BlockInputCount,
         block_arity: BlockArity,
