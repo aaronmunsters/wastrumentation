@@ -245,6 +245,14 @@ advice! { memory_grow (
     }
 }
 
+advice! { memory_init (
+        location: Location,
+    ) {
+        let _ = location;
+        // original instruction performed anyway
+    }
+}
+
 advice! { block pre (
         block_input_count: BlockInputCount,
         block_arity: BlockArity,
