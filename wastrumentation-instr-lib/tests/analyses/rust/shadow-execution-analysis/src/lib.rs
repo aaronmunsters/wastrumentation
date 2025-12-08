@@ -827,7 +827,7 @@ advice! { block pre (block_input_count: BlockInputCount, block_arity: BlockArity
         let results = block_arity.value().try_into().unwrap();
         SHADOW_STACK.with_borrow_mut(|shadow_stack| {
             block_blocktype_instr_end(&BlockType { origin, arguments, results}, shadow_stack);
-        })
+        });
     }
 }
 
