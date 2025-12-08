@@ -236,6 +236,13 @@ advice! { memory_init (
     }
 }
 
+advice! { memory_copy (
+        location: Location,
+    ) {
+        println!("[ANALYSIS:] memory_copy, location: {location:?}");
+    }
+}
+
 advice! { block pre (
         block_input_count: BlockInputCount,
         block_arity: BlockArity,

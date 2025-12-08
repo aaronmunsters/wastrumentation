@@ -48,6 +48,7 @@ pub enum Hook {
     MemorySize,
     MemoryGrow,
     MemoryInit,
+    MemoryCopy,
     BlockPre,
     BlockPost,
     LoopPre,
@@ -83,6 +84,7 @@ impl Hook {
             MemorySize,
             MemoryGrow,
             MemoryInit,
+            MemoryCopy,
             BlockPre,
             BlockPost,
             LoopPre,
@@ -215,6 +217,9 @@ pub fn interface_from(hooks: &HashSet<Hook>) -> AnalysisInterface {
             }
             Hook::MemoryInit => {
                 interface.memory_init = Some(AnalysisInterface::interface_memory_init())
+            }
+            Hook::MemoryCopy => {
+                interface.memory_copy = Some(AnalysisInterface::interface_memory_copy())
             }
             Hook::BlockPre => {
                 interface.pre_block = Some(AnalysisInterface::interface_pre_block());
