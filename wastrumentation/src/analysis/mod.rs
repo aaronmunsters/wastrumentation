@@ -79,6 +79,7 @@ pub const TRAP_NAME_I64_LOAD: &str = "trap_i64_load";
 
 pub const TRAP_NAME_MEMORY_SIZE: &str = "trap_memory_size";
 pub const TRAP_NAME_MEMORY_GROW: &str = "trap_memory_grow";
+pub const TRAP_NAME_MEMORY_INIT: &str = "trap_memory_init";
 
 pub const TRAP_NAME_PRE_BLOCK: &str = "trap_block_pre";
 pub const TRAP_NAME_POST_BLOCK: &str = "trap_block_post";
@@ -165,6 +166,7 @@ pub struct AnalysisInterface {
     pub binary_f64_f64_to_f64: Option<WasmExport>,
     pub memory_size: Option<WasmExport>,
     pub memory_grow: Option<WasmExport>,
+    pub memory_init: Option<WasmExport>,
     pub local_get_i32: Option<WasmExport>,
     pub local_set_i32: Option<WasmExport>,
     pub local_tee_i32: Option<WasmExport>,
@@ -323,6 +325,7 @@ simple_interfaces! {
     interface_i64_load              TRAP_NAME_I64_LOAD                           :               /*load_idx:*/ I32 /*offs:*/ I64 /*op:*/ SER_OPRTR_TYP /*fidx*/ I64 /*iidx*/ I64 =>            /*res:*/ I64,
     interface_memory_size           TRAP_NAME_MEMORY_SIZE                        :                                          /*size:*/ I32 /*idx:*/ I64 /*fidx*/ I64 /*iidx*/ I64 =>           /*size:*/ I32,
     interface_memory_grow           TRAP_NAME_MEMORY_GROW                        :                                        /*amount:*/ I32 /*idx:*/ I64 /*fidx*/ I64 /*iidx*/ I64 => /*delta-or-neg-1:*/ I32,
+    interface_memory_init           TRAP_NAME_MEMORY_INIT                        :                                                                     /*fidx*/ I64 /*iidx*/ I64 =>              /* void */,
     interface_pre_block             TRAP_NAME_PRE_BLOCK                          :                                       /*input_c*/ I32 /*arity*/ I32 /*fidx*/ I64 /*iidx*/ I64 =>              /* void */,
     interface_post_block            TRAP_NAME_POST_BLOCK                         :                                                          /* void */ /*fidx*/ I64 /*iidx*/ I64 =>              /* void */,
     interface_pre_loop              TRAP_NAME_PRE_LOOP                           :                                       /*input_c*/ I32 /*arity*/ I32 /*fidx*/ I64 /*iidx*/ I64 =>              /* void */,

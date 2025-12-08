@@ -91,6 +91,7 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
         binary_f64_f64_to_f64,
         memory_size,
         memory_grow,
+        memory_init,
         local_get_i32,
         local_set_i32,
         local_tee_i32,
@@ -211,6 +212,7 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
         (binary_f64_f64_to_f64, (|i| Box::new(BinaryF64F64toF64(i)))),
         (memory_size, (|i| Box::new(MemorySize(i)))),
         (memory_grow, (|i| Box::new(MemoryGrow(i)))),
+        (memory_init, (|i| Box::new(MemoryInit(i)))),
         (local_get_i32, (|i| Box::new(LocalGetI32(i)))),
         (local_set_i32, (|i| Box::new(LocalSetI32(i)))),
         (local_tee_i32, (|i| Box::new(LocalTeeI32(i)))),
@@ -239,7 +241,7 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
         (f64_load, (|i| Box::new(F64Load(i)))),
         (i32_load, (|i| Box::new(I32Load(i)))),
         (i64_load, (|i| Box::new(I64Load(i)))),
-    ] as [(&Option<WasmExport>, TFn); 75];
+    ] as [(&Option<WasmExport>, TFn); 76];
 
     let targets: Vec<Box<dyn TransformationStrategy>> = traps_target_generators
         .into_iter()
