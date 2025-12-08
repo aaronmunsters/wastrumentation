@@ -14,6 +14,7 @@ pub enum Target {
     MemoryGrow(Idx<Function>),
     MemoryInit(Idx<Function>),
     MemoryCopy(Idx<Function>),
+    MemoryFill(Idx<Function>),
 
     // Local: Get / Set / Tee
     // - I32
@@ -101,6 +102,14 @@ fn transform(body: &BodyInner, target: Target) -> BodyInner {
                     continue;
                 }
                 (Target::MemoryCopy(trap_idx), Instr::MemoryCopy) => {
+                    result.extend_from_slice(&typed_instr.to_trap_call(&trap_idx));
+                    // Even though there 3 known values on the stack, we will not include them as
+                    // passing 3 return values in analysis languages (eg. Rust) is not well-suported...
+                    // Perform operation
+                    result.push(typed_instr.place_original(instr.clone()));
+                    continue;
+                }
+                (Target::MemoryFill(trap_idx), Instr::MemoryFill) => {
                     result.extend_from_slice(&typed_instr.to_trap_call(&trap_idx));
                     // Even though there 3 known values on the stack, we will not include them as
                     // passing 3 return values in analysis languages (eg. Rust) is not well-suported...
