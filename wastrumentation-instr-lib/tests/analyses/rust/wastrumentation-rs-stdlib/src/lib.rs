@@ -1338,6 +1338,21 @@ macro_rules! advice {
             $body;
         }
     };
+    (memory_copy
+        (
+            $location_ident: ident: Location $(,)?
+        )
+        $body:block
+    ) => {
+        #[no_mangle]
+        extern "C" fn trap_memory_copy(
+            funct_index: i64,
+            instr_index: i64,
+        ) {
+            let $location_ident = Location::new(funct_index, instr_index);
+            $body;
+        }
+    };
     (block pre (
         $block_input_c: ident: BlockInputCount,
         $block_arity: ident: BlockArity,

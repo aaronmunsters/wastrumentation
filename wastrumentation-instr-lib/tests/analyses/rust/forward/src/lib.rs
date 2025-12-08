@@ -253,6 +253,14 @@ advice! { memory_init (
     }
 }
 
+advice! { memory_copy (
+        location: Location,
+    ) {
+        let _ = location;
+        // original instruction performed anyway
+    }
+}
+
 advice! { block pre (
         block_input_count: BlockInputCount,
         block_arity: BlockArity,
