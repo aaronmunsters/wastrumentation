@@ -51,10 +51,12 @@ fn handle_call_to_imported(function: &WasmFunction, args: &MutDynArgs, ress: &Mu
 }
 
 #[allow(non_snake_case)]
-fn enter_block_with_label(L: Label, shadow_stack: &mut Stack) {
-    // https://webassembly.github.io/spec/core/exec/instructions.html#entering-xref-syntax-instructions-syntax-instr-mathit-instr-ast-with-label-l
+fn enter_block_with_label_and_values(L: Label, values: Vec<WasmValue>, shadow_stack: &mut Stack) {
+    // https://webassembly.github.io/spec/core/exec/instructions.html#entering-xref-syntax-instructions-syntax-instr-mathit-instr-ast-with-label-l-and-values-xref-exec-runtime-syntax-val-mathit-val-ast
     // 1. Push `L` to the stack.
     shadow_stack.push_label_on_stack(L);
+    // 2. Push the values `val^{*}` to the stack.
+    shadow_stack.push_values_on_stack(values);
     // 2. Jump to the start of the instruction sequence `instr^{*}`.
     "handled by VM";
 }
@@ -95,6 +97,7 @@ fn set_jump_flag_false() {
 // START ADVICE SPECIFICATION //
 //                         /////
 
+// https://webassembly.github.io/spec/core/exec/instructions.html#function-calls
 advice! { apply (function: WasmFunction, args: MutDynArgs, ress: MutDynResults) {
         if ShadowCallStackDepth::host_is_caller() {
             SHADOW_STACK.with_borrow_mut(|shadow_stack| {
@@ -140,8 +143,8 @@ advice! { apply (function: WasmFunction, args: MutDynArgs, ress: MutDynResults) 
             // 10. Let `L` be the label whose arity is `m` and whose continuation is the end of the function.
             #[allow(non_snake_case)]
             let L = Label::new(m, LabelOrigin::Function(f.instr_f_idx.try_into().unwrap()));
-            // 11. Enter the instruction sequence `instr^{*}` with label `L`.
-            enter_block_with_label(L, shadow_stack);
+            // 10. Enter the instruction sequence `instr^{*}` with label `L` and no values.
+            enter_block_with_label_and_values(L, vec![], shadow_stack);
         });
 
         ShadowCallStackDepth::increment_call_stack_depth();
@@ -152,6 +155,7 @@ advice! { apply (function: WasmFunction, args: MutDynArgs, ress: MutDynResults) 
             set_jump_flag_false();
             return;
         }
+
         // else:
         SHADOW_STACK.with_borrow_mut(|shadow_stack| {
             // Implicitly the `end` of a function is reached
@@ -780,6 +784,39 @@ advice! { memory_grow (
     }
 }
 
+advice! { memory_init (_location: Location) {
+        SHADOW_STACK.with_borrow_mut(|shadow_stack|{
+            // TODO: The shadow implementation could perhaps be implemented.
+            let src = shadow_stack.pop_value_from_stack();
+            let dst = shadow_stack.pop_value_from_stack();
+            let len = shadow_stack.pop_value_from_stack();
+            let _ = (src, dst, len);
+        });
+    }
+}
+
+advice! { memory_copy (_location: Location) {
+        SHADOW_STACK.with_borrow_mut(|shadow_stack|{
+            // TODO: The shadow implementation could perhaps be implemented.
+            let src = shadow_stack.pop_value_from_stack();
+            let dst = shadow_stack.pop_value_from_stack();
+            let len = shadow_stack.pop_value_from_stack();
+            let _ = (src, dst, len);
+        });
+    }
+}
+
+advice! { memory_fill (_location: Location) {
+        SHADOW_STACK.with_borrow_mut(|shadow_stack|{
+            // TODO: The shadow implementation could perhaps be implemented.
+            let src = shadow_stack.pop_value_from_stack();
+            let dst = shadow_stack.pop_value_from_stack();
+            let len = shadow_stack.pop_value_from_stack();
+            let _ = (src, dst, len);
+        });
+    }
+}
+
 #[derive(Debug)]
 struct BlockType {
     origin: LabelOrigin,
@@ -811,14 +848,12 @@ fn block_blocktype_instr_end(blocktype: &BlockType, shadow_stack: &mut Stack) {
     // 5. Assert: due to validation, there are at least `m` values on the top of the stack.
     shadow_stack.assert_at_least_n_values_on_stack(m);
     // 6. Pop the values `val^{m}` from the stack.
-    let mut val_m: Vec<WasmValue> = (0..m)
+    let val_m: Vec<_> = (0..m)
         .map(|_| shadow_stack.pop_value_from_stack())
+        .rev()
         .collect();
     // 7. Enter the block `val^{m} instr^{*}` with label `L`.
-    while let Some(val) = val_m.pop() {
-        shadow_stack.push_value_on_stack(val);
-    }
-    enter_block_with_label(L, shadow_stack);
+    enter_block_with_label_and_values(L, val_m, shadow_stack);
 }
 
 advice! { block pre (block_input_count: BlockInputCount, block_arity: BlockArity, _location: Location) {
@@ -861,12 +896,9 @@ advice! { loop_ pre (
             // 5. Assert: due to validation, there are at least `m` values on the top of the stack.
             shadow_stack.assert_at_least_n_values_on_stack(m);
             // 6. Pop the values `val^{m}` from the stack.
-            let mut val_m: Vec<WasmValue> = (0..m).map(|_|  shadow_stack.pop_value_from_stack() ).collect();
-            while let Some(val) = val_m.pop() {
-                shadow_stack.push_value_on_stack(val);
-            }
+            let val_m: Vec<_> = (0..m).map(|_| shadow_stack.pop_value_from_stack()).rev().collect();
             // 7. Enter the block `val^{m} instr^{*}` with label `L`.
-            enter_block_with_label(L, shadow_stack);
+            enter_block_with_label_and_values(L, val_m, shadow_stack);
         });
     }
 }
