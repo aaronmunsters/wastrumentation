@@ -1323,6 +1323,51 @@ macro_rules! advice {
             delta_or_neg_1.as_i32()
         }
     };
+    (memory_init
+        (
+            $location_ident: ident: Location $(,)?
+        )
+        $body:block
+    ) => {
+        #[no_mangle]
+        extern "C" fn trap_memory_init(
+            funct_index: i64,
+            instr_index: i64,
+        ) {
+            let $location_ident = Location::new(funct_index, instr_index);
+            $body;
+        }
+    };
+    (memory_copy
+        (
+            $location_ident: ident: Location $(,)?
+        )
+        $body:block
+    ) => {
+        #[no_mangle]
+        extern "C" fn trap_memory_copy(
+            funct_index: i64,
+            instr_index: i64,
+        ) {
+            let $location_ident = Location::new(funct_index, instr_index);
+            $body;
+        }
+    };
+    (memory_fill
+        (
+            $location_ident: ident: Location $(,)?
+        )
+        $body:block
+    ) => {
+        #[no_mangle]
+        extern "C" fn trap_memory_fill(
+            funct_index: i64,
+            instr_index: i64,
+        ) {
+            let $location_ident = Location::new(funct_index, instr_index);
+            $body;
+        }
+    };
     (block pre (
         $block_input_c: ident: BlockInputCount,
         $block_arity: ident: BlockArity,

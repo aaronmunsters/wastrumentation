@@ -34,6 +34,7 @@ impl ShadowCallStackDepth {
             *call_stack_depth += 1;
         });
     }
+
     pub(crate) fn decrement_call_stack_depth() {
         CALL_STACK_DEPTH.with_borrow_mut(|call_stack_depth| {
             debug_assert!(*call_stack_depth >= 0);
@@ -249,6 +250,10 @@ impl Stack {
     pub fn push_activation_on_stack(&mut self, activation: Frame) {
         let Self(shadow_stack_mut) = self;
         shadow_stack_mut.push(StackEntry::Frame(activation));
+    }
+
+    pub(crate) fn push_values_on_stack(&mut self, values: Vec<WasmValue>) {
+        values.into_iter().for_each(|v| self.push_value_on_stack(v));
     }
 
     #[must_use]
