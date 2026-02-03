@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 wasabi_wasm = { git = "https://github.com/aaronmunsters/wasabi.git", rev = "ee2fb70" }
-wasm-merge = { workspace = true }
+wasm-mergers = { git = "https://github.com/aaronmunsters/wasm-mergers", rev = "a4a2753" }
 indoc = { workspace = true }
 thiserror = { workspace = true }
 

@@ -5,7 +5,6 @@ members = [
     "wastrumentation",
     "wastrumentation-instr-lib",
     "wasp-compiler",
-    "wasm-merge",
     "cli",
     "wastrumentation-static-analysis",
     "supported-languages/*",
@@ -17,7 +16,6 @@ asc-compiler-rs = { git = "https://github.com/aaronmunsters/asc-compiler-rs", re
 rust-to-wasm-compiler = { git = "https://github.com/aaronmunsters/rust-to-wasm-compiler", rev = "7f25cd1" }
 wastrumentation = { path = "./wastrumentation" }
 wasp-compiler = { path = "./wasp-compiler" }
-wasm-merge = { path = "./wasm-merge" }
 wastrumentation-lang-rust = { path = "./supported-languages/rust" }
 wastrumentation-lang-webassembly = { path = "./supported-languages/webassembly" }
 wastrumentation-lang-assemblyscript = { path = "./supported-languages/assemblyscript" }
