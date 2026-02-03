@@ -16,11 +16,6 @@ use instrument::function_application::INSTRUMENTATION_ANALYSIS_MODULE;
 use instrument::function_application::INSTRUMENTATION_INSTRUMENTED_MODULE;
 use instrument::function_application::INSTRUMENTATION_STACK_MODULE;
 pub use stack_library::ModuleLinkedStackHooks;
-use wasm_merge::options::BulkMemory;
-use wasm_merge::options::Multimemory;
-use wasm_merge::options::NoValidate;
-use wasm_merge::options::RenameExportConflicts;
-use wasm_merge::{InputModule, MergeOptions};
 
 use crate::error::Error;
 
@@ -143,61 +138,62 @@ where
         Ok(instrumented_input)
     }
 
+    // New merge
     fn merge(
         primary_selection: &Option<PrimaryTarget>,
         instrumented_input: &[u8],
         compiled_analysis: &[u8],
         compiled_instrumentation_lib: Option<&[u8]>,
     ) -> Result<WasmModule, Error<AnalysisLanguage, InstrumentationLanguage>> {
+        use wasm_mergers::merge_options::MergeOptions;
+        use wasm_mergers::*;
+
         let input_analysis = move || {
-            Some(InputModule {
-                module: compiled_analysis,
-                namespace: INSTRUMENTATION_ANALYSIS_MODULE.into(),
-            })
+            Some(NamedModule::new(
+                INSTRUMENTATION_ANALYSIS_MODULE,
+                compiled_analysis,
+            ))
         };
         let input_target = move || {
-            Some(InputModule {
-                module: instrumented_input,
-                namespace: INSTRUMENTATION_INSTRUMENTED_MODULE.into(),
-            })
+            Some(NamedModule::new(
+                INSTRUMENTATION_INSTRUMENTED_MODULE,
+                instrumented_input,
+            ))
         };
         let input_instrumentation = move || {
-            compiled_instrumentation_lib.map(|lib| InputModule {
-                module: lib,
-                namespace: INSTRUMENTATION_STACK_MODULE.into(),
-            })
+            compiled_instrumentation_lib
+                .map(|lib| NamedModule::new(INSTRUMENTATION_STACK_MODULE, lib))
         };
 
-        let (primary, input_modules) = match primary_selection {
-            Some(PrimaryTarget::Analysis) => (
-                input_analysis(),
-                vec![input_target(), input_instrumentation()],
-            ),
-            Some(PrimaryTarget::Target) => (
-                input_target(),
-                vec![input_analysis(), input_instrumentation()],
-            ),
-            Some(PrimaryTarget::Instrumentation) => (
-                input_instrumentation(),
-                vec![input_target(), input_analysis()],
-            ),
-            None => (
-                None,
-                vec![input_target(), input_instrumentation(), input_analysis()],
-            ),
+        let input_modules = match primary_selection {
+            Some(PrimaryTarget::Analysis) => {
+                vec![input_analysis(), input_target(), input_instrumentation()]
+            }
+            Some(PrimaryTarget::Target) => {
+                vec![input_target(), input_analysis(), input_instrumentation()]
+            }
+            Some(PrimaryTarget::Instrumentation) => {
+                vec![input_instrumentation(), input_target(), input_analysis()]
+            }
+            None => vec![input_target(), input_instrumentation(), input_analysis()],
         };
 
-        let input_modules = input_modules.into_iter().flatten().collect();
+        let modules = input_modules.iter().flatten().collect::<Vec<_>>();
 
+        use merge_options::{default_rename, RenameStrategy};
         let merge_options = MergeOptions {
-            primary,
-            input_modules,
-            no_validation: NoValidate::Enable,
-            rename_export_conflicts: RenameExportConflicts::Enable,
-            multimemory: Multimemory::Enable,
-            bulk_memory: BulkMemory::Enable,
+            clashing_exports: merge_options::ClashingExports::Rename(RenameStrategy {
+                first_occurrence: false,
+                functions: default_rename,
+                tables: default_rename,
+                memories: default_rename,
+                globals: default_rename,
+                tags: default_rename,
+            }),
             ..Default::default()
         };
-        merge_options.merge().map_err(Error::MergeError)
+        Ok(MergeConfiguration::new(&modules[..], merge_options)
+            .merge()
+            .unwrap())
     }
 }
