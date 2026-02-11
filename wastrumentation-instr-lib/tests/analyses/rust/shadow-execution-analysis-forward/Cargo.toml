@@ -1,0 +1,20 @@
+[package]
+name = "shadow-execution-analysis-forward"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+shadow-execution-analysis = { path = "../shadow-execution-analysis" }
+wastrumentation-rs-stdlib = { path = "../wastrumentation-rs-stdlib", features = [
+    "std",
+] }
+
+[profile.release]
+strip = true
+lto = true
+panic = "abort"
+
+[workspace]

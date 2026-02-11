@@ -4,7 +4,7 @@ use wasm_mergers::error::Error as MergeError;
 
 use crate::{compiler::CompilationError, parse_nesting::LowToHighError};
 
-#[derive(Debug, Error)]
+#[derive(Error, Debug)]
 pub enum Error<AnalysisLangauge, InstrumentationLanguage> {
     #[error("Compilation for analysis failed: {0}")]
     CompilationErrorAnalysis(CompilationError<AnalysisLangauge>),
@@ -16,7 +16,7 @@ pub enum Error<AnalysisLangauge, InstrumentationLanguage> {
     InstrumentationError(InstrumentationError),
 }
 
-#[derive(thiserror::Error, Debug)]
+#[derive(Error, Debug)]
 pub enum InstrumentationError {
     #[error("attempt to instrument an `import` function")]
     ParseModuleError(ParseError),

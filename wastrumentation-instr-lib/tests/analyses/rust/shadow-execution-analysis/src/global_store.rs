@@ -11,7 +11,7 @@ use std::cell::RefCell;
 const TRGT_GLOBALS_NOT_INITIALISED: bool = false;
 const TRGT_GLOBALS_ONLY_AFFECTED_INTERNALLY: bool = false;
 
-pub fn assert_global_value(actual_value: &WasmValue, shadow_value: &WasmValue) {
+pub(crate) fn assert_global_value(actual_value: &WasmValue, shadow_value: &WasmValue) {
     if TRGT_GLOBALS_NOT_INITIALISED && TRGT_GLOBALS_ONLY_AFFECTED_INTERNALLY {
         debug_assert_eq!(actual_value, shadow_value);
     }
@@ -22,13 +22,13 @@ pub fn assert_global_value(actual_value: &WasmValue, shadow_value: &WasmValue) {
 ////////////////
 
 thread_local! {
-    pub(crate) static GLOBAL_STORE: RefCell<GlobalStore> = const { RefCell::new(GlobalStore(vec![])) };
+    pub static GLOBAL_STORE: RefCell<GlobalStore> = const { RefCell::new(GlobalStore(vec![])) };
 }
 
 // https://webassembly.github.io/spec/core/exec/runtime.html#store
-pub(crate) struct GlobalStore(Vec<GlobalHandle>);
+pub struct GlobalStore(Vec<GlobalHandle>);
 
-pub(crate) struct GlobalAddress(usize);
+pub struct GlobalAddress(usize);
 
 impl GlobalAddress {
     #[must_use]

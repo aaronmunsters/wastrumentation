@@ -30,7 +30,8 @@ const WAT_MGIM1: &str = r#"
 )
 "#;
 
-const PATH_INPUT_ANLYSIS: &str = "./tests/analyses/rust/shadow-execution-analysis/Cargo.toml";
+const PATH_INPUT_ANLYSIS: &str =
+    "./tests/analyses/rust/shadow-execution-analysis-forward/Cargo.toml";
 
 fn compile_input_programs() -> (Vec<u8>, Vec<u8>) {
     let wat_mgm = wat::parse_str(WAT_MGM).unwrap();

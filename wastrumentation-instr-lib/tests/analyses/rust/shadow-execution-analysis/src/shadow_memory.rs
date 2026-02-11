@@ -31,14 +31,14 @@ pub(crate) fn assert_shadow_memory(loaded_value: &WasmValue, shadow_value: &Wasm
 ////////////////
 
 thread_local! {
-    pub(crate) static SHADOW_MEMORY: RefCell<Memory> = const { RefCell::new(Memory(vec![])) };
+    pub static SHADOW_MEMORY: RefCell<Memory> = const { RefCell::new(Memory(vec![])) };
 }
 
-pub(crate) struct Memory(Vec<u8>);
+pub struct Memory(Vec<u8>);
 
 impl Memory {
     #[must_use]
-    pub(crate) fn load(
+    pub fn load(
         &mut self,
         store_index: &WasmValue,
         offset: &'_ LoadOffset,
@@ -66,7 +66,7 @@ impl Memory {
         }
     }
 
-    pub(crate) fn store(
+    pub fn store(
         &mut self,
         store_index: &WasmValue,
         shadow_value: &WasmValue,
@@ -91,26 +91,22 @@ impl Memory {
         }
     }
 
-    #[allow(unused)]
-    pub(crate) fn as_ptr(&self) -> *const u8 {
+    pub fn as_ptr(&self) -> *const u8 {
         let Self(buffer) = self;
         buffer.as_ptr()
     }
 
-    #[allow(unused)]
-    pub(crate) fn len(&self) -> usize {
+    pub fn size(&self) -> usize {
         let Self(buffer) = self;
         buffer.len()
     }
 
-    #[allow(unused)]
-    pub(crate) fn inner(&self) -> &Vec<u8> {
+    pub fn inner(&self) -> &Vec<u8> {
         let Self(inner) = self;
         inner
     }
 
-    #[allow(unused)]
-    pub(crate) fn inner_mut(&mut self) -> &mut Vec<u8> {
+    pub fn inner_mut(&mut self) -> &mut Vec<u8> {
         let Self(inner) = self;
         inner
     }
