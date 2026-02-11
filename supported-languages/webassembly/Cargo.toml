@@ -7,3 +7,4 @@ edition = "2024"
 wat = { workspace = true }
 wastrumentation = { workspace = true }
 indoc = { workspace = true }
+thiserror = { workspace = true }

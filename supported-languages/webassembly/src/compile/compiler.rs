@@ -16,9 +16,12 @@ impl DefaultCompilerOptions<WebAssembly> for CompilerOptions {
     }
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum Never {}
+
 impl Compiles<WebAssembly> for Compiler {
     type CompilerOptions = CompilerOptions;
-    type CompilerSetupError = ();
+    type CompilerSetupError = Never;
 
     fn setup_compiler() -> Result<Self, Self::CompilerSetupError> {
         Ok(Self)
