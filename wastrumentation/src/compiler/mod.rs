@@ -51,7 +51,7 @@ where
     Self: Sized,
 {
     type CompilerOptions: DefaultCompilerOptions<Language>;
-    type CompilerSetupError;
+    type CompilerSetupError: std::error::Error;
 
     fn setup_compiler() -> Result<Self, Self::CompilerSetupError>;
 
