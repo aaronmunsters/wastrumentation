@@ -4,10 +4,11 @@
 mod global_store;
 mod shadow_memory;
 mod shadow_stack;
+mod shadow_traps;
 
-use global_store::*;
-use shadow_memory::*;
-use shadow_stack::*;
+pub use global_store::*;
+pub use shadow_memory::*;
+pub use shadow_stack::*;
 
 use wastrumentation_rs_stdlib::*;
 
@@ -99,6 +100,9 @@ fn set_jump_flag_false() {
 
 // https://webassembly.github.io/spec/core/exec/instructions.html#function-calls
 advice! { apply (function: WasmFunction, args: MutDynArgs, ress: MutDynResults) {
+
+        unsafe { shadow_traps::apply(&function, &args, &ress) };
+
         if ShadowCallStackDepth::host_is_caller() {
             SHADOW_STACK.with_borrow_mut(|shadow_stack| {
                 handle_host_is_caller_setup(&args, shadow_stack);
@@ -241,6 +245,9 @@ advice! { if_then_else (
         if_then_else_arity: IfThenElseArity,
         _location: Location,
     ) {
+
+        unsafe { shadow_traps::if_then_else(&path_continuation, &if_then_else_input_c, &if_then_else_arity, &_location) };
+
         SHADOW_STACK.with_borrow_mut(|shadow_stack| {
             let arguments = if_then_else_input_c.value().try_into().unwrap();
             let results = if_then_else_arity.value().try_into().unwrap();
@@ -272,6 +279,9 @@ advice! { if_then (
         if_then_arity: IfThenArity,
         _location: Location,
     ) {
+
+        unsafe { shadow_traps::if_then(&path_continuation, &if_then_input_c, &if_then_arity, &_location, ) };
+
         SHADOW_STACK.with_borrow_mut(|shadow_stack| {
             let arguments = if_then_input_c.value().try_into().unwrap();
             let results = if_then_arity.value().try_into().unwrap();
@@ -299,6 +309,9 @@ advice! { if_then (
 }
 
 advice! { if_then_else_post (_location: Location) {
+
+        unsafe { shadow_traps::if_then_else_post(&_location) };
+
         SHADOW_STACK.with_borrow_mut(|shadow_stack| {
             exit_instr_with_label(shadow_stack);
         });
@@ -306,6 +319,9 @@ advice! { if_then_else_post (_location: Location) {
 }
 
 advice! { if_then_post (_location: Location) {
+
+        unsafe { shadow_traps::if_then_post(&_location) };
+
         SHADOW_STACK.with_borrow_mut(|shadow_stack| {
             exit_instr_with_label(shadow_stack);
         });
@@ -313,6 +329,9 @@ advice! { if_then_post (_location: Location) {
 }
 
 advice! { br (branch_target_label: BranchTargetLabel, _location: Location) {
+
+        unsafe { shadow_traps::br(&branch_target_label, &_location) };
+
         SHADOW_STACK.with_borrow_mut(|shadow_stack| {
             // https://webassembly.github.io/spec/core/exec/instructions.html#xref-syntax-instructions-syntax-instr-control-mathsf-br-l
             br_with(branch_target_label.label().try_into().unwrap(), shadow_stack);
@@ -325,6 +344,9 @@ advice! { br_if (
         target_label: ParameterBrIfLabel,
         _location: Location,
     ) {
+
+        unsafe { shadow_traps::br_if(&path_continuation, &target_label, &_location) };
+
         SHADOW_STACK.with_borrow_mut(|shadow_stack| {
             // https://webassembly.github.io/spec/core/exec/instructions.html#xref-syntax-instructions-syntax-instr-control-mathsf-br-if-l
             // 1. Assert: due to validation, a value of value type `i32` is on the top of the stack.
@@ -353,6 +375,9 @@ advice! { br_table (
         branch_table_default: BranchTableDefault,
         _location: Location,
     ) {
+
+        unsafe { shadow_traps::br_table(&branch_table_target, &branch_table_effective, &branch_table_default, &_location) };
+
         SHADOW_STACK.with_borrow_mut(|shadow_stack| {
             // https://webassembly.github.io/spec/core/exec/instructions.html#xref-syntax-instructions-syntax-instr-control-mathsf-br-table-l-ast-l-n
             let _ = branch_table_default;
@@ -373,6 +398,9 @@ advice! { br_table (
 }
 
 advice! { select (path_continuation: PathContinuation, _location: Location) {
+
+        unsafe { shadow_traps::select(&path_continuation, &_location) };
+
         SHADOW_STACK.with_borrow_mut(|shadow_stack| {
             // https://webassembly.github.io/spec/core/exec/instructions.html#xref-syntax-instructions-syntax-instr-parametric-mathsf-select-t-ast
             // 1. Assert: due to validation, a value of value type `i32` is on the top of the stack.
@@ -405,6 +433,9 @@ advice! { call_indirect pre (
         _func_table_ident: FunctionTable,
         _location: Location,
     ) {
+
+        unsafe { shadow_traps::call_indirect_pre(&target_func, &_func_table_ident, &_location) };
+
         SHADOW_STACK.with_borrow_mut(|shadow_stack| {
 
             let FunctionTableIndex(i) = target_func;
@@ -460,21 +491,33 @@ advice! { call_indirect pre (
 }
 
 advice! { call_indirect post (_target_func: FunctionTable, _location: Location) {
+
+        unsafe { shadow_traps::call_indirect_post(&_target_func, &_location) };
+
         "No particular semantics";
     }
 }
 
 advice! { call pre (_target_func: FunctionIndex, _location: Location) {
+
+        unsafe { shadow_traps::call_pre(&_target_func, &_location) };
+
         "No particular semantics";
     }
 }
 
 advice! { call post (_target_func: FunctionIndex, _location: Location) {
+
+        unsafe { shadow_traps::call_post(&_target_func, &_location) };
+
         "No particular semantics";
     }
 }
 
 advice! { unary (unop: UnaryOperator, c_1: WasmValue, _location: Location) {
+
+        unsafe { shadow_traps::unary(&unop, &c_1, &_location) };
+
         SHADOW_STACK.with_borrow_mut(|shadow_stack| {
             // https://webassembly.github.io/spec/core/exec/instructions.html#t-mathsf-xref-syntax-instructions-syntax-unop-mathit-unop
             // 1. Assert: due to validation, a value of value type `t` is on the top of the stack.
@@ -501,6 +544,9 @@ advice! { binary (
         c_2: WasmValue,
         _location: Location,
     ) {
+
+        unsafe { shadow_traps::binary(&binop, &c_1, &c_2, &_location) };
+
         SHADOW_STACK.with_borrow_mut(|shadow_stack| {
             // 1. Assert: due to validation, two values of value type `t` are on the top of the stack.
             "handled by validation";
@@ -524,6 +570,9 @@ advice! { binary (
 }
 
 advice! { drop (_location: Location) {
+
+        unsafe { shadow_traps::drop(&_location) };
+
         SHADOW_STACK.with_borrow_mut(|shadow_stack| {
             // https://webassembly.github.io/spec/core/exec/instructions.html#xref-syntax-instructions-syntax-instr-parametric-mathsf-drop
             // Assert: due to validation, a value is on the top of the stack.
@@ -536,6 +585,9 @@ advice! { drop (_location: Location) {
 
 // https://webassembly.github.io/spec/core/exec/instructions.html#xref-syntax-instructions-syntax-instr-control-mathsf-return
 advice! { return_ (_location: Location) {
+
+        unsafe { shadow_traps::return_(&_location) };
+
         SHADOW_STACK.with_borrow_mut(|shadow_stack| {
             set_jump_flag_true();
             //  1. Let {F} be the current frame.
@@ -576,6 +628,9 @@ advice! { return_ (_location: Location) {
 }
 
 advice! { const_ (value: WasmValue, _location: Location) {
+
+        unsafe { shadow_traps::const_(&value, &_location) };
+
         SHADOW_STACK.with_borrow_mut(|shadow_stack| {
             // https://webassembly.github.io/spec/core/exec/instructions.html#t-mathsf-xref-syntax-instructions-syntax-instr-numeric-mathsf-const-c
             // 1. Push the value `t.const c` to the stack.
@@ -609,6 +664,9 @@ advice! { local (
         local_op: LocalOp,
         _location: Location,
     ) {
+
+        unsafe { shadow_traps::local(&value, &index, &local_op, &_location) };
+
         SHADOW_STACK.with_borrow_mut(|shadow_stack| {
             let x: usize = index.value().try_into().unwrap();
             match local_op {
@@ -654,6 +712,9 @@ advice! { global (
         global_op: GlobalOp,
         _location: Location,
     ) {
+
+        unsafe { shadow_traps::global(&value, &index, &global_op, &_location) };
+
         SHADOW_STACK.with_borrow_mut(|shadow_stack| {
             let x: usize = index.value().try_into().unwrap();
             match global_op {
@@ -713,6 +774,9 @@ advice! { load (
         operation: LoadOperation,
         _location: Location,
     ) {
+
+        unsafe { shadow_traps::load(&store_index, &offset, &operation, &_location) };
+
         SHADOW_STACK.with_borrow_mut(|shadow_stack| {
             // https://webassembly.github.io/spec/core/exec/instructions.html#t-mathsf-xref-syntax-instructions-syntax-instr-memory-mathsf-load-xref-syntax-instructions-syntax-memarg-mathit-memarg-and-t-mathsf-xref-syntax-instructions-syntax-instr-memory-mathsf-load-n-mathsf-xref-syntax-instructions-syntax-sx-mathit-sx-xref-syntax-instructions-syntax-memarg-mathit-memarg
             // TODO: link to Wasm spec
@@ -737,6 +801,9 @@ advice! { store (
         operation: StoreOperation,
         _location: Location,
     ) {
+
+        unsafe { shadow_traps::store(&store_index, &value, &offset, &operation, &_location) };
+
         SHADOW_STACK.with_borrow_mut(|shadow_stack| {
             // https://webassembly.github.io/spec/core/exec/instructions.html#t-mathsf-xref-syntax-instructions-syntax-instr-memory-mathsf-store-xref-syntax-instructions-syntax-memarg-mathit-memarg-and-t-mathsf-xref-syntax-instructions-syntax-instr-memory-mathsf-store-n-xref-syntax-instructions-syntax-memarg-mathit-memarg
             // TODO: link to Wasm spec
@@ -761,6 +828,9 @@ advice! { memory_size (
         index: MemoryIndex,
         _location: Location,
     ) {
+
+        unsafe { shadow_traps::memory_size(&size, &index, &_location) };
+
         SHADOW_STACK.with_borrow_mut(|shadow_stack| {
             let _ = index;
             shadow_stack.push_value_on_stack(size.clone());
@@ -774,6 +844,9 @@ advice! { memory_grow (
         index: MemoryIndex,
         _location: Location,
     ) {
+
+        unsafe { shadow_traps::memory_grow(&amount, &index, &_location) };
+
         SHADOW_STACK.with_borrow_mut(|shadow_stack| {
             let shadow_amount = shadow_stack.pop_value_from_stack();
             debug_assert_eq!(shadow_amount, amount);
@@ -785,6 +858,9 @@ advice! { memory_grow (
 }
 
 advice! { memory_init (_location: Location) {
+
+        unsafe { shadow_traps::memory_init(&_location) };
+
         SHADOW_STACK.with_borrow_mut(|shadow_stack|{
             // TODO: The shadow implementation could perhaps be implemented.
             let src = shadow_stack.pop_value_from_stack();
@@ -796,6 +872,9 @@ advice! { memory_init (_location: Location) {
 }
 
 advice! { memory_copy (_location: Location) {
+
+        unsafe { shadow_traps::memory_copy(&_location) };
+
         SHADOW_STACK.with_borrow_mut(|shadow_stack|{
             // TODO: The shadow implementation could perhaps be implemented.
             let src = shadow_stack.pop_value_from_stack();
@@ -807,6 +886,9 @@ advice! { memory_copy (_location: Location) {
 }
 
 advice! { memory_fill (_location: Location) {
+
+        unsafe { shadow_traps::memory_fill(&_location) };
+
         SHADOW_STACK.with_borrow_mut(|shadow_stack|{
             // TODO: The shadow implementation could perhaps be implemented.
             let src = shadow_stack.pop_value_from_stack();
@@ -857,6 +939,9 @@ fn block_blocktype_instr_end(blocktype: &BlockType, shadow_stack: &mut Stack) {
 }
 
 advice! { block pre (block_input_count: BlockInputCount, block_arity: BlockArity, _location: Location) {
+
+        unsafe { shadow_traps::block_pre(&block_input_count, &block_arity, &_location) };
+
         let origin = LabelOrigin::Block;
         let arguments = block_input_count.value().try_into().unwrap();
         let results = block_arity.value().try_into().unwrap();
@@ -867,6 +952,9 @@ advice! { block pre (block_input_count: BlockInputCount, block_arity: BlockArity
 }
 
 advice! { block post (_location: Location) {
+
+        unsafe { shadow_traps::block_post(&_location) };
+
         SHADOW_STACK.with_borrow_mut(|shadow_stack|{
             exit_instr_with_label(shadow_stack);
         });
@@ -878,6 +966,9 @@ advice! { loop_ pre (
         loop_arity: LoopArity,
         _location: Location,
     ) {
+
+        unsafe { shadow_traps::loop_pre(&loop_input_count, &loop_arity, &_location) };
+
         SHADOW_STACK.with_borrow_mut(|shadow_stack|{
             // https://webassembly.github.io/spec/core/exec/instructions.html#xref-syntax-instructions-syntax-instr-control-mathsf-loop-xref-syntax-instructions-syntax-blocktype-mathit-blocktype-xref-syntax-instructions-syntax-instr-mathit-instr-ast-xref-syntax-instructions-syntax-instr-control-mathsf-end
             // 1. Let `F` be the current frame.
@@ -904,6 +995,9 @@ advice! { loop_ pre (
 }
 
 advice! { loop_ post (_location: Location) {
+
+        unsafe { shadow_traps::loop_post(&_location) };
+
         SHADOW_STACK.with_borrow_mut(|shadow_stack|{
             exit_instr_with_label(shadow_stack);
         });

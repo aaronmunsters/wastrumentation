@@ -31,7 +31,8 @@ fn compile_input_program(input_program: impl Into<PathBuf>) -> Vec<u8> {
 }
 
 const PATH_INPUT_PROGRAM: &str = "./tests/input-programs/rust/rust-taint-input-program/Cargo.toml";
-const PATH_INPUT_ANLYSIS: &str = "./tests/analyses/rust/shadow-execution-analysis/Cargo.toml";
+const PATH_INPUT_ANLYSIS: &str =
+    "./tests/analyses/rust/shadow-execution-analysis-forward/Cargo.toml";
 
 #[test]
 fn test_analysis() {

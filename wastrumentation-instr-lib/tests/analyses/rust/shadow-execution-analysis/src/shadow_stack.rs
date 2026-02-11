@@ -7,10 +7,10 @@ use std::cell::RefCell;
 // `The execution rules also assume the presence of an implicit stack that is modified by pushing or popping values, labels, and frames.`
 // https://webassembly.github.io/spec/core/exec/runtime.html#stack
 
-pub(crate) struct Stack(Vec<StackEntry>);
+pub struct Stack(Vec<StackEntry>);
 
 thread_local! {
-    pub(crate) static SHADOW_STACK: RefCell<Stack> = const { RefCell::new(Stack(vec![])) };
+    pub static SHADOW_STACK: RefCell<Stack> = const { RefCell::new(Stack(vec![])) };
 }
 
 thread_local! {
@@ -21,7 +21,7 @@ thread_local! {
 pub(crate) struct ShadowCallStackDepth;
 
 impl ShadowCallStackDepth {
-    pub(crate) fn host_is_caller() -> bool {
+    pub fn host_is_caller() -> bool {
         CALL_STACK_DEPTH.with_borrow(|call_stack_depth| {
             debug_assert!(*call_stack_depth >= 0);
             *call_stack_depth == 0
@@ -98,6 +98,13 @@ pub struct Frame {
     locals: Vec<Option<WasmValue>>,
 }
 
+#[derive(Debug, Clone)]
+pub enum GetLocalResult {
+    OutOfBounds,
+    Uninitialised,
+    Some(WasmValue),
+}
+
 impl Frame {
     pub fn new(arity: usize, function_index: usize, arguments: Vec<WasmValue>) -> Self {
         Self {
@@ -135,6 +142,17 @@ impl Frame {
             let default = WasmValue::default_for(&type_);
             self.locals[x] = Some(default.clone());
             default
+        }
+    }
+
+    pub fn get_local_safe(&mut self, x: usize) -> GetLocalResult {
+        let Some(slot) = self.locals.get(x) else {
+            return GetLocalResult::OutOfBounds;
+        };
+
+        match slot {
+            Some(value) => GetLocalResult::Some(value.clone()),
+            None => GetLocalResult::Uninitialised,
         }
     }
 }
@@ -253,11 +271,13 @@ impl Stack {
     }
 
     pub(crate) fn push_values_on_stack(&mut self, values: Vec<WasmValue>) {
-        values.into_iter().for_each(|v| self.push_value_on_stack(v));
+        for value in values {
+            self.push_value_on_stack(value);
+        }
     }
 
     #[must_use]
-    pub(crate) fn current_frame_mut(&mut self) -> &mut Frame {
+    pub fn current_frame_mut(&mut self) -> &mut Frame {
         // https://webassembly.github.io/spec/core/exec/conventions.html#prose-notation
         // `Certain rules require the stack to contain at least one frame.
         //   The most recent frame is referred to as the current frame.`

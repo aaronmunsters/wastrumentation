@@ -3,17 +3,7 @@ name = "shadow-execution-analysis"
 version = "0.1.0"
 edition = "2021"
 
-[lib]
-crate-type = ["cdylib"]
-
 [dependencies]
 wastrumentation-rs-stdlib = { path = "../wastrumentation-rs-stdlib", features = [
     "std",
 ] }
-
-[profile.release]
-strip = true
-lto = true
-panic = "abort"
-
-[workspace]

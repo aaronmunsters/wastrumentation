@@ -12,10 +12,3 @@ cfg-if = "1.0"
 [features]
 default = []
 std = []
-
-[profile.release]
-strip = true
-lto = true
-panic = "abort"
-
-[workspace]
