@@ -1,8 +1,6 @@
 use wastrumentation_rs_stdlib::WasmType;
 
-// Imports
-use super::WasmValue;
-use std::cell::RefCell;
+use crate::{ ShadowMeta, ShadowValue };
 
 //////////////////////////////////
 // compile-time severity checks //
@@ -11,7 +9,10 @@ use std::cell::RefCell;
 const TRGT_GLOBALS_NOT_INITIALISED: bool = false;
 const TRGT_GLOBALS_ONLY_AFFECTED_INTERNALLY: bool = false;
 
-pub(crate) fn assert_global_value(actual_value: &WasmValue, shadow_value: &WasmValue) {
+pub fn assert_global_value<M: ShadowMeta>(
+    actual_value: &ShadowValue<M>,
+    shadow_value: &ShadowValue<M>
+) {
     if TRGT_GLOBALS_NOT_INITIALISED && TRGT_GLOBALS_ONLY_AFFECTED_INTERNALLY {
         debug_assert_eq!(actual_value, shadow_value);
     }
@@ -21,18 +22,53 @@ pub(crate) fn assert_global_value(actual_value: &WasmValue, shadow_value: &WasmV
 // Public API //
 ////////////////
 
-thread_local! {
-    pub static GLOBAL_STORE: RefCell<GlobalStore> = const { RefCell::new(GlobalStore(vec![])) };
+// https://webassembly.github.io/spec/core/exec/runtime.html#store
+
+pub struct GlobalHandle<M: ShadowMeta> {
+    value: Option<ShadowValue<M>>,
 }
 
-// https://webassembly.github.io/spec/core/exec/runtime.html#store
-pub struct GlobalStore(Vec<GlobalHandle>);
+impl<M: ShadowMeta> Default for GlobalHandle<M> {
+    fn default() -> Self {
+        Self { value: None }
+    }
+}
+
+impl<M: ShadowMeta> GlobalHandle<M> {
+    /// Get value from global handle.
+    /// The actual value allows us to assert that the global value in the
+    /// shadow execution matches the actual global value.
+    // FIXME: Split this into an assertion where the caller is debug_assert!;
+    //        this kind of assertion is skipped in --release builds.
+    #[must_use]
+    pub fn value(&mut self, type_: WasmType, actual: &ShadowValue<M>) -> ShadowValue<M> {
+        if let Some(shadow_value) = &self.value {
+            debug_assert_eq!(shadow_value.value.type_(), type_);
+            debug_assert_eq!(shadow_value, actual);
+            // If this assertion fails, the host must have changed it.
+            // If the host changed it and we were not notified, this is a bug.
+            // FIXME: add infrastructure for notification.
+            shadow_value.clone()
+        } else {
+            // The actual value will be either the default value (if
+            // uninitialized) or a fixed compile-time value if an
+            // initializer is present in the binary.
+            self.value = Some(actual.clone());
+            actual.clone()
+        }
+    }
+
+    /// Overwrite the shadow value for this global (e.g. after a `global.set`).
+    pub fn replace_value_with(&mut self, value: ShadowValue<M>) {
+        self.value = Some(value);
+    }
+}
 
 pub struct GlobalAddress(usize);
 
 impl GlobalAddress {
     #[must_use]
-    pub(crate) fn new(x: usize) -> Self {
+    pub fn new(x: usize) -> Self {
         Self(x)
     }
 
@@ -43,43 +79,23 @@ impl GlobalAddress {
     }
 }
 
-#[derive(Default)]
-pub struct GlobalHandle {
-    value: Option<WasmValue>,
-}
+pub struct GlobalStore<M: ShadowMeta>(Vec<GlobalHandle<M>>);
 
-impl GlobalHandle {
-    /// Get value from global handle.
-    /// The actual value allows us to assert that the global value in the
-    /// shadow execution matches the actual global value.
-    // FIXME: Split this into an assertion where the caller is debug_assert!;
-    //        this kind of assertion is skipped in --release builds.
-    #[must_use]
-    pub fn value(&mut self, type_: WasmType, actual: &WasmValue) -> WasmValue {
-        if let Some(value) = &self.value {
-            debug_assert_eq!(value.type_(), type_);
-            debug_assert_eq!(value, actual);
-            // If this assertion fails, the host must have changed it.
-            // If the host changed it and we were not notified, this is a bug.
-            // FIXME: add infrastructure for notification.
-            value.clone()
-        } else {
-            // The actual value will be either the default value (if
-            // uninitialized) or a fixed compile-time value if an
-            // initializer is present in the binary.
-            self.value = Some(actual.clone());
-            actual.clone()
-        }
-    }
-
-    pub fn replace_value_with(&mut self, value: WasmValue) {
-        self.value = Some(value);
+impl<M: ShadowMeta> GlobalStore<M> {
+    pub const fn new() -> Self {
+        Self(vec![])
     }
 }
 
-impl GlobalStore {
+impl<M: ShadowMeta> Default for GlobalStore<M> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<M: ShadowMeta> GlobalStore<M> {
     #[must_use]
-    pub fn global(&mut self, address: &GlobalAddress) -> &mut GlobalHandle {
+    pub fn global(&mut self, address: &GlobalAddress) -> &mut GlobalHandle<M> {
         let Self(global_store) = self;
         let GlobalAddress(effective_address) = address;
         &mut global_store[*effective_address]

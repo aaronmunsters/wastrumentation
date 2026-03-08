@@ -1,5 +1,7 @@
 use wastrumentation_rs_stdlib::WasmType;
 
+use crate::{ ShadowMeta, ShadowValue };
+
 use super::WasmValue;
 use std::cell::RefCell;
 
@@ -7,18 +9,26 @@ use std::cell::RefCell;
 // `The execution rules also assume the presence of an implicit stack that is modified by pushing or popping values, labels, and frames.`
 // https://webassembly.github.io/spec/core/exec/runtime.html#stack
 
-pub struct Stack(Vec<StackEntry>);
+pub struct Stack<M: ShadowMeta>(Vec<StackEntry<M>>);
 
-thread_local! {
-    pub static SHADOW_STACK: RefCell<Stack> = const { RefCell::new(Stack(vec![])) };
+impl<M: ShadowMeta> Stack<M> {
+    pub const fn new() -> Self {
+        Self(vec![])
+    }
+}
+
+impl<M: ShadowMeta> Default for Stack<M> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 thread_local! {
-    pub(crate) static JUMP_FLAG: RefCell<bool> = const { RefCell::new(false) };
-    pub(crate) static CALL_STACK_DEPTH: RefCell<i32> = const { RefCell::new(0) };
+    pub static JUMP_FLAG: RefCell<bool> = const { RefCell::new(false) };
+    pub static CALL_STACK_DEPTH: RefCell<i32> = const { RefCell::new(0) };
 }
 
-pub(crate) struct ShadowCallStackDepth;
+pub struct ShadowCallStackDepth;
 
 impl ShadowCallStackDepth {
     pub fn host_is_caller() -> bool {
@@ -28,14 +38,14 @@ impl ShadowCallStackDepth {
         })
     }
 
-    pub(crate) fn increment_call_stack_depth() {
+    pub fn increment_call_stack_depth() {
         CALL_STACK_DEPTH.with_borrow_mut(|call_stack_depth| {
             debug_assert!(*call_stack_depth >= 0);
             *call_stack_depth += 1;
         });
     }
 
-    pub(crate) fn decrement_call_stack_depth() {
+    pub fn decrement_call_stack_depth() {
         CALL_STACK_DEPTH.with_borrow_mut(|call_stack_depth| {
             debug_assert!(*call_stack_depth >= 0);
             *call_stack_depth -= 1;
@@ -44,10 +54,10 @@ impl ShadowCallStackDepth {
 }
 
 #[derive(Debug, Clone)]
-pub enum StackEntry {
-    Value(WasmValue),
+pub enum StackEntry<M: ShadowMeta> {
+    Value(ShadowValue<M>),
     Label(Label),
-    Frame(Frame),
+    Frame(Frame<M>),
 }
 
 #[derive(Debug, Clone, PartialEq, Copy)]
@@ -72,7 +82,9 @@ thread_local! {
 impl Label {
     pub fn new(arity: usize, origin: LabelOrigin) -> Self {
         let identifier = LABEL_IDENTIFIER.with_borrow(|v| *v);
-        LABEL_IDENTIFIER.with_borrow_mut(|v| *v += 1);
+        LABEL_IDENTIFIER.with_borrow_mut(|v| {
+            *v += 1;
+        });
         Self {
             identifier,
             origin,
@@ -92,21 +104,21 @@ impl Label {
 }
 
 #[derive(Debug, Clone)]
-pub struct Frame {
+pub struct Frame<M: ShadowMeta> {
     arity: usize,
     function_index: usize,
-    locals: Vec<Option<WasmValue>>,
+    locals: Vec<Option<ShadowValue<M>>>,
 }
 
 #[derive(Debug, Clone)]
-pub enum GetLocalResult {
+pub enum GetLocalResult<M: ShadowMeta> {
     OutOfBounds,
     Uninitialised,
-    Some(WasmValue),
+    Some(ShadowValue<M>),
 }
 
-impl Frame {
-    pub fn new(arity: usize, function_index: usize, arguments: Vec<WasmValue>) -> Self {
+impl<M: ShadowMeta> Frame<M> {
+    pub fn new(arity: usize, function_index: usize, arguments: Vec<ShadowValue<M>>) -> Self {
         Self {
             arity,
             function_index,
@@ -125,31 +137,29 @@ impl Frame {
     }
 
     pub fn assert_local_exists(&mut self, x: usize) {
-        let default = || None;
         if self.locals.len() <= x {
-            self.locals.resize_with(x + 1, default);
+            self.locals.resize_with(x + 1, || None);
         }
     }
 
-    pub fn replace_local_with(&mut self, x: usize, value: WasmValue) {
+    pub fn replace_local_with(&mut self, x: usize, value: ShadowValue<M>) {
         self.locals[x] = Some(value);
     }
 
-    pub fn get_locals(&mut self, x: usize, type_: WasmType) -> WasmValue {
+    pub fn get_locals(&mut self, x: usize, type_: WasmType) -> ShadowValue<M> {
         if let Some(shadow_local) = &self.locals[x] {
             shadow_local.clone()
         } else {
-            let default = WasmValue::default_for(&type_);
+            let default = ShadowValue::new(WasmValue::default_for(&type_), None);
             self.locals[x] = Some(default.clone());
             default
         }
     }
 
-    pub fn get_local_safe(&mut self, x: usize) -> GetLocalResult {
+    pub fn get_local_safe(&mut self, x: usize) -> GetLocalResult<M> {
         let Some(slot) = self.locals.get(x) else {
             return GetLocalResult::OutOfBounds;
         };
-
         match slot {
             Some(value) => GetLocalResult::Some(value.clone()),
             None => GetLocalResult::Uninitialised,
@@ -157,9 +167,9 @@ impl Frame {
     }
 }
 
-impl Stack {
+impl<M: ShadowMeta> Stack<M> {
     #[must_use]
-    pub fn pop_value_from_stack(&mut self) -> WasmValue {
+    pub fn pop_value_from_stack(&mut self) -> ShadowValue<M> {
         let Self(shadow_stack_mut) = self;
         match shadow_stack_mut.pop().unwrap() {
             StackEntry::Value(value) => value,
@@ -168,8 +178,8 @@ impl Stack {
     }
 
     #[must_use]
-    pub fn pop_values_from_stack(&mut self, n: usize) -> Vec<WasmValue> {
-        let mut values: Vec<WasmValue> = Vec::with_capacity(n);
+    pub fn pop_values_from_stack(&mut self, n: usize) -> Vec<ShadowValue<M>> {
+        let mut values: Vec<ShadowValue<M>> = Vec::with_capacity(n);
         for _ in 0..n {
             values.push(self.pop_value_from_stack());
         }
@@ -200,9 +210,11 @@ impl Stack {
         let Self(shadow_stack_ref) = self;
         shadow_stack_ref
             .iter()
-            .filter_map(|stack_entry| match stack_entry {
-                StackEntry::Label(label) => Some(label),
-                _ => None,
+            .filter_map(|stack_entry| {
+                match stack_entry {
+                    StackEntry::Label(label) => Some(label),
+                    _ => None,
+                }
             })
             .rev()
             .nth(l)
@@ -214,13 +226,13 @@ impl Stack {
     }
 
     #[must_use]
-    pub fn top_of_stack(&self) -> &StackEntry {
+    pub fn top_of_stack(&self) -> &StackEntry<M> {
         let Self(shadow_stack_ref) = self;
         shadow_stack_ref.last().unwrap()
     }
 
     #[must_use]
-    pub fn pop_stack(&mut self) -> StackEntry {
+    pub fn pop_stack(&mut self) -> StackEntry<M> {
         let Self(shadow_stack_mut) = self;
         shadow_stack_mut.pop().unwrap()
     }
@@ -230,32 +242,30 @@ impl Stack {
         if let StackEntry::Label(label) = self.pop_stack() {
             label
         } else {
-            panic!()
+            panic!("Top of stack is not a label")
         }
     }
 
     #[must_use]
-    pub fn pop_frame_from_stack(&mut self) -> Frame {
+    pub fn pop_frame_from_stack(&mut self) -> Frame<M> {
         if let StackEntry::Frame(frame) = self.pop_stack() {
             frame
         } else {
-            panic!()
+            panic!("Top of stack is not a frame")
         }
     }
 
     #[must_use]
-    pub fn top_two_values_of_stack(&self) -> (&WasmValue, &WasmValue) {
+    pub fn top_two_values_of_stack(&self) -> (&ShadowValue<M>, &ShadowValue<M>) {
         let Self(shadow_stack_ref) = self;
-        let shadow_stack = shadow_stack_ref;
         let [StackEntry::Value(v2), StackEntry::Value(v1)] =
-            &shadow_stack[shadow_stack.len() - 2..]
-        else {
-            panic!()
+            &shadow_stack_ref[shadow_stack_ref.len() - 2..] else {
+            panic!("Top two stack entries are not both values")
         };
         (v2, v1)
     }
 
-    pub fn push_value_on_stack(&mut self, value: WasmValue) {
+    pub fn push_value_on_stack(&mut self, value: ShadowValue<M>) {
         let Self(shadow_stack_mut) = self;
         shadow_stack_mut.push(StackEntry::Value(value));
     }
@@ -265,28 +275,30 @@ impl Stack {
         shadow_stack_mut.push(StackEntry::Label(label));
     }
 
-    pub fn push_activation_on_stack(&mut self, activation: Frame) {
+    pub fn push_activation_on_stack(&mut self, activation: Frame<M>) {
         let Self(shadow_stack_mut) = self;
         shadow_stack_mut.push(StackEntry::Frame(activation));
     }
 
-    pub(crate) fn push_values_on_stack(&mut self, values: Vec<WasmValue>) {
+    pub fn push_values_on_stack(&mut self, values: Vec<ShadowValue<M>>) {
         for value in values {
             self.push_value_on_stack(value);
         }
     }
 
     #[must_use]
-    pub fn current_frame_mut(&mut self) -> &mut Frame {
+    pub fn current_frame_mut(&mut self) -> &mut Frame<M> {
         // https://webassembly.github.io/spec/core/exec/conventions.html#prose-notation
         // `Certain rules require the stack to contain at least one frame.
         //   The most recent frame is referred to as the current frame.`
         let Self(shadow_stack_mut) = self;
         shadow_stack_mut
             .iter_mut()
-            .filter_map(|stack_entry| match stack_entry {
-                StackEntry::Frame(frame) => Some(frame),
-                _ => None,
+            .filter_map(|stack_entry| {
+                match stack_entry {
+                    StackEntry::Frame(frame) => Some(frame),
+                    _ => None,
+                }
             })
             .last()
             .unwrap()
