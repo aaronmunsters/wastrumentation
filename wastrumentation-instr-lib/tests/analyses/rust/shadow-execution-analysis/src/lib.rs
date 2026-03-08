@@ -315,7 +315,7 @@ macro_rules! shadow_execution {
             if_then_else_arity: IfThenElseArity,
             _location: Location,
         ) {
-        
+
         unsafe { shadow_traps::if_then_else(&path_continuation, &if_then_else_input_c, &if_then_else_arity, &_location) };
 
         SHADOW_STACK.with_borrow_mut(|shadow_stack| {
@@ -348,7 +348,7 @@ macro_rules! shadow_execution {
             if_then_arity: IfThenArity,
             _location: Location,
         ) {
-        
+
         unsafe { shadow_traps::if_then(&path_continuation, &if_then_input_c, &if_then_arity, &_location, ) };
 
         SHADOW_STACK.with_borrow_mut(|shadow_stack| {
@@ -635,7 +635,7 @@ macro_rules! shadow_execution {
 
     // https://webassembly.github.io/spec/core/exec/instructions.html#xref-syntax-instructions-syntax-instr-control-mathsf-return
     advice! { return_ (_location: Location) {
-            
+
         unsafe { shadow_traps::return_(&_location) };
 
         SHADOW_STACK.with_borrow_mut(|shadow_stack| {
@@ -677,10 +677,10 @@ macro_rules! shadow_execution {
     }}
 
     advice! { const_ (value: WasmValue, _location: Location) {
-        
+
         let mut shadow_value = ShadowValue::<$M>::from(value.clone());
         unsafe { shadow_traps::const_(&mut shadow_value, &_location) };
-        
+
         SHADOW_STACK.with_borrow_mut(|shadow_stack| {
             // https://webassembly.github.io/spec/core/exec/instructions.html#t-mathsf-xref-syntax-instructions-syntax-instr-numeric-mathsf-const-c
             // 1. Push the value `t.const c` to the stack.
@@ -715,7 +715,7 @@ macro_rules! shadow_execution {
             local_op: LocalOp,
             _location: Location,
         ) {
-    
+
         SHADOW_STACK.with_borrow_mut(|shadow_stack| {
             let x: usize = index.value().try_into().unwrap();
             match local_op {
@@ -879,7 +879,7 @@ macro_rules! shadow_execution {
     }}
 
     advice! { memory_size (size: WasmValue, index: MemoryIndex, _location: Location) {
-        
+
         let mut shadow_size = ShadowValue::<$M>::from(size.clone());
         unsafe { shadow_traps::memory_size(&shadow_size, &index, &_location) };
 
@@ -904,7 +904,7 @@ macro_rules! shadow_execution {
     }}
 
     advice! { memory_init (_location: Location) {
-        
+
         unsafe { shadow_traps::memory_init(&_location) };
 
         SHADOW_STACK.with_borrow_mut(|shadow_stack|{
@@ -930,7 +930,7 @@ macro_rules! shadow_execution {
     }}
 
     advice! { memory_fill (_location: Location) {
-            
+
         unsafe { shadow_traps::memory_fill(&_location) };
 
         SHADOW_STACK.with_borrow_mut(|shadow_stack|{
