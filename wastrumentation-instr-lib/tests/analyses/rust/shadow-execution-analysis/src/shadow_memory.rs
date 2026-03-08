@@ -11,7 +11,6 @@ use super::StoreOperation::{ I32Store16, I32Store8 };
 use super::StoreOperation::{ I64Store16, I64Store32, I64Store8 };
 
 use super::WasmValue;
-use std::cell::RefCell;
 
 //////////////////////////////////
 // compile-time severity checks //
@@ -146,17 +145,17 @@ impl<M: ShadowMeta> Memory<M> {
         unsafe { core::ptr::read_unaligned(bytes.as_ptr().cast::<T>()) }
     }
 
-    fn memory_store<T: Copy>(&mut self, address: usize, value: T) {
-        self.assert_memory_bounds::<T>(address);
-        let size = core::mem::size_of::<T>();
-        let mut bytes = vec![0u8; size];
-        unsafe {
-            core::ptr::write_unaligned(bytes.as_mut_ptr().cast::<T>(), value);
-        }
-        for (i, byte) in bytes.into_iter().enumerate() {
-            self.buffer[address + i].0 = byte;
-        }
-    }
+    // fn memory_store<T: Copy>(&mut self, address: usize, value: T) {
+    //     self.assert_memory_bounds::<T>(address);
+    //     let size = core::mem::size_of::<T>();
+    //     let mut bytes = vec![0u8; size];
+    //     unsafe {
+    //         core::ptr::write_unaligned(bytes.as_mut_ptr().cast::<T>(), value);
+    //     }
+    //     for (i, byte) in bytes.into_iter().enumerate() {
+    //         self.buffer[address + i].0 = byte;
+    //     }
+    // }
 
     fn memory_load_sub<StoreValue, Sub>(&self, address: usize) -> StoreValue
         where StoreValue: TryFrom<Sub>, StoreValue::Error: core::fmt::Debug, Sub: Copy
