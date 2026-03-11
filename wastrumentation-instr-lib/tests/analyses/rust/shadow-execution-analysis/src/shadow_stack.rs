@@ -51,6 +51,13 @@ impl ShadowCallStackDepth {
             *call_stack_depth -= 1;
         });
     }
+
+    pub fn get() -> i32 {
+        CALL_STACK_DEPTH.with_borrow(|call_stack_depth| {
+            debug_assert!(*call_stack_depth >= 0);
+            *call_stack_depth
+        })
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -229,6 +236,15 @@ impl<M: ShadowMeta> Stack<M> {
     pub fn top_of_stack(&self) -> &StackEntry<M> {
         let Self(shadow_stack_ref) = self;
         shadow_stack_ref.last().unwrap()
+    }
+
+    #[must_use]
+    pub fn peek_nth_value(&self, n: usize) -> &ShadowValue<M> {
+        let Self(shadow_stack_ref) = self;
+        match shadow_stack_ref.get(shadow_stack_ref.len() - 1 - n) {
+            Some(StackEntry::Value(value)) => value,
+            _ => panic!("{}th value from top of stack is not a value", n),
+        }
     }
 
     #[must_use]
