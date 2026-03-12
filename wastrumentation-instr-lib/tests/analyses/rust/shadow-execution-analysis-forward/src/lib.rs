@@ -1,37 +1,27 @@
 use wastrumentation_rs_stdlib::*;
 use shadow_execution_analysis::*;
 
-#[derive(Default, Clone, Debug)]
-pub struct Taint(bool);
-impl ShadowMeta for Taint {
-    type ShadowMetaByte = bool;
+#[derive(Default, Clone, Debug, PartialEq)]
+pub struct Meta;
 
-    fn decompose(&self, len: usize) -> Vec<Self::ShadowMetaByte> {
-        vec![self.0; len]
+impl ShadowMeta for Meta {
+    type ShadowMetaByte = u8;
+    fn decompose(&self, len: usize) -> Vec<u8> {
+        vec![0; len]
     }
-
-    fn recompose(bytes: Vec<Self::ShadowMetaByte>) -> Self {
-        Self(bytes.into_iter().any(|b| b))
-    }
-}
-impl PartialEq for Taint {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
+    fn recompose(_: Vec<u8>) -> Self {
+        Self
     }
 }
 
-shadow_execution!(Taint);
+shadow_execution!(Meta);
 
-fn fmt_val(v: &ShadowValue<Taint>) -> String {
-    match v {
-        ShadowValue { value, meta } => {
-            match value {
-                WasmValue::I32(i) => format!("i32({})[{}]", i, meta.0),
-                WasmValue::I64(i) => format!("i64({})[{}]", i, meta.0),
-                WasmValue::F32(f) => format!("f32({})[{}]", f, meta.0),
-                WasmValue::F64(f) => format!("f64({})[{}]", f, meta.0),
-            }
-        }
+fn fmt_val(v: &ShadowValue<Meta>) -> String {
+    match v.value {
+        WasmValue::I32(i) => format!("i32({})", i),
+        WasmValue::I64(i) => format!("i64({})", i),
+        WasmValue::F32(f) => format!("f32({})", f),
+        WasmValue::F64(f) => format!("f64({})", f),
     }
 }
 
@@ -40,106 +30,45 @@ fn fmt_loc(loc: &Location) -> String {
 }
 
 #[no_mangle]
-pub fn apply(function: &WasmFunction, args: &MutDynArgs, ress: &MutDynResults) {
-    let arg_strs: Vec<String> = args
+pub unsafe fn apply_before(function: &WasmFunction, args: &MutDynArgs, _ress: &MutDynResults) {
+    let args: Vec<String> = args
         .args_iter()
         .map(|v| fmt_val(&ShadowValue::from(v)))
         .collect();
-    let res_strs: Vec<String> = ress
+    println!("[apply_before] fn={} args=[{}]", function.instr_f_idx, args.join(", "));
+}
+
+#[no_mangle]
+pub unsafe fn apply_after(function: &WasmFunction, _args: &MutDynArgs, ress: &MutDynResults) {
+    let ress: Vec<String> = ress
         .ress_iter()
         .map(|v| fmt_val(&ShadowValue::from(v)))
         .collect();
-    println!(
-        "[apply] fn_idx={} args=[{}] results=[{}]",
-        function.instr_f_idx,
-        arg_strs.join(", "),
-        res_strs.join(", ")
-    );
+    println!("[apply_after] fn={} results=[{}]", function.instr_f_idx, ress.join(", "));
 }
 
 #[no_mangle]
-pub fn if_then_else(
-    path_continuation: &PathContinuation,
-    if_then_else_input_c: &IfThenElseInputCount,
-    if_then_else_arity: &IfThenElseArity,
-    location: &Location
-) {
-    let branch = if path_continuation.is_then() { "then" } else { "else" };
-    println!(
-        "[if_then_else] {} @ {} (inputs={}, arity={})",
-        branch,
-        fmt_loc(location),
-        if_then_else_input_c.value(),
-        if_then_else_arity.value()
-    );
+pub unsafe fn call_to_imported_before(argument_count: usize) {
+    println!("[call_to_imported_before] args={}", argument_count);
 }
 
 #[no_mangle]
-pub fn if_then(
-    path_continuation: &PathContinuation,
-    if_then_input_c: &IfThenInputCount,
-    if_then_arity: &IfThenArity,
-    location: &Location
-) {
-    let branch = if path_continuation.is_then() { "then" } else { "skip" };
-    println!(
-        "[if_then] {} @ {} (inputs={}, arity={})",
-        branch,
-        fmt_loc(location),
-        if_then_input_c.value(),
-        if_then_arity.value()
-    );
+pub unsafe fn call_to_imported_after(result_count: usize) {
+    println!("[call_to_imported_after] results={}", result_count);
 }
 
 #[no_mangle]
-pub fn if_then_else_post(location: &Location) {
-    println!("[if_then_else_post] @ {}", fmt_loc(location));
+pub unsafe fn call_pre(target_func: &FunctionIndex, location: &Location) {
+    println!("[call_pre] target={} @ {}", target_func.value(), fmt_loc(location));
 }
 
 #[no_mangle]
-pub fn if_then_post(location: &Location) {
-    println!("[if_then_post] @ {}", fmt_loc(location));
+pub unsafe fn call_post(target_func: &FunctionIndex, location: &Location) {
+    println!("[call_post] target={} @ {}", target_func.value(), fmt_loc(location));
 }
 
 #[no_mangle]
-pub fn br(branch_target_label: &BranchTargetLabel, location: &Location) {
-    println!("[br] label={} @ {}", branch_target_label.label(), fmt_loc(location));
-}
-
-#[no_mangle]
-pub fn br_if(
-    path_continuation: &ParameterBrIfCondition,
-    target_label: &ParameterBrIfLabel,
-    location: &Location
-) {
-    let taken = if path_continuation.is_then() { "taken" } else { "not taken" };
-    println!("[br_if] {} label={} @ {}", taken, target_label.label(), fmt_loc(location));
-}
-
-#[no_mangle]
-pub fn br_table(
-    branch_table_target: &BranchTableTarget,
-    branch_table_effective: &BranchTableEffective,
-    branch_table_default: &BranchTableDefault,
-    location: &Location
-) {
-    println!(
-        "[br_table] target={} effective={} default={} @ {}",
-        branch_table_target.target(),
-        branch_table_effective.label(),
-        branch_table_default.value(),
-        fmt_loc(location)
-    );
-}
-
-#[no_mangle]
-pub fn select(path_continuation: &PathContinuation, location: &Location) {
-    let chosen = if path_continuation.is_then() { "val1" } else { "val2" };
-    println!("[select] chose {} @ {}", chosen, fmt_loc(location));
-}
-
-#[no_mangle]
-pub fn call_indirect_pre(
+pub unsafe fn call_indirect_pre(
     target_func: &FunctionTableIndex,
     _func_table_ident: &FunctionTable,
     location: &Location
@@ -148,41 +77,192 @@ pub fn call_indirect_pre(
 }
 
 #[no_mangle]
-pub fn call_indirect_post(_target_func: &FunctionTable, location: &Location) {
+pub unsafe fn call_indirect_post(_target_func: &FunctionTable, location: &Location) {
     println!("[call_indirect_post] @ {}", fmt_loc(location));
 }
 
 #[no_mangle]
-pub fn call_pre(_target_func: &FunctionIndex, location: &Location) {
-    println!("[call_pre] target_fn={} @ {}", _target_func.value(), fmt_loc(location));
-}
-
-#[no_mangle]
-pub fn call_post(_target_func: &FunctionIndex, location: &Location) {
-    println!("[call_post] target_fn={} @ {}", _target_func.value(), fmt_loc(location));
-}
-
-#[no_mangle]
-pub fn unary(unop: &UnaryOperator, c_1: &ShadowValue<Taint>, location: &Location) {
-    println!("[unary] {:?} {} @ {}", unop, fmt_val(c_1), fmt_loc(location));
-}
-
-#[no_mangle]
-pub fn binary(
-    binop: &BinaryOperator,
-    c_1: &ShadowValue<Taint>,
-    c_2: &ShadowValue<Taint>,
-    c: &mut ShadowValue<Taint>,
+pub unsafe fn if_then_else_before(
+    path: &PathContinuation,
+    input_c: &IfThenElseInputCount,
+    arity: &IfThenElseArity,
     location: &Location
 ) {
-    // if matches!(*binop, BinaryOperator::I32Mul) {
-    //     c.meta_mut().0 = true;
-    // }
-    // if c_1.meta().0 || c_2.meta().0 {
-    //     println!("One of the operands is tainted, propagating taint to result");
-    // }
+    let branch = if path.is_then() { "then" } else { "else" };
     println!(
-        "[binary] {:?} {} {} res: {} @ {}",
+        "[if_then_else_before] {} inputs={} arity={} @ {}",
+        branch,
+        input_c.value(),
+        arity.value(),
+        fmt_loc(location)
+    );
+}
+
+#[no_mangle]
+pub unsafe fn if_then_else_after(
+    path: &PathContinuation,
+    input_c: &IfThenElseInputCount,
+    arity: &IfThenElseArity,
+    location: &Location
+) {
+    let branch = if path.is_then() { "then" } else { "else" };
+    println!(
+        "[if_then_else_after] {} inputs={} arity={} @ {}",
+        branch,
+        input_c.value(),
+        arity.value(),
+        fmt_loc(location)
+    );
+}
+
+#[no_mangle]
+pub unsafe fn if_then_before(
+    path: &PathContinuation,
+    input_c: &IfThenInputCount,
+    arity: &IfThenArity,
+    location: &Location
+) {
+    let branch = if path.is_then() { "then" } else { "skip" };
+    println!(
+        "[if_then_before] {} inputs={} arity={} @ {}",
+        branch,
+        input_c.value(),
+        arity.value(),
+        fmt_loc(location)
+    );
+}
+
+#[no_mangle]
+pub unsafe fn if_then_after(
+    path: &PathContinuation,
+    input_c: &IfThenInputCount,
+    arity: &IfThenArity,
+    location: &Location
+) {
+    let branch = if path.is_then() { "then" } else { "skip" };
+    println!(
+        "[if_then_after] {} inputs={} arity={} @ {}",
+        branch,
+        input_c.value(),
+        arity.value(),
+        fmt_loc(location)
+    );
+}
+
+#[no_mangle]
+pub unsafe fn if_then_else_post_before(location: &Location) {
+    println!("[if_then_else_post_before] @ {}", fmt_loc(location));
+}
+
+#[no_mangle]
+pub unsafe fn if_then_else_post_after(location: &Location) {
+    println!("[if_then_else_post_after] @ {}", fmt_loc(location));
+}
+
+#[no_mangle]
+pub unsafe fn if_then_post_before(location: &Location) {
+    println!("[if_then_post_before] @ {}", fmt_loc(location));
+}
+
+#[no_mangle]
+pub unsafe fn if_then_post_after(location: &Location) {
+    println!("[if_then_post_after] @ {}", fmt_loc(location));
+}
+
+#[no_mangle]
+pub unsafe fn br_before(target: &BranchTargetLabel, location: &Location) {
+    println!("[br_before] label={} @ {}", target.label(), fmt_loc(location));
+}
+
+#[no_mangle]
+pub unsafe fn br_after(target: &BranchTargetLabel, location: &Location) {
+    println!("[br_after] label={} @ {}", target.label(), fmt_loc(location));
+}
+
+#[no_mangle]
+pub unsafe fn br_if_before(
+    path: &ParameterBrIfCondition,
+    target: &ParameterBrIfLabel,
+    location: &Location
+) {
+    let taken = if path.is_then() { "taken" } else { "not_taken" };
+    println!("[br_if_before] {} label={} @ {}", taken, target.label(), fmt_loc(location));
+}
+
+#[no_mangle]
+pub unsafe fn br_if_after(
+    path: &ParameterBrIfCondition,
+    target: &ParameterBrIfLabel,
+    location: &Location
+) {
+    let taken = if path.is_then() { "taken" } else { "not_taken" };
+    println!("[br_if_after] {} label={} @ {}", taken, target.label(), fmt_loc(location));
+}
+
+#[no_mangle]
+pub unsafe fn br_table_before(
+    target: &BranchTableTarget,
+    effective: &BranchTableEffective,
+    default: &BranchTableDefault,
+    location: &Location
+) {
+    println!(
+        "[br_table_before] target={} effective={} default={} @ {}",
+        target.target(),
+        effective.label(),
+        default.value(),
+        fmt_loc(location)
+    );
+}
+
+#[no_mangle]
+pub unsafe fn br_table_after(
+    target: &BranchTableTarget,
+    effective: &BranchTableEffective,
+    default: &BranchTableDefault,
+    location: &Location
+) {
+    println!(
+        "[br_table_after] target={} effective={} default={} @ {}",
+        target.target(),
+        effective.label(),
+        default.value(),
+        fmt_loc(location)
+    );
+}
+
+#[no_mangle]
+pub unsafe fn select_before(path: &PathContinuation, location: &Location) {
+    let chosen = if path.is_then() { "val1" } else { "val2" };
+    println!("[select_before] {} @ {}", chosen, fmt_loc(location));
+}
+
+#[no_mangle]
+pub unsafe fn select_after(path: &PathContinuation, location: &Location) {
+    let chosen = if path.is_then() { "val1" } else { "val2" };
+    println!("[select_after] {} @ {}", chosen, fmt_loc(location));
+}
+
+#[no_mangle]
+pub unsafe fn unary(
+    unop: &UnaryOperator,
+    c_1: &ShadowValue<Meta>,
+    c: &mut ShadowValue<Meta>,
+    location: &Location
+) {
+    println!("[unary] {:?} {} -> {} @ {}", unop, fmt_val(c_1), fmt_val(c), fmt_loc(location));
+}
+
+#[no_mangle]
+pub unsafe fn binary(
+    binop: &BinaryOperator,
+    c_1: &ShadowValue<Meta>,
+    c_2: &ShadowValue<Meta>,
+    c: &mut ShadowValue<Meta>,
+    location: &Location
+) {
+    println!(
+        "[binary] {:?} {} {} -> {} @ {}",
         binop,
         fmt_val(c_1),
         fmt_val(c_2),
@@ -192,36 +272,40 @@ pub fn binary(
 }
 
 #[no_mangle]
-pub fn drop(location: &Location) {
-    // Peek at what is about to be dropped without disturbing the stack.
+pub unsafe fn drop(location: &Location) {
     let top = SHADOW_STACK.with_borrow(|stack| {
         match stack.top_of_stack() {
             StackEntry::Value(v) => fmt_val(v),
             _ => "<non-value>".to_string(),
         }
     });
-    println!("[drop] dropping {} @ {}", top, fmt_loc(location));
+    println!("[drop] {} @ {}", top, fmt_loc(location));
 }
 
 #[no_mangle]
-pub fn return_(location: &Location) {
+pub unsafe fn return_before(location: &Location) {
     let depth = SHADOW_STACK.with_borrow(|stack| stack.stack_label_count());
-    println!("[return] label_depth={} @ {}", depth, fmt_loc(location));
+    println!("[return_before] label_depth={} @ {}", depth, fmt_loc(location));
 }
 
 #[no_mangle]
-pub fn const_(value: &ShadowValue<Taint>, location: &Location) {
+pub unsafe fn return_after(location: &Location) {
+    println!("[return_after] @ {}", fmt_loc(location));
+}
+
+#[no_mangle]
+pub unsafe fn const_(value: &mut ShadowValue<Meta>, location: &Location) {
     println!("[const] {} @ {}", fmt_val(value), fmt_loc(location));
 }
 
 #[no_mangle]
-pub fn local(
-    value: &ShadowValue<Taint>,
+pub unsafe fn local(
+    value: &mut ShadowValue<Meta>,
     index: &LocalIndex,
-    local_op: &LocalOp,
+    op: &LocalOp,
     location: &Location
 ) {
-    let op = match local_op {
+    let op = match op {
         LocalOp::Get => "get",
         LocalOp::Set => "set",
         LocalOp::Tee => "tee",
@@ -236,13 +320,13 @@ pub fn local(
 }
 
 #[no_mangle]
-pub fn global(
-    value: &ShadowValue<Taint>,
+pub unsafe fn global(
+    value: &mut ShadowValue<Meta>,
     index: &GlobalIndex,
-    global_op: &GlobalOp,
+    op: &GlobalOp,
     location: &Location
 ) {
-    let op = match global_op {
+    let op = match op {
         GlobalOp::Get => "get",
         GlobalOp::Set => "set",
     };
@@ -256,25 +340,27 @@ pub fn global(
 }
 
 #[no_mangle]
-pub fn load(
+pub unsafe fn load(
     store_index: &LoadIndex,
+    loaded_value: &mut ShadowValue<Meta>,
     offset: &LoadOffset,
     operation: &LoadOperation,
     location: &Location
 ) {
     println!(
-        "[load] {:?} ptr={} offset={} @ {}",
+        "[load] {:?} ptr={} offset={} value={} @ {}",
         operation,
         store_index.value(),
         offset.value(),
+        fmt_val(loaded_value),
         fmt_loc(location)
     );
 }
 
 #[no_mangle]
-pub fn store(
+pub unsafe fn store(
     store_index: &StoreIndex,
-    value: &ShadowValue<Taint>,
+    value: &mut ShadowValue<Meta>,
     offset: &StoreOffset,
     operation: &StoreOperation,
     location: &Location
@@ -290,12 +376,16 @@ pub fn store(
 }
 
 #[no_mangle]
-pub fn memory_size(size: &ShadowValue<Taint>, index: &MemoryIndex, location: &Location) {
+pub unsafe fn memory_size(size: &mut ShadowValue<Meta>, index: &MemoryIndex, location: &Location) {
     println!("[memory.size] mem={} size={} @ {}", index.value(), fmt_val(size), fmt_loc(location));
 }
 
 #[no_mangle]
-pub fn memory_grow(amount: &ShadowValue<Taint>, index: &MemoryIndex, location: &Location) {
+pub unsafe fn memory_grow(
+    amount: &mut ShadowValue<Meta>,
+    index: &MemoryIndex,
+    location: &Location
+) {
     println!(
         "[memory.grow] mem={} amount={} @ {}",
         index.value(),
@@ -305,50 +395,88 @@ pub fn memory_grow(amount: &ShadowValue<Taint>, index: &MemoryIndex, location: &
 }
 
 #[no_mangle]
-pub fn memory_init(location: &Location) {
+pub unsafe fn memory_init(location: &Location) {
     println!("[memory.init] @ {}", fmt_loc(location));
 }
 
 #[no_mangle]
-pub fn memory_copy(location: &Location) {
+pub unsafe fn memory_copy(location: &Location) {
     println!("[memory.copy] @ {}", fmt_loc(location));
 }
 
 #[no_mangle]
-pub fn memory_fill(location: &Location) {
+pub unsafe fn memory_fill(location: &Location) {
     println!("[memory.fill] @ {}", fmt_loc(location));
 }
 
 #[no_mangle]
-pub fn block_pre(
-    block_input_count: &BlockInputCount,
-    block_arity: &BlockArity,
+pub unsafe fn block_pre_before(
+    input_count: &BlockInputCount,
+    arity: &BlockArity,
     location: &Location
 ) {
     println!(
-        "[block] enter inputs={} arity={} @ {}",
-        block_input_count.value(),
-        block_arity.value(),
+        "[block_pre_before] inputs={} arity={} @ {}",
+        input_count.value(),
+        arity.value(),
         fmt_loc(location)
     );
 }
 
 #[no_mangle]
-pub fn block_post(location: &Location) {
-    println!("[block] exit @ {}", fmt_loc(location));
-}
-
-#[no_mangle]
-pub fn loop_pre(loop_input_count: &LoopInputCount, loop_arity: &LoopArity, location: &Location) {
+pub unsafe fn block_pre_after(
+    input_count: &BlockInputCount,
+    arity: &BlockArity,
+    location: &Location
+) {
     println!(
-        "[loop] enter inputs={} arity={} @ {}",
-        loop_input_count.value(),
-        loop_arity.value(),
+        "[block_pre_after] inputs={} arity={} @ {}",
+        input_count.value(),
+        arity.value(),
         fmt_loc(location)
     );
 }
 
 #[no_mangle]
-pub fn loop_post(location: &Location) {
-    println!("[loop] exit @ {}", fmt_loc(location));
+pub unsafe fn block_post_before(location: &Location) {
+    println!("[block_post_before] @ {}", fmt_loc(location));
+}
+
+#[no_mangle]
+pub unsafe fn block_post_after(location: &Location) {
+    println!("[block_post_after] @ {}", fmt_loc(location));
+}
+
+#[no_mangle]
+pub unsafe fn loop_pre_before(
+    input_count: &LoopInputCount,
+    arity: &LoopArity,
+    location: &Location
+) {
+    println!(
+        "[loop_pre_before] inputs={} arity={} @ {}",
+        input_count.value(),
+        arity.value(),
+        fmt_loc(location)
+    );
+}
+
+#[no_mangle]
+pub unsafe fn loop_pre_after(input_count: &LoopInputCount, arity: &LoopArity, location: &Location) {
+    println!(
+        "[loop_pre_after] inputs={} arity={} @ {}",
+        input_count.value(),
+        arity.value(),
+        fmt_loc(location)
+    );
+}
+
+#[no_mangle]
+pub unsafe fn loop_post_before(location: &Location) {
+    println!("[loop_post_before] @ {}", fmt_loc(location));
+}
+
+#[no_mangle]
+pub unsafe fn loop_post_after(location: &Location) {
+    println!("[loop_post_after] @ {}", fmt_loc(location));
 }
