@@ -247,6 +247,15 @@ impl<M: ShadowMeta> Stack<M> {
         }
     }
 
+    pub fn with_nth_borrow_mut_value(&mut self, index: usize, f: impl FnOnce(&mut ShadowValue<M>)) {
+        let Self(shadow_stack_mut) = self;
+        let i = shadow_stack_mut.len() - 1 - index;
+        match shadow_stack_mut.get_mut(i) {
+            Some(StackEntry::Value(value)) => f(value),
+            _ => panic!("{}th value from top of stack is not a value", i),
+        }
+    }
+
     #[must_use]
     pub fn pop_stack(&mut self) -> StackEntry<M> {
         let Self(shadow_stack_mut) = self;

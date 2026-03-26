@@ -30,6 +30,7 @@ pub mod branch_if;
 pub mod function_application;
 pub mod function_call_indirect;
 pub mod memory;
+pub mod module_info;
 pub mod simple_operations;
 
 pub struct Instrumented<InstrumentationLanguage: LibGeneratable> {
@@ -296,6 +297,8 @@ pub fn instrument<InstrumentationLanguage: LibGeneratable>(
     memory::inject_memory_stores(&mut module);
     memory::inject_memory_grow(&mut module);
     memory::inject_memory_size(&mut module);
+
+    module_info::inject_function_name_mapping(&mut module);
 
     Ok(Instrumented {
         module: module
