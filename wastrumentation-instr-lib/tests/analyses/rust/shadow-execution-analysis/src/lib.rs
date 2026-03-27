@@ -108,7 +108,7 @@ pub fn idx_by_name(kind: ExportKind, name: &str) -> i32 {
 #[macro_export]
 macro_rules! name_to_idx {
 
-    // marco for individual static index variables: 
+    // marco for individual static index variables:
     // "name_to_idx! { Function "<exported_name>" => VAR_NAME, Global "<exported_name>" => VAR_NAME, ... }"
     ($kind:ident $($name:expr => $var:ident),+) => {
         $(
@@ -117,7 +117,7 @@ macro_rules! name_to_idx {
         )+
     };
 
-    // macro for static vectors of indices: 
+    // macro for static vectors of indices:
     // "name_to_idx! { Function VAR_NAME, "<exported_name_1>", "<exported_name_2>", ... }"
     ($kind:ident $var:ident, $($name:expr),+) => {
         static $var: std::sync::LazyLock<Vec<i32>> =
@@ -249,7 +249,7 @@ macro_rules! shadow_execution {
         SHADOW_STATE.with_borrow_mut(|state| {
             // [shadow trap call]: apply_before
             unsafe { shadow_traps::apply_before(&mut ApplyBeforeTrapContext { state, function: &function, args: &args, results: &ress }) };
-        
+
             let call_to_imported = function.is_imported();
             let _ = call_to_imported; // Optionally, usable information.
 
@@ -329,7 +329,7 @@ macro_rules! shadow_execution {
             }
             // 8. Jump to the instruction after the original call.
             "handled by VM";
-            
+
             // [shadow trap call]: apply_after
             unsafe { shadow_traps::apply_after(&mut ApplyAfterTrapContext { state, function: &function, args: &args, results: &ress }) };
         });
