@@ -58,10 +58,10 @@ fn test_analysis_denan() {
     #[no_mangle] pub extern "C" fn identity_f64(n: f64) -> f64 { n }
     #[no_mangle] pub extern "C" fn f() -> f32 {
         let (f32, f64) = g(
-            core::f32::NAN, // f32
+                  f32::NAN, // f32
             200.0000000000, // f32
-            core::f64::NAN, // f64
-            core::f64::NAN, // f64
+                  f64::NAN, // f64
+                  f64::NAN, // f64
             -10.0000000000, // f32
         );
         f32 + (f64 as f32)
@@ -543,18 +543,18 @@ fn test_analysis_logging() {
         20,
     ), location: Location { instr_index: 0, funct_index: 14 }
     [ANALYSIS:] const_ generic I32(
-        35,
+        34,
     ), location: Location { instr_index: 0, funct_index: 15 }
     [ANALYSIS:] binary generic I32Add I32(
         2460,
     ) I32(
-        35,
+        34,
     ), location: Location { instr_index: 0, funct_index: 16 }
     [ANALYSIS:] const_ generic I32(
         1,
     ), location: Location { instr_index: 0, funct_index: 17 }
     [ANALYSIS:] binary generic I32ShrS I32(
-        2495,
+        2494,
     ) I32(
         1,
     ), location: Location { instr_index: 0, funct_index: 18 }

@@ -1,30 +1,34 @@
 (aspect
     (global >>>GUEST>>>
-        function set_values_to_zero(values: DynValues): void {
+        function set_args_to_zero(values: MutDynArgs): void {
             for ( let index = 0; index < values.length; index++ ) {
-            switch ( values.getType(index) ) {
-                case WasmType.i32:
-                    values.set<i32>(index, 0);
-                    break;
-                case WasmType.f32:
-                    values.set<f32>(index, 0);
-                    break;
-                case WasmType.i64:
-                    values.set<i64>(index, 0);
-                    break;
-                case WasmType.f64:
-                    values.set<f64>(index, 0);
-                    break;
-                default:
-                    unreachable();
+                switch ( values.getType(index) ) {
+                    case WasmType.i32: values.set<i32>(index, 0); break;
+                    case WasmType.f32: values.set<f32>(index, 0); break;
+                    case WasmType.i64: values.set<i64>(index, 0); break;
+                    case WasmType.f64: values.set<f64>(index, 0); break;
+                    default: unreachable();
                 }
             }
         }
+
+        function set_ress_to_zero(values: MutDynRess): void {
+            for ( let index = 0; index < values.length; index++ ) {
+                switch ( values.getType(index) ) {
+                    case WasmType.i32: values.set<i32>(index, 0); break;
+                    case WasmType.f32: values.set<f32>(index, 0); break;
+                    case WasmType.i64: values.set<i64>(index, 0); break;
+                    case WasmType.f64: values.set<f64>(index, 0); break;
+                    default: unreachable();
+                }
+            }
+        }
+
         <<<GUEST<<<)
     (advice apply (func    WasmFunction)
                   (args    MutDynArgs)
                   (results MutDynResults) >>>GUEST>>>
-        set_values_to_zero(args);
+        set_args_to_zero(args);
         func.apply();
-        set_values_to_zero(results);
+        set_ress_to_zero(results);
     <<<GUEST<<<))
