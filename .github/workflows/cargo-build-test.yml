@@ -12,22 +12,22 @@ env:
   BINARYEN_VERSION: 121
   BUN_VERSION: "v1.1.43"
   ASSEMBLYSCRIPT_VERSION: "0.27.27"
-  RUST_CHANNEL: "nightly"
 
 jobs:
   pre-commit-hooks:
     runs-on: ubuntu-latest
     steps:
       - name: Checking out code from GitHub
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
-          python-version: '3.13'
+          python-version: '3.14'
       - name: Install pre-commit
         run: |
           pip install pre-commit
           pre-commit --version
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: Run pre-commit on all files
         run: |
           pre-commit run --all-files --show-diff-on-failure
@@ -36,12 +36,8 @@ jobs:
     needs: pre-commit-hooks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Update rustup
-        run: rustup update ${RUST_CHANNEL} && rustup default ${RUST_CHANNEL}
-      - name: Install wasm & wasip1 as a rust target
-        run: rustup target add wasm32-unknown-unknown wasm32-wasip1
-        shell: bash
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: Install Binaryen
         run: |
           mkdir $HOME/binaryen
@@ -51,7 +47,7 @@ jobs:
       - name: Verify Binaryen installation
         run: wasm-merge --version
       - name: Install Deno
-        uses: denoland/setup-deno@v1
+        uses: denoland/setup-deno@v2
         with:
           deno-version: v2.1.5
       - name: Install Bun
@@ -64,7 +60,7 @@ jobs:
         run: cargo build
         shell: bash
       - name: Install latest nextest release
-        uses: taiki-e/install-action@nextest
+        uses: taiki-e/install-action@cargo-nextest
       - name: Test with latest nextest release
         run: cargo nextest run --all-features
 
@@ -72,14 +68,8 @@ jobs:
     needs: pre-commit-hooks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Update rustup
-        run: rustup update ${RUST_CHANNEL} && rustup default ${RUST_CHANNEL}
-      - name: Install clippy
-        run: rustup component add clippy
-      - name: Install wasm & wasip1 as a rust target
-        run: rustup target add wasm32-unknown-unknown wasm32-wasip1
-        shell: bash
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: Lint (clippy)
         run: cargo clippy --all-features --all-targets
         shell: bash

@@ -323,7 +323,7 @@ profile.release.panic = "abort"
 "#;
 
 const MEMOIZATION_CANDIDATE_INPUT_PROGRAM: &str = r#"
-use std::{f64::consts::PI, i32};
+use std::f64::consts::PI;
 
 /// Calculates the sine of an angle in radians.
 #[no_mangle]

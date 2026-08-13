@@ -25,13 +25,7 @@ impl From<&WaspRoot> for AnalysisInterface {
                             Some(AnalysisInterface::interface_generic_apply());
                     }
                     TrapSignature::TrapApply(TrapApply {
-                        apply_hook_signature:
-                            ApplyHookSignature::Spe(ApplySpe {
-                                mutable_signature: _,
-                                parameters_arguments: _,
-                                parameters_results: _,
-                                ..
-                            }),
+                        apply_hook_signature: ApplyHookSignature::Spe(ApplySpe { .. }),
                         ..
                     }) => todo!(),
                     TrapSignature::TrapIfThen(_) => {
