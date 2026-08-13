@@ -121,9 +121,7 @@ abstract class DynValues {
         this.mutDynArgsResults = mutDynArgsResults;
     }
 
-    abstract get<T>(index: i32): T
     abstract getType(index: i32): WasmType
-    abstract set<T>(index: i32, value: T): void
 }
 
 class MutDynArgs extends DynValues {

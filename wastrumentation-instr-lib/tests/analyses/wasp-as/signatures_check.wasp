@@ -40,7 +40,31 @@
             this.results = results;
           }
 
-          validate_post_call_values(expected_values: WasmValue[], actual_values: DynValues): void {
+          validate_post_call_args(expected_values: WasmValue[], actual_values: MutDynArgs): void {
+            assert(actual_values.length === expected_values.length);
+            for (let index = 0; index < expected_values.length; index++) {
+              const expected_value = expected_values[index];
+              assert(expected_value.wasm_type === actual_values.getType(index));
+              switch (expected_value.wasm_type) {
+                case WasmType.i32:
+                  assert(expected_value.as_i32() === actual_values.get<i32>(index));
+                  break;
+                case WasmType.f32:
+                  assert(expected_value.as_f32() === actual_values.get<f32>(index));
+                  break;
+                case WasmType.i64:
+                  assert(expected_value.as_i64() === actual_values.get<i64>(index));
+                  break;
+                case WasmType.f64:
+                  assert(expected_value.as_f64() === actual_values.get<f64>(index));
+                  break;
+                default:
+                  unreachable();
+              }
+            }
+          }
+
+          validate_post_call_ress(expected_values: WasmValue[], actual_values: MutDynRess): void {
             assert(actual_values.length === expected_values.length);
             for (let index = 0; index < expected_values.length; index++) {
               const expected_value = expected_values[index];
@@ -65,8 +89,8 @@
           }
 
           validate_post_call(args: MutDynArgs, ress: MutDynRess): void {
-            this.validate_post_call_values(this.params, args);
-            this.validate_post_call_values(this.results, ress);
+            this.validate_post_call_args(this.params, args);
+            this.validate_post_call_ress(this.results, ress);
           }
         }
 
