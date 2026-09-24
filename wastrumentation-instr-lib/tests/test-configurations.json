@@ -1535,5 +1535,72 @@
         }
       ]
     }
+  },
+  {
+    "input_program": {
+      "path": "./input-programs/wat/tables.wat",
+      "type": "Wat"
+    },
+    "instrumented_assertions": [
+      {
+        "analysis": {
+          "Rust": {
+            "hooks": [
+              "GenericApply",
+              "CallPre",
+              "CallPost",
+              "CallIndirectPre",
+              "CallIndirectPost",
+              "IfThen",
+              "IfThenPost",
+              "IfThenElse",
+              "IfThenElsePost",
+              "Branch",
+              "BranchIf",
+              "BranchTable",
+              "Select",
+              "Unary",
+              "Binary",
+              "Drop",
+              "Return",
+              "Const",
+              "Local",
+              "Global",
+              "Store",
+              "Load",
+              "MemorySize",
+              "MemoryGrow",
+              "BlockPre",
+              "BlockPost",
+              "LoopPre",
+              "LoopPost",
+              "RefFunc",
+              "RefNull",
+              "RefIsNull",
+              "TableGet",
+              "TableSet",
+              "TableSize",
+              "TableGrow",
+              "TableFill",
+              "TableCopy",
+              "TableInit",
+              "ElemDrop"
+            ],
+            "manifest": "./tests/analyses/rust/forward/Cargo.toml"
+          }
+        },
+        "input_program_assertion": "EqualToUninstrumented",
+        "post_execution_assertions": []
+      }
+    ],
+    "uninstrumented_assertion": {
+      "arguments": [],
+      "input_entry_point": "main",
+      "results": [
+        {
+          "I32": 0
+        }
+      ]
+    }
   }
 ]
