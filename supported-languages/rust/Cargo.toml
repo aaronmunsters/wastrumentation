@@ -7,8 +7,8 @@ edition = "2024"
 rust-to-wasm-compiler = { workspace = true }
 wastrumentation = { workspace = true }
 tempfile = { workspace = true }
-indoc = { workspace = true }
 serde = { workspace = true }
 
 [dev-dependencies]
 wasmtime = { workspace = true }
+indoc = { workspace = true }

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from config import working_directory, minimum_major_node_version, minimum_major_wasm_merge_version
 import os
 import subprocess

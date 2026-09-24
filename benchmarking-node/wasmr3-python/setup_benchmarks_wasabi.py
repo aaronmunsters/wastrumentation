@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import os
 import re
 import shutil
@@ -28,7 +27,7 @@ def setup_benchmarks_wasabi(
     shutil.copy(node_wasm_wrap_path, wrapper_output_path)
 
     # Replace the template with actual values
-    wrapper_content_template_filled = open(wrapper_output_path, 'r').read()
+    wrapper_content_template_filled = open(wrapper_output_path).read()
     for pattern, replacement in [
         [r'INPUT_PROGRAM_PATH', f'{benchmark_path_wasabi_instrumented}'],
         [r'INPUT_NAME', f'{benchmark}'],
@@ -86,12 +85,12 @@ def patch_js_to_cjs(
     # Replace in long.js
     long_path = os.path.join(benchmark_directory_wasabi_instrumented, 'long.js')
     long_new_path = os.path.join(benchmark_directory_wasabi_instrumented, 'long.cjs')
-    long_content = open(long_path, 'r').read()
+    long_content = open(long_path).read()
     long_content = re.sub(js_pattern, cjs_replacement, long_content)
     open(long_path, 'w').write(long_content)
     shutil.move(long_path, long_new_path)
 
     # Replace in {benchmark}.wasabi.cjs
-    wasabi_generated_script_content = open(wasabi_generated_script_path, 'r').read()
+    wasabi_generated_script_content = open(wasabi_generated_script_path).read()
     wasabi_generated_script_content = re.sub(js_pattern, cjs_replacement, wasabi_generated_script_content)
     open(wasabi_generated_script_path, 'w').write(wasabi_generated_script_content)

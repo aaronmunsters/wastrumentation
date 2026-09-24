@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import os
 import re
 import logging
@@ -12,7 +11,7 @@ def setup_benchmarks_regular(
     if len(benchmarks) == 0: return
 
     # read wrapper_template to variable
-    wrapper_template_fd = open(node_wasm_wrap_path, 'r')
+    wrapper_template_fd = open(node_wasm_wrap_path)
     wrapper_template = wrapper_template_fd.read()
     wrapper_template_fd.close()
 

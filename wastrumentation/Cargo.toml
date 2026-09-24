@@ -8,7 +8,6 @@ edition = "2021"
 [dependencies]
 wasabi_wasm = { git = "https://github.com/aaronmunsters/wasabi.git", rev = "ee2fb70" }
 wasm-mergers = { git = "https://github.com/aaronmunsters/wasm-mergers", rev = "a4a2753" }
-indoc = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
@@ -16,3 +15,4 @@ wasmtime = { workspace = true }
 wastrumentation = { workspace = true }
 asc-compiler-rs = { workspace = true }
 wat = { workspace = true }
+indoc = { workspace = true }

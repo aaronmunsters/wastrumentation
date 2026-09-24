@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import os
 import re
 import logging
@@ -15,7 +14,7 @@ from util import parse_boolean
 
 def forward_success_runs_for(data_path):
     forward_success_runs = {}
-    with open(data_path, 'r') as executes_once_file:
+    with open(data_path) as executes_once_file:
         executes_once_reader = csv.DictReader(executes_once_file, fieldnames=executes_once_field_names)
         next(executes_once_reader, None)  # skip the headers - https://stackoverflow.com/a/14257599
 

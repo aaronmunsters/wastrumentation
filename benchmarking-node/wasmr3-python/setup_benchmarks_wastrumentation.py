@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import os
 import re
 import shutil
@@ -27,7 +26,7 @@ def setup_benchmarks_wastrumentation(
     shutil.copy(node_wasm_wrap_path, wrapper_output_path)
 
     # Replace the template with actual values
-    wrapper_content = open(wrapper_output_path, 'r').read()
+    wrapper_content = open(wrapper_output_path).read()
     for pattern, replacement in [
         [r'INPUT_PROGRAM_PATH', f'{benchmark_path_wastrumentation_instrumented}'],
         [r'INPUT_NAME', f'{benchmark}'],

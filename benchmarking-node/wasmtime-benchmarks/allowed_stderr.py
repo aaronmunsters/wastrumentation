@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import re
 
 known_success_patterns: list[str] = [

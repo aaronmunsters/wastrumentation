@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # DO NOT TOUCH VARIABLES BELOW
 # vvvvvvvvvvvvvvvvvvvvvvvvvvvv
 ANALYSIS_BRANCHES = 'branches'

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import os
 
 from input_programs_analysis_config import configured_analyses

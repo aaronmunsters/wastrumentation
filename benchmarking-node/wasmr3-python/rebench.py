@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 import os
 
 import csv
@@ -52,7 +51,7 @@ def platform_to_bench_path(platform: str) -> str:
     return path
 
 executes_once_data = None
-with open(path_executes_once, 'r') as file:
+with open(path_executes_once) as file:
     executes_once_data = file.read()
 
 # Attempt to rerun 'once' executions
